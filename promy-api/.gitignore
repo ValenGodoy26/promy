@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+/src/generated/prisma
+server.log
+server.err.log
+*.tsbuildinfo
+.qa
+*.log

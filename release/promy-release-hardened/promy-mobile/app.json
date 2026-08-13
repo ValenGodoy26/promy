@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "PROMY",
+    "slug": "promy-mobile",
+    "scheme": "promy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PROMY usa la camara para escanear codigos QR y validar canjes desde tu comercio."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PROMY usa tu ubicacion para mostrar comercios y promociones cerca tuyo."
+        }
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native"
+    ],
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFBE00"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.promy.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "PROMY usa tu ubicacion para mostrar comercios y promociones cerca tuyo.",
+        "NSCameraUsageDescription": "PROMY usa la camara para escanear codigos QR y validar canjes desde tu comercio."
+      }
+    },
+    "android": {
+      "package": "app.promy.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFBE00"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  COMMERCE
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+}
+
+enum CommerceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BENEFIT
+  TIME_SLOT
+  DAY_PROMO
+  SPECIAL_COMBO
+}
+
+enum PromotionStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED_VISIBLE
+  REJECTED
+  EXPIRED
+}
+
+enum ValidationMethod {
+  QR
+  MANUAL_CODE
+}
+
+enum RedemptionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum AppNotificationType {
+  REDEMPTION_VALIDATED
+  COMMERCE_APPROVED
+  COMMERCE_REJECTED
+  COMMERCE_PENDING
+}
+
+model User {
+  id             Int          @id @default(autoincrement())
+  fullName       String
+  email          String       @unique
+  passwordHash   String
+  emailVerifiedAt DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationExpiresAt DateTime?
+  passwordResetTokenHash String?
+  passwordResetExpiresAt DateTime?
+  role           UserRole     @default(CLIENT)
+  phone          String?
+  status         UserStatus   @default(ACTIVE)
+  sessions       Session[]
+  redemptions    Redemption[]
+  validatedRedemptions Redemption[] @relation("RedemptionValidator")
+  notifications  AppNotification[]
+  pushTokens     PushToken[]
+  ownedCommerces Commerce[]   @relation("CommerceOwner")
+  adminLogs      AdminActionLog[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([role, status])
+  @@index([emailVerificationExpiresAt])
+  @@index([passwordResetExpiresAt])
+}
+
+model Session {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  refreshTokenHash String   @unique
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model City {
+  id        Int        @id @default(autoincrement())
+  name      String
+  province  String
+  slug      String     @unique
+  isActive  Boolean    @default(true)
+  commerces Commerce[]
+
+  @@index([isActive])
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String
+  slug      String     @unique
+  icon      String?
+  isActive  Boolean    @default(true)
+  commerces Commerce[]
+
+  @@index([isActive])
+}
+
+model Commerce {
+  id               Int            @id @default(autoincrement())
+  ownerUserId      Int
+  cityId           Int
+  categoryId       Int
+  name             String
+  slug             String         @unique
+  shortDescription String?
+  description      String?
+  address          String
+  latitude         Float?
+  longitude        Float?
+  phone            String?
+  instagram        String?
+  logoUrl          String?
+  coverUrl         String?
+  status           CommerceStatus @default(PENDING)
+  moderationNote   String?
+  isFeatured       Boolean        @default(false)
+  featuredRank     Int            @default(0)
+  isHiddenByAdmin  Boolean        @default(false)
+  adminNote        String?
+  adminEditedAt    DateTime?
+  adminEditedByUserId Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  owner       User         @relation("CommerceOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  city        City         @relation(fields: [cityId], references: [id])
+  category    Category     @relation(fields: [categoryId], references: [id])
+  promotions  Promotion[]
+  redemptions Redemption[]
+  auditLogs   AdminActionLog[]
+
+  @@unique([ownerUserId])
+  @@index([ownerUserId, status])
+  @@index([cityId, status])
+  @@index([categoryId, status])
+  @@index([status, isHiddenByAdmin, isFeatured, featuredRank])
+  @@fulltext([name])
+  @@fulltext([shortDescription])
+  @@fulltext([description])
+  @@fulltext([address])
+}
+
+model Promotion {
+  id             Int             @id @default(autoincrement())
+  commerceId     Int
+  title          String
+  description    String
+  promotionType  PromotionType
+  validationMethod ValidationMethod @default(QR)
+  discountValue  Float?
+  conditions     String?
+  startDate      DateTime?
+  endDate        DateTime?
+  startTime      String?
+  endTime        String?
+  imageUrl       String?
+  status         PromotionStatus @default(DRAFT)
+  moderationNote String?
+  isFeatured     Boolean         @default(false)
+  featuredRank   Int             @default(0)
+  isHiddenByAdmin Boolean        @default(false)
+  adminNote      String?
+  adminEditedAt  DateTime?
+  adminEditedByUserId Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  commerce    Commerce     @relation(fields: [commerceId], references: [id], onDelete: Cascade)
+  redemptions Redemption[]
+  auditLogs   AdminActionLog[]
+
+  @@index([commerceId, status])
+  @@index([status, endDate])
+  @@index([status, isHiddenByAdmin, isFeatured, featuredRank])
+  @@fulltext([title])
+  @@fulltext([description])
+  @@fulltext([conditions])
+}
+
+model Redemption {
+  id               Int              @id @default(autoincrement())
+  promotionId      Int
+  userId           Int
+  commerceId       Int
+  validatedByUserId Int?
+  validationMethod ValidationMethod
+  validationCode   String?
+  status           RedemptionStatus @default(PENDING)
+  redeemedAt       DateTime?
+  validationExpiresAt DateTime?
+  failedValidationAttempts Int      @default(0)
+  lastValidationAttemptAt DateTime?
+  createdAt        DateTime         @default(now())
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commerce  Commerce  @relation(fields: [commerceId], references: [id], onDelete: Cascade)
+  validatedByUser User? @relation("RedemptionValidator", fields: [validatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([promotionId, userId])
+  @@index([commerceId, status])
+  @@index([userId, createdAt])
+  @@index([validationCode, status])
+}
+
+model AdminActionLog {
+  id          Int      @id @default(autoincrement())
+  adminUserId Int
+  action      String
+  targetType  String
+  targetId    Int
+  note        String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  adminUser  User       @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  commerceId Int?
+  commerce   Commerce?  @relation(fields: [commerceId], references: [id], onDelete: SetNull)
+  promotionId Int?
+  promotion  Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+}
+
+model AppNotification {
+  id        Int                 @id @default(autoincrement())
+  userId    Int
+  type      AppNotificationType
+  title     String
+  body      String
+  data      String?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt, createdAt])
+}
+
+model PushToken {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  token            String   @unique
+  platform         String
+  deviceLabel      String?
+  isActive         Boolean  @default(true)
+  lastRegisteredAt DateTime @default(now())
+  lastSentAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+}

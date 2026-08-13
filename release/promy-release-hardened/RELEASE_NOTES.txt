@@ -1,0 +1,6 @@
+Release: promy-release-hardened
+Generado: 2026-05-18T12:00:32
+Workspace: C:\PROMY
+Excluidos (carpetas): .git, node_modules, dist, .qa, .expo, release
+Excluidos (archivos): .env
+Excluidos (patrones): .env.*, *.log, *.tsbuildinfo

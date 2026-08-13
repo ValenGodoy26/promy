@@ -1,0 +1,6 @@
+Release: promy-release-verify
+Generado: 2026-05-06T00:31:18
+Workspace: C:\PROMY
+Excluidos (carpetas): .git, node_modules, dist, .qa, .expo, release
+Excluidos (archivos): .env
+Excluidos (patrones): .env.*, *.log, *.tsbuildinfo

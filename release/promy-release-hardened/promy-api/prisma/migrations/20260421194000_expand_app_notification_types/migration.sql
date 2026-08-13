@@ -1,0 +1,7 @@
+ALTER TABLE `AppNotification`
+    MODIFY `type` ENUM(
+        'REDEMPTION_VALIDATED',
+        'COMMERCE_APPROVED',
+        'COMMERCE_REJECTED',
+        'COMMERCE_PENDING'
+    ) NOT NULL;
