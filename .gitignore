@@ -1,0 +1,44 @@
+# Dependencies
+**/node_modules/
+
+# Environment files and local secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build output and framework caches
+**/dist/
+**/build/
+**/web-build/
+**/.expo/
+**/.cache/
+**/.vite/
+**/.turbo/
+**/coverage/
+**/*.tsbuildinfo
+
+# Logs and temporary files
+**/*.log
+**/npm-debug.*
+**/yarn-debug.*
+**/yarn-error.*
+**/.qa/
+**/.audit-*/
+**/*.tmp
+**/*.temp
+
+# Mobile credentials and generated local native projects
+**/*.jks
+**/*.p8
+**/*.p12
+**/*.pem
+**/*.key
+**/*.mobileprovision
+promy-mobile/android/
+promy-mobile/ios/
+
+# OS and editor residue
+**/.DS_Store
+**/Thumbs.db
+**/.idea/
+**/.vscode/
