@@ -1,5 +1,29 @@
 const bcrypt = require("bcrypt");
 const { prisma, ensureBaseCatalog, ensureBootstrapAdmin, upsertPromotionByTitle } = require("./seed.shared");
+const { upsertCommerceWithLocation } = require("./commerce.spatial");
+
+async function upsertDemoCommerceUser({ email, fullName, phone, passwordHash }) {
+  return prisma.user.upsert({
+    where: { email },
+    update: {
+      fullName,
+      role: "COMMERCE",
+      status: "ACTIVE",
+      phone,
+      emailVerifiedAt: new Date(),
+      passwordHash,
+    },
+    create: {
+      fullName,
+      email,
+      passwordHash,
+      emailVerifiedAt: new Date(),
+      role: "COMMERCE",
+      status: "ACTIVE",
+      phone,
+    },
+  });
+}
 
 async function ensureDemoData({ concordia }) {
   const hashedPassword = await bcrypt.hash("demo1234", 10);
@@ -67,6 +91,27 @@ async function ensureDemoData({ concordia }) {
     },
   });
 
+  const [cafeUser, fitZoneUser, spaUser] = await Promise.all([
+    upsertDemoCommerceUser({
+      email: "cafe@promy.com",
+      fullName: "Cafe Central Demo",
+      phone: "3454000004",
+      passwordHash: hashedPassword,
+    }),
+    upsertDemoCommerceUser({
+      email: "fitzone@promy.com",
+      fullName: "FitZone Demo",
+      phone: "3454000005",
+      passwordHash: hashedPassword,
+    }),
+    upsertDemoCommerceUser({
+      email: "spa@promy.com",
+      fullName: "Spa Relax Demo",
+      phone: "3454000006",
+      passwordHash: hashedPassword,
+    }),
+  ]);
+
   const [gastronomia, cafeterias, gimnasios, servicios] = await Promise.all([
     prisma.category.findUnique({ where: { slug: "gastronomia" } }),
     prisma.category.findUnique({ where: { slug: "cafeterias" } }),
@@ -78,7 +123,7 @@ async function ensureDemoData({ concordia }) {
     throw new Error("No se encontraron categorias necesarias para el seed demo.");
   }
 
-  const burgerHouse = await prisma.commerce.upsert({
+  const burgerHouse = await upsertCommerceWithLocation(prisma, {
     where: { slug: "burger-house-concordia" },
     update: {
       ownerUserId: commerceUser.id,
@@ -105,16 +150,16 @@ async function ensureDemoData({ concordia }) {
     },
   });
 
-  const cafeCentral = await prisma.commerce.upsert({
+  const cafeCentral = await upsertCommerceWithLocation(prisma, {
     where: { slug: "cafe-central-concordia" },
     update: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: cafeUser.id,
       cityId: concordia.id,
       categoryId: cafeterias.id,
       status: "APPROVED",
     },
     create: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: cafeUser.id,
       cityId: concordia.id,
       categoryId: cafeterias.id,
       name: "Cafe Central Concordia",
@@ -132,16 +177,16 @@ async function ensureDemoData({ concordia }) {
     },
   });
 
-  const fitZone = await prisma.commerce.upsert({
+  const fitZone = await upsertCommerceWithLocation(prisma, {
     where: { slug: "fitzone-concordia" },
     update: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: fitZoneUser.id,
       cityId: concordia.id,
       categoryId: gimnasios.id,
       status: "APPROVED",
     },
     create: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: fitZoneUser.id,
       cityId: concordia.id,
       categoryId: gimnasios.id,
       name: "FitZone Concordia",
@@ -159,16 +204,16 @@ async function ensureDemoData({ concordia }) {
     },
   });
 
-  const spaRelax = await prisma.commerce.upsert({
+  const spaRelax = await upsertCommerceWithLocation(prisma, {
     where: { slug: "spa-relax-concordia" },
     update: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: spaUser.id,
       cityId: concordia.id,
       categoryId: servicios.id,
       status: "APPROVED",
     },
     create: {
-      ownerUserId: commerceUser.id,
+      ownerUserId: spaUser.id,
       cityId: concordia.id,
       categoryId: servicios.id,
       name: "Spa Relax Concordia",

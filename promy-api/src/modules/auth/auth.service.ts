@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import { createHash, randomUUID } from "crypto";
 import { z } from "zod";
 import prisma from "../../config/prisma";
-import { env, isDevelopment } from "../../config/env";
+import { env, isDevelopment, isTest } from "../../config/env";
 import { AUTH_REFRESH_INVALID_MESSAGE } from "../../shared/http/auth";
 import { logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
@@ -164,7 +164,7 @@ export function buildPublicAppUrl(path: string) {
 
 export function buildAuthActionPreview(path: string, token: string) {
   const link = buildPublicAppUrl(`${path}?token=${encodeURIComponent(token)}`);
-  return isDevelopment
+  return isDevelopment || isTest
     ? {
         token,
         link,

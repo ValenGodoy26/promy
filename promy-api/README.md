@@ -58,6 +58,7 @@ Reglas de seguridad de arranque:
 
 - En `production`, `JWT_SECRET` y `JWT_REFRESH_SECRET` deben ser secretos aleatorios de al menos 32 caracteres.
 - En `production`, `AUTH_EMAIL_PROVIDER` debe ser `resend`.
+- `AUTH_EMAIL_PROVIDER=test` no envia trafico externo, expone previews de tokens para QA y solo es valido con `APP_ENV=test`.
 - En `production`, `AUTH_EMAIL_FROM`, `RESEND_API_KEY`, `PUBLIC_WEB_URL` y `CORS_ORIGIN` explicito son obligatorios.
 - En `production`, `CORS_ORIGIN` no puede ser `*`.
 - Si `UPLOADS_DRIVER=local`, conviene definir `PUBLIC_API_BASE_URL` para construir URLs publicas estables.
@@ -115,7 +116,7 @@ La smoke de expiracion:
 
 - crea un comercio y una promo QA temporales;
 - valida que la promo vencida no salga en `/promotions`, `/search` ni en el marker del mapa;
-- espera la materializacion a `EXPIRED`;
+- ejecuta el barrido real de expiracion y comprueba la materializacion a `EXPIRED`;
 - verifica el estado en admin y comercio;
 - confirma que admin no pueda volverla a `APPROVED_VISIBLE`;
 - limpia los datos temporales al terminar.
@@ -140,15 +141,20 @@ npm run test:integration
 
 La suite:
 
-- recompila la API
-- resetea la base indicada en `TEST_DATABASE_URL`
-- ejecuta seed `demo`
-- corre onboarding, promotion lifecycle, real e2e y expiration smokes
+- valida estrictamente que `TEST_DATABASE_URL` nombre una base de test/QA;
+- recompila y valida el schema Prisma;
+- resetea la base y aplica todas las migraciones;
+- ejecuta el seed `demo` sin servicios externos;
+- levanta una API temporal en un puerto libre;
+- corre auth, onboarding, lifecycle, E2E real, account deletion y expiracion;
+- detiene la API temporal tanto en PASS como en FAIL.
 
 Seguridad:
 
-- por defecto exige que `TEST_DATABASE_URL` apunte a una base con `test` o `qa` en el nombre
-- si alguna vez necesitas bypass manual, usar `INTEGRATION_ALLOW_ANY_DATABASE=1`
+- exige que el nombre de base contenga un segmento `test`, `tests` o `qa`;
+- rechaza explicitamente nombres de desarrollo, staging y produccion, incluido `promy_db`;
+- no existe bypass para desactivar esta proteccion;
+- el provider de email `test` no realiza trafico externo y no puede activarse fuera de `APP_ENV=test`.
 
 No la ejecutes contra produccion ni contra una base con datos que quieras preservar.
 

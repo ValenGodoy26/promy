@@ -1,83 +1,18 @@
 const { PrismaClient } = require("@prisma/client");
+const {
+  assert,
+  createMobileClient,
+  createWebClient,
+  loginMobile,
+  loginWeb,
+} = require("./qa-http-client");
 
 const prisma = new PrismaClient();
-
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4013/api";
 const QA_IPS = {
   admin: "203.0.113.10",
   commerce: "203.0.113.20",
   client: "203.0.113.30",
 };
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function withForwardedIp(headers = {}, ip) {
-  if (!ip) {
-    return headers;
-  }
-
-  return {
-    ...headers,
-    "X-Forwarded-For": ip,
-  };
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password, ip) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    headers: withForwardedIp({}, ip),
-    body: JSON.stringify({ email, password }),
-  });
-
-  assert(response.ok, `No se pudo loguear ${email}: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, `Login sin accessToken para ${email}`);
-
-  return response.data;
-}
-
-async function loginAdmin() {
-  const knownPasswords = ["Admin1234", "demo1234"];
-  let lastError = null;
-
-  for (const password of knownPasswords) {
-    try {
-      return await login("admin@promy.com", password, QA_IPS.admin);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error("No se pudo loguear admin@promy.com");
-}
 
 async function main() {
   const runId = `real-e2e-${Date.now()}`;
@@ -87,6 +22,11 @@ async function main() {
   const commerceEmail = `${runId}-commerce@promy.test`;
   const commerceName = `QA Real ${runId}`;
   const promotionTitle = `QA Promo Real ${runId}`;
+  const publicApi = createWebClient();
+  const adminApi = createWebClient({ forwardedIp: QA_IPS.admin });
+  const commerceApi = createWebClient({ forwardedIp: QA_IPS.commerce });
+  const otherCommerceApi = createWebClient({ forwardedIp: "203.0.113.21" });
+  const clientApi = createMobileClient({ forwardedIp: QA_IPS.client });
 
   let createdClientUserId = null;
   let createdCommerceUserId = null;
@@ -95,12 +35,12 @@ async function main() {
   let createdRedemptionId = null;
 
   try {
-    const health = await request("/health");
+    const health = await publicApi.request("/health");
     assert(health.ok, "El QA server no responde en /health");
 
     const [citiesResponse, categoriesResponse] = await Promise.all([
-      request("/cities"),
-      request("/categories"),
+      publicApi.request("/cities"),
+      publicApi.request("/categories"),
     ]);
 
     assert(citiesResponse.ok, "No pudimos cargar ciudades para la smoke QA");
@@ -112,9 +52,8 @@ async function main() {
     assert(city?.id, "No se encontro la ciudad Concordia");
     assert(category?.id, "No se encontro la categoria Gastronomia");
 
-    const registerCommerce = await request("/auth/register-commerce", {
+    const registerCommerce = await commerceApi.request("/auth/register-commerce", {
       method: "POST",
-      headers: withForwardedIp({}, QA_IPS.commerce),
       body: JSON.stringify({
         fullName: "QA Comercio Real",
         email: commerceEmail,
@@ -136,15 +75,14 @@ async function main() {
     );
     assert(
       registerCommerce.data?.verification?.token,
-      "El registro de comercio no devolvio token de verificacion en development",
+      "El provider test no devolvio token de verificacion del comercio",
     );
 
     createdCommerceUserId = registerCommerce.data?.user?.id ?? null;
     createdCommerceId = registerCommerce.data?.commerce?.id ?? null;
 
-    const verifyCommerceEmail = await request("/auth/verify-email", {
+    const verifyCommerceEmail = await commerceApi.request("/auth/verify-email", {
       method: "POST",
-      headers: withForwardedIp({}, QA_IPS.commerce),
       body: JSON.stringify({
         token: registerCommerce.data.verification.token,
       }),
@@ -154,9 +92,9 @@ async function main() {
       `No se pudo verificar el email del comercio: ${JSON.stringify(verifyCommerceEmail.data)}`,
     );
 
-    const commerceSession = await login(commerceEmail, commercePassword, QA_IPS.commerce);
+    const commerceSession = await loginWeb(commerceApi, commerceEmail, commercePassword);
 
-    const updateProfile = await request("/commerce/me", {
+    const updateProfile = await commerceApi.request("/commerce/me", {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
@@ -173,9 +111,9 @@ async function main() {
       `El comercio QA no pudo completar su perfil antes de aprobacion: ${JSON.stringify(updateProfile.data)}`,
     );
 
-    const adminSession = await loginAdmin();
+    const adminSession = await loginWeb(adminApi, "admin@promy.com", "demo1234");
 
-    const approveCommerce = await request(`/admin/commerces/${createdCommerceId}/status`, {
+    const approveCommerce = await adminApi.request(`/admin/commerces/${createdCommerceId}/status`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${adminSession.accessToken}`,
@@ -193,7 +131,7 @@ async function main() {
       "El comercio QA deberia quedar APPROVED",
     );
 
-    const myCommerce = await request("/commerce/me", {
+    const myCommerce = await commerceApi.request("/commerce/me", {
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
       },
@@ -204,7 +142,7 @@ async function main() {
       "El perfil del comercio deberia verse aprobado",
     );
 
-    const createPromotion = await request("/commerce/promotions", {
+    const createPromotion = await commerceApi.request("/commerce/promotions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
@@ -223,7 +161,7 @@ async function main() {
     );
     createdPromotionId = createPromotion.data?.promotion?.id ?? null;
 
-    const sendPromotionToReview = await request(`/commerce/promotions/${createdPromotionId}`, {
+    const sendPromotionToReview = await commerceApi.request(`/commerce/promotions/${createdPromotionId}`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
@@ -234,7 +172,7 @@ async function main() {
     });
     assert(sendPromotionToReview.ok, "El comercio no pudo mandar la promo a revision");
 
-    const approvePromotion = await request(`/admin/promotions/${createdPromotionId}/status`, {
+    const approvePromotion = await adminApi.request(`/admin/promotions/${createdPromotionId}/status`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${adminSession.accessToken}`,
@@ -254,11 +192,11 @@ async function main() {
 
     const [publicPromotions, publicSearch, publicMap, publicPromotionDetail, publicCommerceDetail] =
       await Promise.all([
-        request(`/promotions?search=${encodeURIComponent(promotionTitle)}`),
-        request(`/search?q=${encodeURIComponent(promotionTitle)}`),
-        request(`/map/markers?search=${encodeURIComponent(commerceName)}`),
-        request(`/promotions/${createdPromotionId}`),
-        request(`/commerces/${createdCommerceId}`),
+        publicApi.request(`/promotions?search=${encodeURIComponent(promotionTitle)}`),
+        publicApi.request(`/search?q=${encodeURIComponent(promotionTitle)}`),
+        publicApi.request(`/map/markers?search=${encodeURIComponent(commerceName)}`),
+        publicApi.request(`/promotions/${createdPromotionId}`),
+        publicApi.request(`/commerces/${createdCommerceId}`),
       ]);
 
     assert(publicPromotions.ok, "Fallo GET /promotions en smoke real");
@@ -300,9 +238,8 @@ async function main() {
       "El detalle del comercio deberia incluir la promo visible",
     );
 
-    const registerClient = await request("/auth/register", {
+    const registerClient = await clientApi.request("/auth/register", {
       method: "POST",
-      headers: withForwardedIp({}, QA_IPS.client),
       body: JSON.stringify({
         fullName: "QA Cliente Real",
         email: clientEmail,
@@ -313,13 +250,13 @@ async function main() {
     assert(registerClient.ok, `No se pudo registrar el cliente QA: ${JSON.stringify(registerClient.data)}`);
     assert(
       registerClient.data?.verification?.token,
-      "El registro de cliente no devolvio token de verificacion en development",
+      "El provider test no devolvio token de verificacion del cliente",
     );
     createdClientUserId = registerClient.data?.user?.id ?? null;
 
-    const clientSession = await login(clientEmail, clientPassword, QA_IPS.client);
+    const clientSession = await loginMobile(clientApi, clientEmail, clientPassword);
 
-    const blockedUnverifiedRedemption = await request("/redemptions", {
+    const blockedUnverifiedRedemption = await clientApi.request("/redemptions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${clientSession.accessToken}`,
@@ -334,9 +271,8 @@ async function main() {
       `El cliente sin verificar deberia recibir EMAIL_NOT_VERIFIED: ${JSON.stringify(blockedUnverifiedRedemption.data)}`,
     );
 
-    const verifyClientEmail = await request("/auth/verify-email", {
+    const verifyClientEmail = await clientApi.request("/auth/verify-email", {
       method: "POST",
-      headers: withForwardedIp({}, QA_IPS.client),
       body: JSON.stringify({
         token: registerClient.data.verification.token,
       }),
@@ -346,7 +282,7 @@ async function main() {
       `No se pudo verificar el email del cliente QA: ${JSON.stringify(verifyClientEmail.data)}`,
     );
 
-    const createRedemption = await request("/redemptions", {
+    const createRedemption = await clientApi.request("/redemptions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${clientSession.accessToken}`,
@@ -366,7 +302,7 @@ async function main() {
       "El canje QA deberia devolver validationCode",
     );
 
-    const pendingHistory = await request("/redemptions/me", {
+    const pendingHistory = await clientApi.request("/redemptions/me", {
       headers: {
         Authorization: `Bearer ${clientSession.accessToken}`,
       },
@@ -381,7 +317,7 @@ async function main() {
       "El historial del cliente deberia mostrar el canje como PENDING",
     );
 
-    const commerceRedemptions = await request("/commerce/redemptions", {
+    const commerceRedemptions = await commerceApi.request("/commerce/redemptions", {
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
       },
@@ -392,7 +328,29 @@ async function main() {
     );
     assert(pendingCommerceRedemption, "El comercio no vio el canje pendiente");
 
-    const validateRedemption = await request("/commerce/redemptions/validate", {
+    const otherCommerceSession = await loginWeb(
+      otherCommerceApi,
+      "comercio@promy.com",
+      "demo1234",
+    );
+    const blockedCrossCommerceValidation = await otherCommerceApi.request(
+      "/commerce/redemptions/validate",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${otherCommerceSession.accessToken}`,
+        },
+        body: JSON.stringify({
+          validationCode: createRedemption.data.redemption.validationCode,
+        }),
+      },
+    );
+    assert(
+      blockedCrossCommerceValidation.status === 404,
+      `Otro comercio no debe validar el canje: ${JSON.stringify(blockedCrossCommerceValidation.data)}`,
+    );
+
+    const validateRedemption = await commerceApi.request("/commerce/redemptions/validate", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
@@ -410,7 +368,21 @@ async function main() {
       "El canje deberia quedar en SUCCESS luego de validar",
     );
 
-    const finalHistory = await request("/redemptions/me", {
+    const duplicateValidation = await commerceApi.request("/commerce/redemptions/validate", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${commerceSession.accessToken}`,
+      },
+      body: JSON.stringify({
+        validationCode: createRedemption.data.redemption.validationCode,
+      }),
+    });
+    assert(
+      duplicateValidation.status === 409,
+      `El mismo canje no debe validarse dos veces: ${JSON.stringify(duplicateValidation.data)}`,
+    );
+
+    const finalHistory = await clientApi.request("/redemptions/me", {
       headers: {
         Authorization: `Bearer ${clientSession.accessToken}`,
       },
@@ -425,13 +397,23 @@ async function main() {
       "El historial del cliente deberia mostrar el canje como SUCCESS",
     );
 
-    const [adminDashboard, commerceDashboard] = await Promise.all([
-      request("/admin/dashboard", {
+    const [adminDashboard, commerceDashboard, clientAdminAccess, commerceAdminAccess] = await Promise.all([
+      adminApi.request("/admin/dashboard", {
         headers: {
           Authorization: `Bearer ${adminSession.accessToken}`,
         },
       }),
-      request("/commerce/dashboard", {
+      commerceApi.request("/commerce/dashboard", {
+        headers: {
+          Authorization: `Bearer ${commerceSession.accessToken}`,
+        },
+      }),
+      clientApi.request("/admin/dashboard", {
+        headers: {
+          Authorization: `Bearer ${clientSession.accessToken}`,
+        },
+      }),
+      commerceApi.request("/admin/dashboard", {
         headers: {
           Authorization: `Bearer ${commerceSession.accessToken}`,
         },
@@ -440,6 +422,8 @@ async function main() {
 
     assert(adminDashboard.ok, "Fallo GET /admin/dashboard en smoke real");
     assert(commerceDashboard.ok, "Fallo GET /commerce/dashboard en smoke real");
+    assert(clientAdminAccess.status === 403, "CLIENT no debe acceder a endpoints ADMIN");
+    assert(commerceAdminAccess.status === 403, "COMMERCE no debe acceder a endpoints ADMIN");
 
     console.log(
       JSON.stringify(

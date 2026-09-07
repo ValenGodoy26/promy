@@ -1,99 +1,47 @@
-const { PrismaClient, PromotionStatus } = require("@prisma/client");
+const bcrypt = require("bcrypt");
+const { PrismaClient, PromotionStatus, UserRole, UserStatus } = require("@prisma/client");
+const { createCommerceWithLocation } = require("../prisma/commerce.spatial");
+const { assert, createWebClient, loginWeb } = require("./qa-http-client");
+const { expireOverduePromotions } = require("../dist/shared/utils/promotionExpiration");
+const appPrisma = require("../dist/config/prisma").default;
 
 const prisma = new PrismaClient();
 
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4013/api";
-const QA_TIMEOUT_MS = 75_000;
-const QA_POLL_INTERVAL_MS = 5_000;
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+async function materializeExpiration(promotionId) {
+  const affectedCount = await expireOverduePromotions({
+    force: true,
+    source: "qa-expiration-smoke",
   });
+  assert(affectedCount >= 1, "El barrido real no materializo la promocion vencida");
 
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
+  const promotion = await prisma.promotion.findUnique({
+    where: { id: promotionId },
+    select: { id: true, status: true, updatedAt: true },
   });
-
-  assert(response.ok, `No se pudo loguear ${email}: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, `Login sin accessToken para ${email}`);
-
-  return response.data.accessToken;
-}
-
-async function waitForExpiration(promotionId) {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < QA_TIMEOUT_MS) {
-    const promotion = await prisma.promotion.findUnique({
-      where: { id: promotionId },
-      select: {
-        id: true,
-        status: true,
-        updatedAt: true,
-      },
-    });
-
-    if (promotion?.status === PromotionStatus.EXPIRED) {
-      return promotion;
-    }
-
-    await request(`/promotions?search=${promotionId}`).catch(() => undefined);
-    await new Promise((resolve) => setTimeout(resolve, QA_POLL_INTERVAL_MS));
-  }
-
-  throw new Error(
-    `La promocion ${promotionId} no paso a EXPIRED dentro de ${QA_TIMEOUT_MS / 1000}s`,
-  );
+  assert(promotion?.status === PromotionStatus.EXPIRED, "La promocion no quedo EXPIRED");
+  return promotion;
 }
 
 async function main() {
   const runId = `expiration-smoke-${Date.now()}`;
   const commerceName = `QA Expiration ${runId}`;
   const promotionTitle = `QA Expired Promo ${runId}`;
+  const email = `${runId}@promy.test`;
+  const password = "Expiration1234";
+  const publicApi = createWebClient();
+  const adminApi = createWebClient({ forwardedIp: "203.0.113.61" });
+  const commerceApi = createWebClient({ forwardedIp: "203.0.113.62" });
 
+  let owner = null;
   let commerce = null;
   let promotion = null;
 
   try {
-    const health = await request("/health");
+    const health = await publicApi.request("/health");
     assert(health.ok, "El QA server no responde en /health");
 
-    const adminToken = await login("admin@promy.com", "demo1234");
-    const commerceToken = await login("comercio@promy.com", "demo1234");
+    const adminSession = await loginWeb(adminApi, "admin@promy.com", "demo1234");
 
-    const owner = await prisma.user.findUnique({
-      where: { email: "comercio@promy.com" },
-      select: { id: true },
-    });
     const city = await prisma.city.findFirst({
       where: { slug: "concordia" },
       select: { id: true },
@@ -103,12 +51,22 @@ async function main() {
       select: { id: true },
     });
 
-    assert(owner?.id, "No se encontro el usuario comercio demo");
     assert(city?.id, "No se encontro la ciudad Concordia");
     assert(category?.id, "No se encontro la categoria gastronomia");
 
-    commerce = await prisma.commerce.create({
+    owner = await prisma.user.create({
       data: {
+        fullName: `QA Expiration ${runId}`,
+        email,
+        passwordHash: await bcrypt.hash(password, 10),
+        emailVerifiedAt: new Date(),
+        role: UserRole.COMMERCE,
+        status: UserStatus.ACTIVE,
+      },
+      select: { id: true },
+    });
+
+    commerce = await createCommerceWithLocation(prisma, {
         ownerUserId: owner.id,
         cityId: city.id,
         categoryId: category.id,
@@ -120,12 +78,8 @@ async function main() {
         latitude: -31.392,
         longitude: -58.021,
         status: "APPROVED",
-      },
-      select: {
-        id: true,
-        name: true,
-      },
     });
+    const commerceSession = await loginWeb(commerceApi, email, password);
 
     promotion = await prisma.promotion.create({
       data: {
@@ -145,7 +99,7 @@ async function main() {
       },
     });
 
-    const publicPromotions = await request(
+    const publicPromotions = await publicApi.request(
       `/promotions?search=${encodeURIComponent(promotionTitle)}`,
     );
     assert(publicPromotions.ok, "Fallo GET /promotions en smoke de expiracion");
@@ -155,14 +109,23 @@ async function main() {
       "La promo vencida no deberia aparecer en /promotions",
     );
 
-    const publicSearch = await request(`/search?q=${encodeURIComponent(promotionTitle)}`);
+    const publicSearch = await publicApi.request(`/search?q=${encodeURIComponent(promotionTitle)}`);
     assert(publicSearch.ok, "Fallo GET /search en smoke de expiracion");
     assert(
       Array.isArray(publicSearch.data?.promotions) && publicSearch.data.promotions.length === 0,
       "La promo vencida no deberia aparecer en /search",
     );
 
-    const mapSearch = await request(`/map/markers?search=${encodeURIComponent(commerceName)}`);
+    const nearby = await publicApi.request(
+      `/promotions/nearby?lat=-31.392&lng=-58.021&radiusKm=5&search=${encodeURIComponent(promotionTitle)}`,
+    );
+    assert(nearby.ok, "Fallo GET /promotions/nearby en smoke de expiracion");
+    assert(
+      Array.isArray(nearby.data?.promotions) && nearby.data.promotions.length === 0,
+      "La promo vencida no deberia aparecer en /promotions/nearby",
+    );
+
+    const mapSearch = await publicApi.request(`/map/markers?search=${encodeURIComponent(commerceName)}`);
     assert(mapSearch.ok, "Fallo GET /map/markers en smoke de expiracion");
     const qaMarker = Array.isArray(mapSearch.data?.markers)
       ? mapSearch.data.markers.find((marker) => marker.name === commerceName)
@@ -173,13 +136,13 @@ async function main() {
       "El marker del comercio QA no deberia exponer promociones vencidas",
     );
 
-    const expiredPromotion = await waitForExpiration(promotion.id);
+    const expiredPromotion = await materializeExpiration(promotion.id);
 
-    const adminPromotions = await request(
+    const adminPromotions = await adminApi.request(
       `/admin/promotions?search=${encodeURIComponent(promotionTitle)}`,
       {
         headers: {
-          Authorization: `Bearer ${adminToken}`,
+          Authorization: `Bearer ${adminSession.accessToken}`,
         },
       },
     );
@@ -191,9 +154,9 @@ async function main() {
       "Admin deberia ver la promo QA como EXPIRED",
     );
 
-    const commercePromotions = await request("/commerce/promotions", {
+    const commercePromotions = await commerceApi.request("/commerce/promotions", {
       headers: {
-        Authorization: `Bearer ${commerceToken}`,
+        Authorization: `Bearer ${commerceSession.accessToken}`,
       },
     });
     assert(commercePromotions.ok, "Fallo GET /commerce/promotions en smoke de expiracion");
@@ -206,10 +169,10 @@ async function main() {
       "Comercio deberia ver la promo QA como EXPIRED",
     );
 
-    const reapprove = await request(`/admin/promotions/${promotion.id}/status`, {
+    const reapprove = await adminApi.request(`/admin/promotions/${promotion.id}/status`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminSession.accessToken}`,
       },
       body: JSON.stringify({
         status: "APPROVED_VISIBLE",
@@ -261,12 +224,20 @@ async function main() {
       });
     }
 
+    if (owner?.id) {
+      await prisma.session.deleteMany({ where: { userId: owner.id } });
+      await prisma.appNotification.deleteMany({ where: { userId: owner.id } });
+      await prisma.user.deleteMany({ where: { id: owner.id } });
+    }
+
     await prisma.$disconnect();
+    await appPrisma.$disconnect();
   }
 }
 
 main().catch(async (error) => {
   console.error(error);
   await prisma.$disconnect().catch(() => undefined);
+  await appPrisma.$disconnect().catch(() => undefined);
   process.exit(1);
 });

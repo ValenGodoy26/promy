@@ -1,62 +1,19 @@
 const { PrismaClient } = require("@prisma/client");
+const { assert, createMobileClient, loginMobile } = require("./qa-http-client");
 
 const prisma = new PrismaClient();
-
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4017/api";
 const QA_IP = `203.0.113.${Math.floor(Math.random() * 120) + 140}`;
 const PUSH_TOKEN = "ExponentPushToken[qa-account-deletion-smoke-token-0001]";
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Forwarded-For": QA_IP,
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-
-  assert(response.ok, `No se pudo iniciar sesion: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, "Login sin accessToken");
-  return response.data;
-}
 
 async function main() {
   const runId = `account-deletion-${Date.now()}`;
   const email = `${runId}@promy.test`;
   const password = "Delete1234";
+  const mobile = createMobileClient({ forwardedIp: QA_IP });
   let createdUserId = null;
 
   try {
-    const register = await request("/auth/register", {
+    const register = await mobile.request("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         fullName: "QA Delete User",
@@ -70,7 +27,7 @@ async function main() {
     assert(register.data?.verification?.token, "El registro no devolvio token de verificacion");
     createdUserId = register.data?.user?.id ?? null;
 
-    const verify = await request("/auth/verify-email", {
+    const verify = await mobile.request("/auth/verify-email", {
       method: "POST",
       body: JSON.stringify({
         token: register.data.verification.token,
@@ -78,9 +35,9 @@ async function main() {
     });
     assert(verify.ok, `No se pudo verificar el email: ${JSON.stringify(verify.data)}`);
 
-    const session = await login(email, password);
+    const session = await loginMobile(mobile, email, password);
 
-    const registerPushToken = await request("/users/me/push-tokens", {
+    const registerPushToken = await mobile.request("/users/me/push-tokens", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
@@ -96,7 +53,7 @@ async function main() {
       `No se pudo registrar el push token QA: ${JSON.stringify(registerPushToken.data)}`,
     );
 
-    const deleteAccount = await request("/users/me", {
+    const deleteAccount = await mobile.request("/users/me", {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
@@ -107,7 +64,7 @@ async function main() {
       `No se pudo eliminar la cuenta cliente: ${JSON.stringify(deleteAccount.data)}`,
     );
 
-    const loginAfterDelete = await request("/auth/login", {
+    const loginAfterDelete = await mobile.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });

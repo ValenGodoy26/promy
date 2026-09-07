@@ -27,14 +27,26 @@ jobs:
       - run: npm run check
 
   integration:
-    if: ${{ secrets.PROMY_API_TEST_DATABASE_URL != '' }}
     runs-on: ubuntu-latest
     needs: unit
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: promy_test_root
+          MYSQL_DATABASE: promy_integration_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ppromy_test_root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     defaults:
       run:
         working-directory: promy-api
     env:
-      TEST_DATABASE_URL: ${{ secrets.PROMY_API_TEST_DATABASE_URL }}
+      TEST_DATABASE_URL: mysql://root:promy_test_root@127.0.0.1:3306/promy_integration_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

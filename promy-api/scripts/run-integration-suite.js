@@ -1,27 +1,17 @@
+const net = require("net");
 const path = require("path");
-const { spawn } = require("child_process");
+const {
+  runCommand,
+  startApi,
+  stopProcessTree,
+  waitForHealth,
+} = require("./qa-process");
+const { validateTestDatabaseUrl } = require("./qa-database-guard");
 
 const ROOT = path.resolve(__dirname, "..");
-
-const REQUIRED_ENV = {
-  TEST_DATABASE_URL: process.env.TEST_DATABASE_URL,
-};
-
-const DEFAULT_ENV = {
-  APP_ENV: "test",
-  PORT: "4017",
-  CORS_ORIGIN: "http://localhost:5173,http://127.0.0.1:5173",
-  PUBLIC_WEB_URL: "http://localhost:5173",
-  PUBLIC_API_BASE_URL: "http://localhost:4017",
-  AUTH_EMAIL_PROVIDER: "console",
-  AUTH_EMAIL_FROM: "PROMY <no-reply@promy.app>",
-  JWT_SECRET: "promy-test-jwt-secret-with-at-least-32-chars",
-  JWT_REFRESH_SECRET: "promy-test-refresh-secret-with-32-chars",
-  SEED_MODE: "demo",
-  SEED_ADMIN_EMAIL: "admin@promy.com",
-  SEED_ADMIN_PASSWORD: "demo1234",
-  ALLOW_WEAK_SECRETS: "0",
-};
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
+const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 
 const SMOKES = [
   "scripts/qa-auth-smoke.js",
@@ -32,76 +22,101 @@ const SMOKES = [
   "scripts/qa-expiration-smoke.js",
 ];
 
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function buildIntegrationEnv() {
-  assert(
-    REQUIRED_ENV.TEST_DATABASE_URL,
-    "TEST_DATABASE_URL es obligatoria para correr integration tests.",
-  );
-
-  const lowerUrl = REQUIRED_ENV.TEST_DATABASE_URL.toLowerCase();
-  const canUseDatabase =
-    process.env.INTEGRATION_ALLOW_ANY_DATABASE === "1" ||
-    lowerUrl.includes("test") ||
-    lowerUrl.includes("qa");
-
-  assert(
-    canUseDatabase,
-    "TEST_DATABASE_URL debe apuntar a una base de test/qa o usar INTEGRATION_ALLOW_ANY_DATABASE=1.",
-  );
-
-  return {
-    ...process.env,
-    ...DEFAULT_ENV,
-    DATABASE_URL: REQUIRED_ENV.TEST_DATABASE_URL,
-  };
-}
-
-function runCommand(command, args, env) {
+function getAvailablePort() {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: ROOT,
-      env,
-      shell: process.platform === "win32",
-      stdio: "inherit",
+    const server = net.createServer();
+    server.unref();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : null;
+      server.close((error) => {
+        if (error) reject(error);
+        else if (!port) reject(new Error("No se pudo reservar un puerto para la API de test."));
+        else resolve(port);
+      });
     });
-
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(`${command} ${args.join(" ")} fallo con exit code ${code}`));
-    });
-
-    child.on("error", reject);
   });
 }
 
 async function main() {
-  const env = buildIntegrationEnv();
+  const database = validateTestDatabaseUrl(TEST_DATABASE_URL);
+  const port = await getAvailablePort();
+  const baseUrl = `http://127.0.0.1:${port}/api`;
+  const env = {
+    ...process.env,
+    APP_ENV: "test",
+    PORT: String(port),
+    QA_PORT: String(port),
+    QA_BASE_URL: baseUrl,
+    CORS_ORIGIN: "http://localhost:5173,http://127.0.0.1:5173",
+    PUBLIC_WEB_URL: "http://localhost:5173",
+    PUBLIC_API_BASE_URL: `http://127.0.0.1:${port}`,
+    AUTH_EMAIL_PROVIDER: "test",
+    AUTH_EMAIL_FROM: "PROMY Tests <no-reply@promy.test>",
+    JWT_SECRET: "9f84k2m1q7r6x5a4n8c3v2b7p6d1s9h4j8k2m5",
+    JWT_REFRESH_SECRET: "8d73j1n2p4q6w9z5c7v3b8m1k6s2h9f4q7r5t3y1",
+    SEED_MODE: "demo",
+    SEED_ADMIN_EMAIL: "admin@promy.com",
+    SEED_ADMIN_PASSWORD: "demo1234",
+    ALLOW_WEAK_SECRETS: "0",
+    PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: "1",
+    ...(process.platform === "win32"
+      ? {
+          PRISMA_SCHEMA_ENGINE_BINARY: path.join(
+            ROOT,
+            "node_modules",
+            "@prisma",
+            "engines",
+            "schema-engine-windows.exe",
+          ),
+        }
+      : {}),
+    DATABASE_URL: database.url,
+  };
 
+  console.log(`[integration] base autorizada: ${database.databaseName}`);
   console.log("[integration] build");
-  await runCommand("npm", ["run", "build"], env);
+  await runCommand(NPM, ["run", "build"], { root: ROOT, env });
+
+  console.log("[integration] prisma validate");
+  await runCommand(NPX, ["prisma", "validate"], { root: ROOT, env });
 
   console.log("[integration] prisma migrate reset");
-  await runCommand("npx", ["prisma", "migrate", "reset", "--force", "--skip-generate"], env);
+  await runCommand(
+    NPX,
+    ["prisma", "migrate", "reset", "--force", "--skip-generate"],
+    { root: ROOT, env },
+  );
 
   console.log("[integration] seed demo");
-  await runCommand("node", ["prisma/seed.js"], env);
+  await runCommand(process.execPath, ["prisma/seed.js"], { root: ROOT, env });
 
-  for (const smokeScript of SMOKES) {
-    console.log(`[integration] smoke ${smokeScript}`);
-    await runCommand("node", ["scripts/qa-run-smoke.js", smokeScript], env);
+  const api = startApi({ root: ROOT, env, port });
+
+  try {
+    console.log(`[integration] esperando API en ${baseUrl}`);
+    await waitForHealth({
+      url: `${baseUrl}/health`,
+      child: api.child,
+      timeoutMs: 25_000,
+    });
+
+    for (const smokeScript of SMOKES) {
+      console.log(`[integration] smoke ${smokeScript}`);
+      await runCommand(process.execPath, [smokeScript], { root: ROOT, env });
+    }
+  } catch (error) {
+    const output = api.getOutput();
+    if (output.stdout.trim()) console.error(`\n[qa-server stdout]\n${output.stdout.trim()}`);
+    if (output.stderr.trim()) console.error(`\n[qa-server stderr]\n${output.stderr.trim()}`);
+    throw error;
+  } finally {
+    await stopProcessTree(api.child);
+    await runCommand(process.execPath, ["scripts/qa-cleanup.js"], { root: ROOT, env });
   }
 
-  console.log("[integration] suite completa");
+  console.log("[integration] suite completa: PASS");
 }
 
 main().catch((error) => {

@@ -1,4 +1,4 @@
-import { env, isDevelopment } from "../../config/env";
+import { env, isDevelopment, isTest } from "../../config/env";
 import { ServiceError } from "../utils/service";
 
 type SendEmailInput = {
@@ -9,7 +9,7 @@ type SendEmailInput = {
 };
 
 type EmailDeliveryResult = {
-  delivery: "console" | "resend";
+  delivery: "console" | "test" | "resend";
 };
 
 function ensureConfiguredForProvider() {
@@ -60,6 +60,20 @@ async function sendWithResend(input: SendEmailInput) {
 }
 
 export async function sendTransactionalEmail(input: SendEmailInput): Promise<EmailDeliveryResult> {
+  if (env.AUTH_EMAIL_PROVIDER === "test") {
+    if (!isTest) {
+      throw new ServiceError(
+        "El proveedor de email de test no puede utilizarse fuera de APP_ENV=test.",
+        500,
+        { code: "EMAIL_TEST_PROVIDER_FORBIDDEN" },
+      );
+    }
+
+    return {
+      delivery: "test",
+    };
+  }
+
   if (env.AUTH_EMAIL_PROVIDER === "console") {
     if (!isDevelopment) {
       throw new ServiceError(

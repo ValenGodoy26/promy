@@ -1,63 +1,30 @@
 const { PrismaClient } = require("@prisma/client");
+const {
+  assert,
+  createMobileClient,
+  createWebClient,
+  loginMobile,
+  loginWeb,
+  logoutMobile,
+  logoutWeb,
+  refreshMobile,
+  refreshWeb,
+} = require("./qa-http-client");
 
 const prisma = new PrismaClient();
-
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4017/api";
 const QA_IP = `203.0.113.${Math.floor(Math.random() * 120) + 20}`;
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Forwarded-For": QA_IP,
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-
-  assert(response.ok, `No se pudo iniciar sesion: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, "Login sin accessToken");
-  assert(response.data?.refreshToken, "Login sin refreshToken");
-  return response.data;
-}
 
 async function main() {
   const runId = `auth-smoke-${Date.now()}`;
   const email = `${runId}@promy.test`;
   const initialPassword = "Initial1234";
   const newPassword = "Updated1234";
+  const mobile = createMobileClient({ forwardedIp: QA_IP });
+  const web = createWebClient({ forwardedIp: QA_IP });
   let createdUserId = null;
 
   try {
-    const register = await request("/auth/register", {
+    const register = await mobile.request("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         fullName: "QA Auth Smoke",
@@ -68,10 +35,10 @@ async function main() {
     });
 
     assert(register.ok, `No se pudo registrar el usuario QA: ${JSON.stringify(register.data)}`);
-    assert(register.data?.verification?.token, "El registro no devolvio token de verificacion");
+    assert(register.data?.verification?.token, "El provider test no devolvio token de verificacion");
     createdUserId = register.data?.user?.id ?? null;
 
-    const resendVerification = await request("/auth/request-email-verification", {
+    const resendVerification = await mobile.request("/auth/request-email-verification", {
       method: "POST",
       body: JSON.stringify({ email }),
     });
@@ -81,105 +48,89 @@ async function main() {
     );
     assert(
       resendVerification.data?.verification?.token,
-      "El reenvio no devolvio token de verificacion en development",
+      "El provider test no devolvio token al reenviar la verificacion",
     );
 
-    const verify = await request("/auth/verify-email", {
+    const verify = await mobile.request("/auth/verify-email", {
       method: "POST",
-      body: JSON.stringify({
-        token: resendVerification.data.verification.token,
-      }),
+      body: JSON.stringify({ token: resendVerification.data.verification.token }),
     });
     assert(verify.ok, `No se pudo verificar el email: ${JSON.stringify(verify.data)}`);
 
-    const session = await login(email, initialPassword);
-
-    const me = await request("/auth/me", {
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-      },
+    const mobileSession = await loginMobile(mobile, email, initialPassword);
+    const me = await mobile.request("/auth/me", {
+      headers: { Authorization: `Bearer ${mobileSession.accessToken}` },
     });
     assert(me.ok, `No se pudo consultar /auth/me: ${JSON.stringify(me.data)}`);
     assert(me.data?.user?.emailVerifiedAt, "El usuario deberia figurar como verificado");
 
-    const refresh = await request("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({
-        refreshToken: session.refreshToken,
-      }),
-    });
-    assert(refresh.ok, `No se pudo refrescar la sesion: ${JSON.stringify(refresh.data)}`);
-    assert(refresh.data?.accessToken, "Refresh sin accessToken");
-    assert(refresh.data?.refreshToken, "Refresh sin refreshToken");
+    const mobileRefresh = await refreshMobile(mobile, mobileSession.refreshToken);
+    assert(mobileRefresh.ok, `No se pudo refrescar mobile: ${JSON.stringify(mobileRefresh.data)}`);
+    assert(mobileRefresh.data?.accessToken, "Refresh mobile sin accessToken");
+    assert(mobileRefresh.data?.refreshToken, "Refresh mobile sin refreshToken");
     assert(
-      refresh.data.refreshToken !== session.refreshToken,
-      "El refresh token deberia rotar al renovar la sesion",
+      mobileRefresh.data.refreshToken !== mobileSession.refreshToken,
+      "El refresh token mobile deberia rotar",
     );
 
-    const forgotPassword = await request("/auth/forgot-password", {
+    const reusedRotatedToken = await refreshMobile(mobile, mobileSession.refreshToken);
+    assert(
+      reusedRotatedToken.status === 401,
+      `Un refresh token rotado no debe reutilizarse: ${JSON.stringify(reusedRotatedToken.data)}`,
+    );
+
+    const forgotPassword = await mobile.request("/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     });
-    assert(
-      forgotPassword.ok,
-      `No se pudo iniciar forgot-password: ${JSON.stringify(forgotPassword.data)}`,
-    );
-    assert(forgotPassword.data?.reset?.token, "Forgot password no devolvio token en development");
+    assert(forgotPassword.ok, `No se pudo iniciar forgot-password: ${JSON.stringify(forgotPassword.data)}`);
+    assert(forgotPassword.data?.reset?.token, "El provider test no devolvio token de reset");
 
-    const resetPassword = await request("/auth/reset-password", {
+    const resetPassword = await mobile.request("/auth/reset-password", {
       method: "POST",
-      body: JSON.stringify({
-        token: forgotPassword.data.reset.token,
-        password: newPassword,
-      }),
+      body: JSON.stringify({ token: forgotPassword.data.reset.token, password: newPassword }),
     });
-    assert(
-      resetPassword.ok,
-      `No se pudo resetear la contrasena: ${JSON.stringify(resetPassword.data)}`,
-    );
+    assert(resetPassword.ok, `No se pudo resetear la contrasena: ${JSON.stringify(resetPassword.data)}`);
 
-    const oldPasswordLogin = await request("/auth/login", {
+    const oldPasswordLogin = await mobile.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password: initialPassword }),
     });
+    assert(oldPasswordLogin.status === 401, "La contrasena anterior no deberia funcionar");
+
+    const webSession = await loginWeb(web, email, newPassword);
+    const webCookieBeforeRefresh = web.getCookie("promy_refresh_token");
+    const webRefresh = await refreshWeb(web);
+    assert(webRefresh.ok, `No se pudo refrescar web: ${JSON.stringify(webRefresh.data)}`);
+    assert(webRefresh.data?.accessToken, "Refresh web sin accessToken");
+    assert(!webRefresh.data?.refreshToken, "Refresh web no debe exponer refreshToken en JSON");
     assert(
-      oldPasswordLogin.status === 401,
-      `La contrasena anterior no deberia seguir funcionando: ${JSON.stringify(oldPasswordLogin.data)}`,
+      web.getCookie("promy_refresh_token") !== webCookieBeforeRefresh,
+      "La cookie httpOnly web deberia rotar",
     );
+    assert(webSession.accessToken, "Login web sin accessToken");
 
-    const newSession = await login(email, newPassword);
+    const webLogout = await logoutWeb(web);
+    assert(webLogout.ok, `No se pudo cerrar la sesion web: ${JSON.stringify(webLogout.data)}`);
+    const webRefreshAfterLogout = await refreshWeb(web);
+    assert(webRefreshAfterLogout.status === 400, "Web sin cookie no deberia poder refrescar");
 
-    const logout = await request("/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({
-        refreshToken: newSession.refreshToken,
-      }),
-    });
-    assert(logout.ok, `No se pudo cerrar sesion: ${JSON.stringify(logout.data)}`);
-
-    const refreshAfterLogout = await request("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({
-        refreshToken: newSession.refreshToken,
-      }),
-    });
+    const finalMobileSession = await loginMobile(mobile, email, newPassword);
+    const mobileLogout = await logoutMobile(mobile, finalMobileSession.refreshToken);
+    assert(mobileLogout.ok, `No se pudo cerrar la sesion mobile: ${JSON.stringify(mobileLogout.data)}`);
+    const mobileRefreshAfterLogout = await refreshMobile(mobile, finalMobileSession.refreshToken);
     assert(
-      refreshAfterLogout.status === 401,
-      `Un refresh token cerrado no deberia seguir activo: ${JSON.stringify(refreshAfterLogout.data)}`,
+      mobileRefreshAfterLogout.status === 401,
+      `Un refresh cerrado no debe seguir activo: ${JSON.stringify(mobileRefreshAfterLogout.data)}`,
     );
 
-    console.log(
-      JSON.stringify(
-        {
-          ok: true,
-          runId,
-          userId: createdUserId,
-          message: "Smoke QA de auth completada correctamente.",
-        },
-        null,
-        2,
-      ),
-    );
+    console.log(JSON.stringify({
+      ok: true,
+      runId,
+      userId: createdUserId,
+      contracts: ["mobile-body-refresh", "web-http-only-cookie"],
+      message: "Smoke QA de auth completada correctamente.",
+    }, null, 2));
   } finally {
     if (createdUserId) {
       await prisma.session.deleteMany({ where: { userId: createdUserId } });

@@ -95,7 +95,7 @@ const envSchema = z
       .string()
       .url("EXPO_PUSH_API_URL debe ser una URL valida")
       .default("https://exp.host/--/api/v2/push/send"),
-    AUTH_EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
+    AUTH_EMAIL_PROVIDER: z.enum(["console", "test", "resend"]).default("console"),
     AUTH_EMAIL_FROM: z.string().trim().min(3).optional(),
     AUTH_EMAIL_REPLY_TO: z
       .string()
@@ -198,6 +198,14 @@ const envSchema = z
       }
     }
 
+    if (env.AUTH_EMAIL_PROVIDER === "test" && env.APP_ENV !== "test") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUTH_EMAIL_PROVIDER"],
+        message: "AUTH_EMAIL_PROVIDER='test' solo puede utilizarse con APP_ENV=test.",
+      });
+    }
+
     if (env.UPLOADS_DRIVER === "s3") {
       const requiredS3Variables = [
         ["S3_ENDPOINT", env.S3_ENDPOINT],
@@ -234,6 +242,7 @@ if (!parsedEnv.success) {
 export const env = parsedEnv.data;
 export const isProduction = env.APP_ENV === "production";
 export const isDevelopment = env.APP_ENV === "development";
+export const isTest = env.APP_ENV === "test";
 
 export const allowedOrigins = env.CORS_ORIGIN.split(",")
   .map((origin) => origin.trim())

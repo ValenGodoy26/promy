@@ -1,57 +1,16 @@
 const { PrismaClient } = require("@prisma/client");
+const { assert, createWebClient, loginWeb } = require("./qa-http-client");
 
 const prisma = new PrismaClient();
-
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4013/api";
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-
-  assert(response.ok, `No se pudo loguear ${email}: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, `Login sin accessToken para ${email}`);
-
-  return response.data;
-}
 
 async function main() {
   const runId = `commerce-onboarding-${Date.now()}`;
   const password = "DemoPass123";
   const email = `${runId}@promy.test`;
   const commerceName = `QA Alta ${runId}`;
+  const publicApi = createWebClient();
+  const commerceApi = createWebClient({ forwardedIp: "203.0.113.41" });
+  const adminApi = createWebClient({ forwardedIp: "203.0.113.42" });
 
   let createdUserId = null;
   let createdCommerceId = null;
@@ -59,8 +18,8 @@ async function main() {
 
   try {
     const [citiesResponse, categoriesResponse] = await Promise.all([
-      request("/cities"),
-      request("/categories"),
+      publicApi.request("/cities"),
+      publicApi.request("/categories"),
     ]);
 
     assert(citiesResponse.ok, "No pudimos cargar ciudades para la smoke QA");
@@ -72,7 +31,7 @@ async function main() {
     assert(city?.id, "No se encontro la ciudad Concordia");
     assert(category?.id, "No se encontro la categoria Gastronomia");
 
-    const registerResponse = await request("/auth/register-commerce", {
+    const registerResponse = await commerceApi.request("/auth/register-commerce", {
       method: "POST",
       body: JSON.stringify({
         fullName: "QA Comercio",
@@ -92,13 +51,13 @@ async function main() {
     assert(registerResponse.ok, `No se pudo registrar comercio: ${JSON.stringify(registerResponse.data)}`);
     assert(
       registerResponse.data?.verification?.token,
-      "El registro de comercio no devolvio token de verificacion en development",
+      "El provider test no devolvio token de verificacion del comercio",
     );
 
     createdUserId = registerResponse.data?.user?.id ?? null;
     createdCommerceId = registerResponse.data?.commerce?.id ?? null;
 
-    const verifyResponse = await request("/auth/verify-email", {
+    const verifyResponse = await commerceApi.request("/auth/verify-email", {
       method: "POST",
       body: JSON.stringify({
         token: registerResponse.data.verification.token,
@@ -111,9 +70,9 @@ async function main() {
       "El usuario deberia quedar marcado como verificado",
     );
 
-    const commerceSession = await login(email, password);
+    const commerceSession = await loginWeb(commerceApi, email, password);
 
-    const completeProfile = await request("/commerce/me", {
+    const completeProfile = await commerceApi.request("/commerce/me", {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
@@ -131,9 +90,28 @@ async function main() {
       `El comercio QA no pudo completar su perfil antes de aprobacion: ${JSON.stringify(completeProfile.data)}`,
     );
 
-    const adminSession = await login("admin@promy.com", "demo1234");
+    const blockedBeforeApproval = await commerceApi.request("/commerce/promotions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${commerceSession.accessToken}`,
+      },
+      body: JSON.stringify({
+        title: `Promo bloqueada ${runId}`,
+        description: "Esta promocion no debe crearse antes de la aprobacion.",
+        promotionType: "BENEFIT",
+        validationMethod: "QR",
+        status: "DRAFT",
+      }),
+    });
+    assert(
+      blockedBeforeApproval.status === 403 &&
+        blockedBeforeApproval.data?.commerceStatus === "PENDING",
+      `Un comercio pendiente no debe operar: ${JSON.stringify(blockedBeforeApproval.data)}`,
+    );
 
-    const approveCommerce = await request(`/admin/commerces/${createdCommerceId}/status`, {
+    const adminSession = await loginWeb(adminApi, "admin@promy.com", "demo1234");
+
+    const approveCommerce = await adminApi.request(`/admin/commerces/${createdCommerceId}/status`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${adminSession.accessToken}`,
@@ -152,7 +130,7 @@ async function main() {
       "El comercio QA deberia quedar APPROVED",
     );
 
-    const myCommerce = await request("/commerce/me", {
+    const myCommerce = await commerceApi.request("/commerce/me", {
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,
       },
@@ -161,7 +139,7 @@ async function main() {
     assert(myCommerce.ok, "El comercio QA no pudo cargar su perfil");
     assert(myCommerce.data?.commerce?.status === "APPROVED", "El perfil del comercio deberia verse aprobado");
 
-    const createPromotion = await request("/commerce/promotions", {
+    const createPromotion = await commerceApi.request("/commerce/promotions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${commerceSession.accessToken}`,

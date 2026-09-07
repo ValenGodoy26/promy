@@ -1,52 +1,9 @@
 const bcrypt = require("bcrypt");
 const { PrismaClient, PromotionStatus, UserRole, UserStatus } = require("@prisma/client");
+const { createCommerceWithLocation } = require("../prisma/commerce.spatial");
+const { assert, createWebClient, loginWeb } = require("./qa-http-client");
 
 const prisma = new PrismaClient();
-
-const QA_BASE_URL = process.env.QA_BASE_URL || "http://localhost:4013/api";
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-async function request(path, options = {}) {
-  const response = await fetch(`${QA_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    data,
-  };
-}
-
-async function login(email, password) {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-
-  assert(response.ok, `No se pudo loguear ${email}: ${JSON.stringify(response.data)}`);
-  assert(response.data?.accessToken, `Login sin accessToken para ${email}`);
-
-  return response.data.accessToken;
-}
 
 async function main() {
   const runId = `promo-lifecycle-${Date.now()}`;
@@ -54,16 +11,19 @@ async function main() {
   const email = `${runId}@promy.test`;
   const commerceName = `QA Lifecycle ${runId}`;
   const basePromotionTitle = `QA Promo ${runId}`;
+  const publicApi = createWebClient();
+  const adminApi = createWebClient({ forwardedIp: "203.0.113.51" });
+  const commerceApi = createWebClient({ forwardedIp: "203.0.113.52" });
 
   let createdUser = null;
   let createdCommerce = null;
   let createdPromotionId = null;
 
   try {
-    const health = await request("/health");
+    const health = await publicApi.request("/health");
     assert(health.ok, "El QA server no responde en /health");
 
-    const adminToken = await login("admin@promy.com", password);
+    const adminSession = await loginWeb(adminApi, "admin@promy.com", password);
 
     const [city, category] = await Promise.all([
       prisma.city.findFirst({
@@ -93,8 +53,7 @@ async function main() {
       select: { id: true, email: true },
     });
 
-    createdCommerce = await prisma.commerce.create({
-      data: {
+    createdCommerce = await createCommerceWithLocation(prisma, {
         ownerUserId: createdUser.id,
         cityId: city.id,
         categoryId: category.id,
@@ -108,16 +67,14 @@ async function main() {
         phone: "+5493450000000",
         instagram: "@qa.lifecycle",
         status: "APPROVED",
-      },
-      select: { id: true, name: true, slug: true },
     });
 
-    const commerceToken = await login(email, password);
+    const commerceSession = await loginWeb(commerceApi, email, password);
 
-    const createdDraft = await request("/commerce/promotions", {
+    const createdDraft = await commerceApi.request("/commerce/promotions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${commerceToken}`,
+        Authorization: `Bearer ${commerceSession.accessToken}`,
       },
       body: JSON.stringify({
         title: basePromotionTitle,
@@ -134,10 +91,10 @@ async function main() {
     );
     createdPromotionId = createdDraft.data.promotion.id;
 
-    const sentToReview = await request(`/commerce/promotions/${createdPromotionId}`, {
+    const sentToReview = await commerceApi.request(`/commerce/promotions/${createdPromotionId}`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${commerceToken}`,
+        Authorization: `Bearer ${commerceSession.accessToken}`,
       },
       body: JSON.stringify({
         status: "PENDING_REVIEW",
@@ -149,10 +106,10 @@ async function main() {
       "La promo deberia pasar a PENDING_REVIEW",
     );
 
-    const rejected = await request(`/admin/promotions/${createdPromotionId}/status`, {
+    const rejected = await adminApi.request(`/admin/promotions/${createdPromotionId}/status`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminSession.accessToken}`,
       },
       body: JSON.stringify({
         status: "REJECTED",
@@ -165,10 +122,10 @@ async function main() {
       "La promo deberia quedar en REJECTED",
     );
 
-    const resubmitted = await request(`/commerce/promotions/${createdPromotionId}`, {
+    const resubmitted = await commerceApi.request(`/commerce/promotions/${createdPromotionId}`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${commerceToken}`,
+        Authorization: `Bearer ${commerceSession.accessToken}`,
       },
       body: JSON.stringify({
         title: `${basePromotionTitle} Ajustada`,
@@ -184,10 +141,10 @@ async function main() {
       "La observacion deberia limpiarse al reenviar la promo a revision",
     );
 
-    const approved = await request(`/admin/promotions/${createdPromotionId}/status`, {
+    const approved = await adminApi.request(`/admin/promotions/${createdPromotionId}/status`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminSession.accessToken}`,
       },
       body: JSON.stringify({
         status: "APPROVED_VISIBLE",
@@ -199,7 +156,7 @@ async function main() {
       "La promo deberia quedar en APPROVED_VISIBLE",
     );
 
-    const publicPromotions = await request(
+    const publicPromotions = await publicApi.request(
       `/promotions?search=${encodeURIComponent(`${basePromotionTitle} Ajustada`)}`,
     );
     assert(publicPromotions.ok, "Fallo GET /promotions en smoke lifecycle");
@@ -208,7 +165,7 @@ async function main() {
       "La promo aprobada deberia aparecer en el catalogo publico",
     );
 
-    const publicSearch = await request(
+    const publicSearch = await publicApi.request(
       `/search?q=${encodeURIComponent(`${basePromotionTitle} Ajustada`)}`,
     );
     assert(publicSearch.ok, "Fallo GET /search en smoke lifecycle");
@@ -217,7 +174,7 @@ async function main() {
       "La promo aprobada deberia aparecer en /search",
     );
 
-    const mapMarkers = await request(`/map/markers?search=${encodeURIComponent(commerceName)}`);
+    const mapMarkers = await publicApi.request(`/map/markers?search=${encodeURIComponent(commerceName)}`);
     assert(mapMarkers.ok, "Fallo GET /map/markers en smoke lifecycle");
     const commerceMarker = Array.isArray(mapMarkers.data?.markers)
       ? mapMarkers.data.markers.find((item) => item.name === commerceName)
@@ -229,10 +186,10 @@ async function main() {
       "La promo aprobada deberia aparecer dentro del marker del comercio",
     );
 
-    const editedVisible = await request(`/commerce/promotions/${createdPromotionId}`, {
+    const editedVisible = await commerceApi.request(`/commerce/promotions/${createdPromotionId}`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${commerceToken}`,
+        Authorization: `Bearer ${commerceSession.accessToken}`,
       },
       body: JSON.stringify({
         description: "Promo ajustada despues de estar visible.",
@@ -244,7 +201,7 @@ async function main() {
       "La promo visible deberia volver a PENDING_REVIEW al editarse",
     );
 
-    const hiddenFromPublic = await request(
+    const hiddenFromPublic = await publicApi.request(
       `/promotions?search=${encodeURIComponent(`${basePromotionTitle} Ajustada`)}`,
     );
     assert(hiddenFromPublic.ok, "Fallo GET /promotions despues de re-editar");
