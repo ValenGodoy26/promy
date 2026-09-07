@@ -15,7 +15,9 @@ const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 
 const SMOKES = [
   "scripts/qa-auth-smoke.js",
+  "scripts/qa-rate-limit-smoke.js",
   "scripts/qa-commerce-onboarding-smoke.js",
+  "scripts/qa-uploads-smoke.js",
   "scripts/qa-promotion-lifecycle-smoke.js",
   "scripts/qa-real-e2e-smoke.js",
   "scripts/qa-account-deletion-smoke.js",

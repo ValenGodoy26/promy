@@ -44,10 +44,10 @@ export function captureApiException(
 
     if (req) {
       scope.setTag("http.method", req.method);
-      scope.setTag("http.path", req.originalUrl || req.url);
+      scope.setTag("http.path", req.path);
       scope.setContext("request", {
         method: req.method,
-        path: req.originalUrl || req.url,
+        path: req.path,
         requestId: req.requestId,
         ip: req.ip,
       });

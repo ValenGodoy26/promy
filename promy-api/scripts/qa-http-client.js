@@ -43,7 +43,9 @@ class QaHttpClient {
 
   async request(path, options = {}) {
     const headers = new Headers(options.headers || {});
-    headers.set("Content-Type", "application/json");
+    if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
     headers.set("x-promy-client", this.platform);
 
     if (this.forwardedIp) {

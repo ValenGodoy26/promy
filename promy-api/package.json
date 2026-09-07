@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "test": "npm run build && node -r ./tests/setup-env.cjs --test tests/**/*.test.js",
@@ -39,24 +40,24 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1037.0",
-    "@prisma/client": "^6.19.0",
-    "@sentry/node": "^10.53.1",
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@prisma/client": "^6.19.3",
+    "@sentry/node": "^10.73.0",
     "@types/compression": "^1.8.1",
-    "@types/multer": "^2.1.0",
+    "@types/multer": "^2.2.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.2",
-    "helmet": "^8.1.0",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
+    "multer": "^2.3.0",
     "pino": "^10.3.1",
     "redis": "^5.12.1",
-    "sharp": "^0.34.5",
-    "zod": "^4.3.6"
+    "sharp": "^0.35.4",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -65,8 +66,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.6.0",
     "cross-env": "^10.1.0",
-    "prisma": "^6.19.0",
+    "prisma": "^6.19.3",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
