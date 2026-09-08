@@ -7,8 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
 import {
   fetchCurrentUser,
   loginWithEmail,
@@ -19,50 +17,11 @@ import {
 import { ApiError, configureApiClient } from "../api/client";
 import { unregisterStoredPushToken } from "../services/push";
 import { AuthSession } from "../types/api";
-
-const STORAGE_KEY = "@promy/mobile-session";
-
-async function writeStoredSession(value: string) {
-  const isAvailable = await SecureStore.isAvailableAsync().catch(() => false);
-
-  if (isAvailable) {
-    await SecureStore.setItemAsync(STORAGE_KEY, value);
-    return;
-  }
-
-  await AsyncStorage.setItem(STORAGE_KEY, value);
-}
-
-async function readStoredSession() {
-  const isAvailable = await SecureStore.isAvailableAsync().catch(() => false);
-
-  if (isAvailable) {
-    const secureValue = await SecureStore.getItemAsync(STORAGE_KEY);
-
-    if (secureValue) {
-      return secureValue;
-    }
-  }
-
-  const legacyValue = await AsyncStorage.getItem(STORAGE_KEY);
-
-  if (legacyValue && isAvailable) {
-    await SecureStore.setItemAsync(STORAGE_KEY, legacyValue).catch(() => undefined);
-    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
-  }
-
-  return legacyValue;
-}
-
-async function clearStoredSession() {
-  const isAvailable = await SecureStore.isAvailableAsync().catch(() => false);
-
-  if (isAvailable) {
-    await SecureStore.deleteItemAsync(STORAGE_KEY).catch(() => undefined);
-  }
-
-  await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
-}
+import {
+  clearStoredSession,
+  readStoredSession,
+  writeStoredSession,
+} from "../auth/sessionStorage";
 
 type AuthContextValue = {
   session: AuthSession | null;
@@ -93,14 +52,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const refreshPromiseRef = useRef<Promise<AuthSession | null> | null>(null);
 
   const persistSession = async (nextSession: AuthSession | null) => {
-    sessionRef.current = nextSession;
-    setSession(nextSession);
-
     if (nextSession) {
-      await writeStoredSession(JSON.stringify(nextSession));
+      try {
+        await writeStoredSession(JSON.stringify(nextSession));
+      } catch (error) {
+        sessionRef.current = null;
+        setSession(null);
+        await clearStoredSession();
+        throw error;
+      }
+      sessionRef.current = nextSession;
+      setSession(nextSession);
       return;
     }
 
+    sessionRef.current = null;
+    setSession(null);
     await clearStoredSession();
   };
 
