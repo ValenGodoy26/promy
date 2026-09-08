@@ -6,6 +6,7 @@ import {
   logoutRequest,
   refreshRequest,
 } from "./lib/api";
+import { createRefreshCoordinator } from "./lib/refreshCoordinator";
 import type { AuthSession, AuthUser } from "./types/api";
 
 type AuthContextValue = {
@@ -26,6 +27,7 @@ const EMAIL_UNVERIFIED_NOTICE =
 const REFRESH_SESSION_HINT_KEY = "promy_has_refresh_session";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const refreshCoordinator = createRefreshCoordinator(refreshRequest);
 
 function hasRefreshSessionHint() {
   try {
@@ -79,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const invalidateSession = useCallback(
     (notice?: string | null) => {
+      refreshCoordinator.invalidate();
       applySession(null);
       setRefreshSessionHint(false);
       setAuthNotice(notice ?? null);
@@ -87,8 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refreshSession = useCallback(async () => {
+    const attempt = refreshCoordinator.request();
     try {
-      const refreshed = await refreshRequest();
+      const refreshed = await attempt.promise;
+      if (!refreshCoordinator.isCurrent(attempt.generation)) return null;
       const nextSession = buildWebSession({
         accessToken: refreshed.accessToken,
         user: refreshed.user,
@@ -97,12 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRefreshSessionHint(true);
       return nextSession;
     } catch {
-      invalidateSession(SESSION_EXPIRED_NOTICE);
+      if (refreshCoordinator.isCurrent(attempt.generation)) {
+        invalidateSession(SESSION_EXPIRED_NOTICE);
+      }
       return null;
     }
   }, [applySession, invalidateSession]);
 
   useEffect(() => {
+    let active = true;
     const restore = async () => {
       if (!shouldRestoreSessionOnCurrentPath() || !hasRefreshSessionHint()) {
         applySession(null);
@@ -110,8 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const attempt = refreshCoordinator.request();
       try {
-        const refreshed = await refreshRequest();
+        const refreshed = await attempt.promise;
+        if (!active || !refreshCoordinator.isCurrent(attempt.generation)) return;
         const nextSession = buildWebSession({
           accessToken: refreshed.accessToken,
           user: refreshed.user,
@@ -122,22 +132,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthNotice(EMAIL_UNVERIFIED_NOTICE);
         }
       } catch (error) {
+        if (!active || !refreshCoordinator.isCurrent(attempt.generation)) return;
         if (!(error instanceof ApiError && (error.status === 400 || error.status === 401))) {
           console.warn("No pudimos restaurar la sesion web desde refresh.", error);
         }
         setRefreshSessionHint(false);
         applySession(null);
       } finally {
-        setBooting(false);
+        if (active) setBooting(false);
       }
     };
 
     void restore();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
     clearAuthNotice();
+    refreshCoordinator.invalidate();
     const response = await loginRequest(email, password);
     const nextSession = buildWebSession({
       accessToken: response.accessToken,
