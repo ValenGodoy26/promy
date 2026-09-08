@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react";
 import type { AuthUser } from "../types/api";
+import { sanitizeSentryEvent } from "./sentrySanitizer";
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN?.trim();
 const sentryEnabled = Boolean(sentryDsn);
@@ -22,6 +23,7 @@ export function initWebSentry() {
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
     tracesSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE),
+    beforeSend: sanitizeSentryEvent,
   });
 
   sentryInitialized = true;
@@ -43,20 +45,17 @@ export function setWebSentryUserContext(user?: AuthUser | null) {
 
   Sentry.setUser({
     id: String(user.id),
-    email: user.email,
-    username: user.fullName,
   });
   Sentry.setTag("user.role", user.role);
   Sentry.setContext("auth", {
     authenticated: true,
-    userId: user.id,
     role: user.role,
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt),
   });
 }
 
-export function setWebSentryRouteContext(pathname: string, search: string) {
+export function setWebSentryRouteContext(pathname: string) {
   if (!sentryEnabled) {
     return;
   }
@@ -64,7 +63,6 @@ export function setWebSentryRouteContext(pathname: string, search: string) {
   Sentry.setTag("route.path", pathname);
   Sentry.setContext("route", {
     pathname,
-    search,
   });
 }
 

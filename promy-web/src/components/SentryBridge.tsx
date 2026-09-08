@@ -12,8 +12,8 @@ export default function SentryBridge() {
   }, [session]);
 
   useEffect(() => {
-    setWebSentryRouteContext(location.pathname, location.search);
-  }, [location.pathname, location.search]);
+    setWebSentryRouteContext(location.pathname);
+  }, [location.pathname]);
 
   return null;
 }

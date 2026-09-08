@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react-native";
 import type { AuthUser } from "../types/api";
+import { sanitizeSentryEvent, sanitizeSentryValue } from "./sentrySanitizer";
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim();
 const sentryEnabled = Boolean(sentryDsn);
@@ -23,6 +24,7 @@ export function initMobileSentry() {
       process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT || (__DEV__ ? "development" : "production"),
     release: process.env.EXPO_PUBLIC_SENTRY_RELEASE,
     tracesSampleRate: toSampleRate(process.env.EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
+    beforeSend: sanitizeSentryEvent,
   });
 
   sentryInitialized = true;
@@ -44,13 +46,10 @@ export function setMobileSentryUserContext(user?: AuthUser | null) {
 
   Sentry.setUser({
     id: String(user.id),
-    email: user.email,
-    username: user.fullName,
   });
   Sentry.setTag("user.role", user.role);
   Sentry.setContext("auth", {
     authenticated: true,
-    userId: user.id,
     role: user.role,
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt),
@@ -65,7 +64,10 @@ export function setMobileSentryRouteContext(routeName?: string, routeParams?: un
   Sentry.setTag("route.name", routeName);
   Sentry.setContext("route", {
     name: routeName,
-    params: routeParams && typeof routeParams === "object" ? routeParams : undefined,
+    params:
+      routeParams && typeof routeParams === "object"
+        ? sanitizeSentryValue(routeParams)
+        : undefined,
   });
 }
 
