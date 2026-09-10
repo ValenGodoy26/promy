@@ -1,0 +1,184 @@
+name: PROMY CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "22.22.0"
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: mysql://promy_ci:promy_ci@127.0.0.1:3306/promy_ci_validate
+    defaults:
+      run:
+        working-directory: promy-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: promy-api/package-lock.json
+      - name: Runtime versions
+        run: |
+          node --version
+          npm --version
+      - name: Clean install
+        run: npm ci
+      - name: Unit tests and build
+        run: npm test
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+  api-integration:
+    name: API Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: promy_ci_root
+          MYSQL_DATABASE: promy_integration_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ppromy_ci_root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: promy-api
+    env:
+      DATABASE_URL: mysql://root:promy_ci_root@127.0.0.1:3306/promy_integration_test
+      TEST_DATABASE_URL: mysql://root:promy_ci_root@127.0.0.1:3306/promy_integration_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: promy-api/package-lock.json
+      - name: Runtime versions
+        run: |
+          node --version
+          npm --version
+      - name: Clean install
+        run: npm ci
+      - name: Validate Prisma schema
+        run: npx prisma validate
+      - name: Integration and E2E suite
+        run: npm run test:integration
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: promy-web
+    env:
+      VITE_API_BASE_URL: http://127.0.0.1:4000/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: promy-web/package-lock.json
+      - name: Runtime versions
+        run: |
+          node --version
+          npm --version
+      - name: Clean install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+  landing:
+    name: Landing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VITE_API_BASE_URL: http://127.0.0.1:4000/api
+      VITE_PANEL_BASE_URL: http://127.0.0.1:5173
+    defaults:
+      run:
+        working-directory: promy-landing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: promy-landing/package-lock.json
+      - name: Runtime versions
+        run: |
+          node --version
+          npm --version
+      - name: Clean install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: promy-mobile
+    env:
+      EXPO_PUBLIC_API_URL: http://127.0.0.1:4000/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: promy-mobile/package-lock.json
+      - name: Runtime versions
+        run: |
+          node --version
+          npm --version
+      - name: Clean install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Check Expo dependency alignment
+        run: npx expo install --check
+      - name: Expo Doctor
+        run: npx --yes expo-doctor@1.20.4
+      - name: Export Android bundle
+        run: npx expo export --platform android
