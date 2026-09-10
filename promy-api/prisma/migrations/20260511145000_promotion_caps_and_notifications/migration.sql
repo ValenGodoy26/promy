@@ -1,7 +1,7 @@
-ALTER TABLE `promotion`
+ALTER TABLE `Promotion`
   ADD COLUMN `maxRedemptions` INTEGER NULL;
 
-ALTER TABLE `appnotification`
+ALTER TABLE `AppNotification`
   MODIFY `type` ENUM(
     'REDEMPTION_VALIDATED',
     'REDEMPTION_CREATED',

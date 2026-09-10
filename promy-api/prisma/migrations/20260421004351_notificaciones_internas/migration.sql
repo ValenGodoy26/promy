@@ -1,12 +1,12 @@
 -- AlterTable
-ALTER TABLE `adminactionlog` MODIFY `note` VARCHAR(191) NULL,
+ALTER TABLE `AdminActionLog` MODIFY `note` VARCHAR(191) NULL,
     MODIFY `metadata` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `commerce` MODIFY `moderationNote` VARCHAR(191) NULL;
+ALTER TABLE `Commerce` MODIFY `moderationNote` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `promotion` MODIFY `moderationNote` VARCHAR(191) NULL;
+ALTER TABLE `Promotion` MODIFY `moderationNote` VARCHAR(191) NULL;
 
 -- CreateTable
 CREATE TABLE `AppNotification` (
