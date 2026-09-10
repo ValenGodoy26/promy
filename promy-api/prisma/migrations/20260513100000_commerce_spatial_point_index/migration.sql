@@ -2,9 +2,6 @@ DROP TRIGGER IF EXISTS `commerce_location_before_insert`;
 DROP TRIGGER IF EXISTS `commerce_location_before_update`;
 
 ALTER TABLE `Commerce`
-  DROP COLUMN IF EXISTS `location`;
-
-ALTER TABLE `Commerce`
   ADD COLUMN `location` POINT NULL;
 
 UPDATE `Commerce`
