@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { env, isProduction } from "../../config/env";
 import { logControllerError } from "../../shared/http/controllerLogger";
 import { AUTH_REFRESH_INVALID_MESSAGE } from "../../shared/http/auth";
@@ -78,7 +78,7 @@ function clearRefreshCookie(res: Response) {
   });
 }
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = registerSchema.safeParse(req.body);
 
@@ -107,16 +107,11 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    logControllerError(req, "Register error", error);
-
-    return res.status(500).json({
-      ok: false,
-      message: "Error interno al registrar usuario",
-    });
+    return next(error);
   }
 };
 
-export const registerCommerce = async (req: Request, res: Response) => {
+export const registerCommerce = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = registerCommerceSchema.safeParse(req.body);
 
@@ -146,12 +141,7 @@ export const registerCommerce = async (req: Request, res: Response) => {
       });
     }
 
-    logControllerError(req, "Register commerce error", error);
-
-    return res.status(500).json({
-      ok: false,
-      message: "Error interno al registrar el comercio",
-    });
+    return next(error);
   }
 };
 

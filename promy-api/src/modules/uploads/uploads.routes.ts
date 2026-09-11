@@ -8,6 +8,7 @@ import {
 } from "../../middlewares/auth.middleware";
 import { uploadLimiter } from "../../middlewares/rateLimiters";
 import { storeCommerceImageUpload } from "../../shared/services/uploads.service";
+import { ServiceError } from "../../shared/utils/service";
 
 const allowedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const uploadLimits = {
@@ -20,7 +21,7 @@ const upload = multer({
   limits: uploadLimits,
   fileFilter: (_req, file, cb) => {
     if (!allowedImageMimeTypes.has(file.mimetype)) {
-      cb(new Error("Solo se permiten imagenes JPG, PNG o WebP"));
+      cb(new ServiceError("Solo se permiten imagenes JPG, PNG o WebP", 415));
       return;
     }
 

@@ -156,6 +156,62 @@ test("isPromotionScheduleActiveNow matches weekday and time window", () => {
   );
 });
 
+test("overnight schedules stay anchored to their starting weekday with inclusive boundaries", () => {
+  const mondayOvernight = {
+    weekday: "MONDAY",
+    startTime: "22:00",
+    endTime: "02:00",
+  };
+
+  const cases = [
+    ["monday 21:59", "2026-09-08T00:59:00.000Z", false],
+    ["monday 22:00", "2026-09-08T01:00:00.000Z", true],
+    ["monday 23:59", "2026-09-08T02:59:00.000Z", true],
+    ["tuesday 00:00", "2026-09-08T03:00:00.000Z", true],
+    ["tuesday 01:59", "2026-09-08T04:59:00.000Z", true],
+    ["tuesday 02:00", "2026-09-08T05:00:00.000Z", true],
+    ["tuesday 02:01", "2026-09-08T05:01:00.000Z", false],
+    ["monday 01:00", "2026-09-07T04:00:00.000Z", false],
+  ];
+
+  for (const [label, timestamp, expected] of cases) {
+    assert.equal(
+      isPromotionScheduleActiveNow(mondayOvernight, new Date(timestamp)),
+      expected,
+      label,
+    );
+  }
+});
+
+test("overnight schedule anchoring works on another weekday", () => {
+  const fridayOvernight = {
+    weekday: "FRIDAY",
+    startTime: "23:30",
+    endTime: "01:15",
+  };
+
+  assert.equal(
+    isPromotionScheduleActiveNow(fridayOvernight, new Date("2026-09-12T02:30:00.000Z")),
+    true,
+  );
+  assert.equal(
+    isPromotionScheduleActiveNow(fridayOvernight, new Date("2026-09-12T04:15:00.000Z")),
+    true,
+  );
+  assert.equal(
+    isPromotionScheduleActiveNow(fridayOvernight, new Date("2026-09-12T04:16:00.000Z")),
+    false,
+  );
+
+  assert.equal(
+    isPromotionScheduleActiveNow(
+      { weekday: "SUNDAY", startTime: "22:00", endTime: "01:00" },
+      new Date("2026-09-07T03:30:00.000Z"),
+    ),
+    true,
+  );
+});
+
 test("isPromotionCurrentlyAvailable uses schedules as authoritative when present", () => {
   const mondayNow = new Date("2026-05-11T17:30:00.000Z");
   const mondayLate = new Date("2026-05-11T21:30:00.000Z");

@@ -63,9 +63,9 @@ const promotionScheduleSchema = z
     const startMinutes = parsePromotionTimeToMinutes(data.startTime);
     const endMinutes = parsePromotionTimeToMinutes(data.endTime);
 
-    return startMinutes != null && endMinutes != null && startMinutes < endMinutes;
+    return startMinutes != null && endMinutes != null && startMinutes !== endMinutes;
   }, {
-    message: "Cada franja debe tener una hora de cierre posterior a la de inicio",
+    message: "Cada franja debe tener horas de inicio y cierre diferentes",
     path: ["endTime"],
   });
 
@@ -107,27 +107,38 @@ function validatePromotionSchedules(schedules?: Array<z.infer<typeof promotionSc
     return true;
   }
 
-  const grouped = new Map<Weekday, Array<{ startTime: string; endTime: string }>>();
-
-  schedules.forEach((schedule) => {
-    const current = grouped.get(schedule.weekday) ?? [];
-    current.push({ startTime: schedule.startTime, endTime: schedule.endTime });
-    grouped.set(schedule.weekday, current);
+  const weekdayIndex: Record<Weekday, number> = {
+    [Weekday.MONDAY]: 0,
+    [Weekday.TUESDAY]: 1,
+    [Weekday.WEDNESDAY]: 2,
+    [Weekday.THURSDAY]: 3,
+    [Weekday.FRIDAY]: 4,
+    [Weekday.SATURDAY]: 5,
+    [Weekday.SUNDAY]: 6,
+  };
+  const minutesPerDay = 24 * 60;
+  const minutesPerWeek = 7 * minutesPerDay;
+  const intervals = schedules.map((schedule) => {
+    const startMinute = parsePromotionTimeToMinutes(schedule.startTime) ?? 0;
+    const endMinute = parsePromotionTimeToMinutes(schedule.endTime) ?? 0;
+    const start = weekdayIndex[schedule.weekday] * minutesPerDay + startMinute;
+    const end = weekdayIndex[schedule.weekday] * minutesPerDay + endMinute +
+      (endMinute < startMinute ? minutesPerDay : 0);
+    return { start, end };
   });
 
-  for (const daySchedules of grouped.values()) {
-    const sorted = [...daySchedules].sort((left, right) => {
-      const leftMinutes = parsePromotionTimeToMinutes(left.startTime) ?? 0;
-      const rightMinutes = parsePromotionTimeToMinutes(right.startTime) ?? 0;
-      return leftMinutes - rightMinutes;
-    });
+  for (let leftIndex = 0; leftIndex < intervals.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < intervals.length; rightIndex += 1) {
+      const left = intervals[leftIndex];
+      const right = intervals[rightIndex];
 
-    for (let index = 0; index < sorted.length - 1; index += 1) {
-      const currentEnd = parsePromotionTimeToMinutes(sorted[index].endTime) ?? 0;
-      const nextStart = parsePromotionTimeToMinutes(sorted[index + 1].startTime) ?? 0;
+      for (const shift of [-minutesPerWeek, 0, minutesPerWeek]) {
+        const shiftedStart = right.start + shift;
+        const shiftedEnd = right.end + shift;
 
-      if (currentEnd > nextStart) {
-        return false;
+        if (left.start < shiftedEnd && shiftedStart < left.end) {
+          return false;
+        }
       }
     }
   }

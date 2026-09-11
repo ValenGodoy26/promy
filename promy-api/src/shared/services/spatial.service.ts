@@ -16,6 +16,7 @@ export async function findNearbyCommerceDistanceRows(
     origin: GeoPoint;
     radiusKm: number;
     take: number;
+    skip?: number;
     categoryId?: number | null;
     cityId?: number | null;
   },
@@ -25,6 +26,7 @@ export async function findNearbyCommerceDistanceRows(
   const latitude = Number(input.origin.latitude);
   const radiusKm = Number(input.radiusKm);
   const take = Math.max(1, Math.trunc(input.take));
+  const skip = Math.max(0, Math.trunc(input.skip ?? 0));
   const distanceSql = Prisma.sql`ST_Distance_Sphere(location, POINT(${longitude}, ${latitude})) / 1000`;
   const categoryFilter =
     input.categoryId != null
@@ -47,7 +49,7 @@ export async function findNearbyCommerceDistanceRows(
       ${categoryFilter}
       ${cityFilter}
       AND ${distanceSql} <= ${radiusKm}
-    ORDER BY distanceKm ASC
-    LIMIT ${take}
+    ORDER BY distanceKm ASC, id ASC
+    LIMIT ${take} OFFSET ${skip}
   `);
 }

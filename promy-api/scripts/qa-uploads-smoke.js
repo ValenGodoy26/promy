@@ -57,14 +57,14 @@ async function main() {
       mimeType: "image/png",
       filename: "too-large.png",
     });
-    assert(!oversized.ok, "Multer acepto un archivo mayor a 5 MB");
+    assert(oversized.status === 413, `Multer no devolvio 413: ${JSON.stringify(oversized.data)}`);
 
     const invalidMime = await upload(client, auth.accessToken, {
       buffer: png,
       mimeType: "text/plain",
       filename: "fake.txt",
     });
-    assert(!invalidMime.ok, "Multer acepto un MIME fuera de la allowlist");
+    assert(invalidMime.status === 415, `MIME invalido no devolvio 415: ${JSON.stringify(invalidMime.data)}`);
 
     const invalidMagic = await upload(client, auth.accessToken, {
       buffer: Buffer.from("not-a-real-png"),
@@ -72,6 +72,23 @@ async function main() {
       filename: "fake.png",
     });
     assert(invalidMagic.status === 400, "La validacion de magic bytes no rechazo contenido falso");
+
+    const corrupt = await upload(client, auth.accessToken, {
+      buffer: png.subarray(0, 18),
+      mimeType: "image/png",
+      filename: "corrupt.png",
+    });
+    assert(corrupt.status === 415, `Imagen corrupta no devolvio 415: ${JSON.stringify(corrupt.data)}`);
+
+    const twoFilesBody = new FormData();
+    twoFilesBody.append("file", new Blob([png], { type: "image/png" }), "first.png");
+    twoFilesBody.append("file", new Blob([png], { type: "image/png" }), "second.png");
+    const twoFiles = await client.request("/uploads/commerce-image", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+      body: twoFilesBody,
+    });
+    assert(twoFiles.status === 400, `Multiples archivos no devolvieron 400: ${JSON.stringify(twoFiles.data)}`);
 
     const maliciousName = await upload(client, auth.accessToken, {
       buffer: png,
@@ -94,7 +111,7 @@ async function main() {
 
     console.log(JSON.stringify({
       ok: true,
-      checks: ["valid-image", "5mb-limit", "mime-allowlist", "magic-bytes", "safe-filename", "array-index-limit"],
+      checks: ["valid-image", "5mb-413", "mime-415", "magic-bytes-400", "corrupt-415", "multiple-files-400", "safe-filename", "array-index-limit"],
       outputMimeType: valid.data.file.mimeType,
       message: "Smoke QA de uploads y Sharp completada correctamente.",
     }, null, 2));

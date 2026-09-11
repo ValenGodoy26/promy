@@ -167,6 +167,33 @@ function getPaginationWindow(input: PromotionsQueryInput, fallbackLimit: number)
   return { page, limit, start, end };
 }
 
+async function collectFilteredWindow<T>(input: {
+  start: number;
+  limit: number;
+  fetchBatch: (skip: number, take: number) => Promise<T[]>;
+  include: (item: T) => boolean;
+}) {
+  const targetCount = input.start + input.limit + 1;
+  const batchSize = Math.max(50, input.limit * 2);
+  const eligible: T[] = [];
+  let skip = 0;
+
+  while (eligible.length < targetCount) {
+    const batch = await input.fetchBatch(skip, batchSize);
+    eligible.push(...batch.filter(input.include));
+    skip += batch.length;
+
+    if (batch.length < batchSize) {
+      break;
+    }
+  }
+
+  return {
+    items: eligible.slice(input.start, input.start + input.limit),
+    hasMore: eligible.length > input.start + input.limit,
+  };
+}
+
 function getPromotionSearchConditions(query: string, useNativeSearch: boolean) {
   const searchOperator = useNativeSearch ? { search: query } : { contains: query };
 
@@ -189,7 +216,7 @@ export async function getPromotionsCatalog(rawInput: PromotionsQueryInput) {
       ? ({ latitude: input.lat, longitude: input.lng } satisfies GeoPoint)
       : null;
 
-  const findPromotionsCatalog = (useNativeSearch: boolean) =>
+  const findPromotionsCatalog = (useNativeSearch: boolean, skip: number, take: number) =>
     prisma.promotion.findMany({
       where: {
         ...buildPublicPromotionWhere(now),
@@ -217,27 +244,37 @@ export async function getPromotionsCatalog(rawInput: PromotionsQueryInput) {
           : {}),
       },
       select: promotionListSelect,
-      orderBy: [{ isFeatured: "desc" }, { featuredRank: "asc" }, { createdAt: "desc" }],
-      skip: start,
-      take: limit + 1,
+      orderBy: [
+        { isFeatured: "desc" },
+        { featuredRank: "asc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      skip,
+      take,
     });
 
-  const promotions = input.search
+  const collectCatalogWindow = (useNativeSearch: boolean) =>
+    collectFilteredWindow({
+      start,
+      limit,
+      fetchBatch: (skip, take) => findPromotionsCatalog(useNativeSearch, skip, take),
+      include: (promotion) => isPromotionPubliclyVisibleNow(promotion, now),
+    });
+
+  const window = input.search
     ? await withFullTextSearchFallback(
-        () => findPromotionsCatalog(true),
-        () => findPromotionsCatalog(false),
+        () => collectCatalogWindow(true),
+        () => collectCatalogWindow(false),
         "promotions.service.getPromotionsCatalog",
       )
-    : await findPromotionsCatalog(true);
-
-  const visibleNow = filterPublicPromotionsVisibleNow(promotions, now);
-  const paged = visibleNow.slice(0, limit);
+    : await collectCatalogWindow(true);
 
   return {
-    promotions: sortByDistanceThen(mapDistance(paged, origin), "createdAt"),
+    promotions: sortByDistanceThen(mapDistance(window.items, origin), "createdAt"),
     page,
     limit,
-    hasMore: visibleNow.length > limit,
+    hasMore: window.hasMore,
   };
 }
 
@@ -364,8 +401,6 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
       : null;
   const effectiveCity = input.city || input.fallbackCity || DEFAULT_CITY_SLUG;
   const radiusKm = input.radiusKm ?? 8;
-  const requestedLimit = limit;
-  const expandedTake = Math.min(Math.max((end + 1) * 3, requestedLimit * 4), 300);
   const categoryRecord = input.category
     ? await prisma.category.findUnique({
         where: { slug: input.category },
@@ -396,7 +431,7 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
       })
     : null;
 
-  const findNearbyPromotions = (useNativeSearch: boolean) =>
+  const findNearbyPromotions = (useNativeSearch: boolean, skip: number, take: number) =>
     prisma.promotion.findMany({
       where: {
         ...buildPublicPromotionWhere(now),
@@ -422,113 +457,120 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
           : {}),
       },
       select: promotionListSelect,
-      ...(origin ? {} : { take: expandedTake }),
+      orderBy: [{ title: "asc" }, { id: "asc" }],
+      skip,
+      take,
     });
-
-  let promotions;
-  let distanceMap = new Map<number, number>();
 
   if (origin) {
-    const nearbyRows = await findNearbyCommerceDistanceRows(prisma, {
-      origin,
-      radiusKm,
-      take: expandedTake,
-      categoryId: categoryRecord?.id ?? null,
-    });
+    const collectDeviceWindow = async (useNativeSearch: boolean) => {
+      const targetCount = end + 1;
+      const commerceBatchSize = 50;
+      const eligible = [] as Array<
+        Prisma.PromotionGetPayload<{ select: typeof promotionListSelect }> & {
+          distanceKm: number | null;
+        }
+      >;
+      let commerceSkip = 0;
 
-    if (!nearbyRows.length) {
-      return {
-        promotions: [],
-        page,
-        limit,
-        hasMore: false,
-        context: {
-          source: "device",
-          citySlug: effectiveCity,
-          latitude: origin.latitude,
-          longitude: origin.longitude,
+      while (eligible.length < targetCount) {
+        const nearbyRows = await findNearbyCommerceDistanceRows(prisma, {
+          origin,
           radiusKm,
-        },
-      };
-    }
+          skip: commerceSkip,
+          take: commerceBatchSize,
+          categoryId: categoryRecord?.id ?? null,
+        });
 
-    distanceMap = new Map(nearbyRows.map((row) => [row.id, row.distanceKm]));
-    const nearbyCommerceIds = nearbyRows.map((row) => row.id);
+        if (nearbyRows.length === 0) {
+          break;
+        }
 
-    const findNearbyPromotionsByIds = (useNativeSearch: boolean) =>
-      prisma.promotion.findMany({
-        where: {
-          ...buildPublicPromotionWhere(now),
-          commerce: buildPublicCommerceWhere(),
-          ...(input.commerceId ? { commerceId: input.commerceId } : {}),
-          commerceId: {
-            in: nearbyCommerceIds,
+        commerceSkip += nearbyRows.length;
+        const distanceMap = new Map(nearbyRows.map((row) => [row.id, row.distanceKm]));
+        const nearbyCommerceIds = nearbyRows.map((row) => row.id);
+        const promotions = await prisma.promotion.findMany({
+          where: {
+            ...buildPublicPromotionWhere(now),
+            commerce: buildPublicCommerceWhere(),
+            ...(input.commerceId ? { commerceId: input.commerceId } : {}),
+            commerceId: { in: nearbyCommerceIds },
+            ...(input.search
+              ? { OR: getPromotionSearchConditions(input.search, useNativeSearch) }
+              : {}),
           },
-          ...(input.search
-            ? {
-                OR: getPromotionSearchConditions(input.search, useNativeSearch),
-              }
-            : {}),
-        },
-        select: promotionListSelect,
-        take: expandedTake,
-      });
+          select: promotionListSelect,
+          orderBy: [{ title: "asc" }, { id: "asc" }],
+        });
 
-    promotions = input.search
+        eligible.push(
+          ...filterPublicPromotionsVisibleNow(promotions, now).map((promotion) => ({
+            ...promotion,
+            distanceKm: distanceMap.get(promotion.commerce.id) ?? null,
+          })),
+        );
+
+        if (nearbyRows.length < commerceBatchSize) {
+          break;
+        }
+      }
+
+      const sorted = sortByDistanceThen(eligible, "title");
+      return {
+        items: sorted.slice(start, end),
+        hasMore: sorted.length > end,
+      };
+    };
+
+    const window = input.search
       ? await withFullTextSearchFallback(
-          () => findNearbyPromotionsByIds(true),
-          () => findNearbyPromotionsByIds(false),
+          () => collectDeviceWindow(true),
+          () => collectDeviceWindow(false),
           "promotions.service.getNearbyPromotionsCatalog",
         )
-      : await findNearbyPromotionsByIds(true);
-  } else {
-    promotions = input.search
-      ? await withFullTextSearchFallback(
-          () => findNearbyPromotions(true),
-          () => findNearbyPromotions(false),
-          "promotions.service.getNearbyPromotionsCatalog",
-        )
-      : await findNearbyPromotions(true);
+      : await collectDeviceWindow(true);
+
+    return {
+      promotions: window.items,
+      page,
+      limit,
+      hasMore: window.hasMore,
+      context: {
+        source: "device" as const,
+        citySlug: effectiveCity,
+        latitude: origin.latitude,
+        longitude: origin.longitude,
+        radiusKm,
+      },
+    };
   }
 
-  const nearbyPool = sortByDistanceThen(
-    filterPublicPromotionsVisibleNow(promotions, now).map((promotion) => ({
-      ...promotion,
-      distanceKm:
-        origin &&
-        hasValidCoordinates(promotion.commerce.latitude, promotion.commerce.longitude)
-          ? distanceMap.get(promotion.commerce.id) ??
-            calculateDistanceKm(origin, {
-              latitude: promotion.commerce.latitude!,
-              longitude: promotion.commerce.longitude!,
-            })
-          : null,
-    })),
-    "title",
-  ).filter((promotion) => {
-    if (!origin) {
-      return true;
-    }
+  const collectCityWindow = (useNativeSearch: boolean) =>
+    collectFilteredWindow({
+      start,
+      limit,
+      fetchBatch: (skip, take) => findNearbyPromotions(useNativeSearch, skip, take),
+      include: (promotion) => isPromotionPubliclyVisibleNow(promotion, now),
+    });
 
-    if (promotion.distanceKm == null) {
-      return false;
-    }
-
-    return promotion.distanceKm <= radiusKm;
-  });
-
-  const nearby = nearbyPool.slice(start, end);
+  const window = input.search
+    ? await withFullTextSearchFallback(
+        () => collectCityWindow(true),
+        () => collectCityWindow(false),
+        "promotions.service.getNearbyPromotionsCatalog",
+      )
+    : await collectCityWindow(true);
 
   return {
-    promotions: nearby,
+    promotions: mapDistance(window.items, null),
     page,
     limit,
-    hasMore: nearbyPool.length > end,
+    hasMore: window.hasMore,
     context: {
-      source: origin ? "device" : "city_fallback",
+      source: "city_fallback" as const,
       citySlug: effectiveCity,
-      latitude: origin?.latitude ?? null,
-      longitude: origin?.longitude ?? null,
+      latitude: null,
+      longitude: null,
       radiusKm,
     },
   };

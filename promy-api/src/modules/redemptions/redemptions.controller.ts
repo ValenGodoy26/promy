@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { logControllerError } from "../../shared/http/controllerLogger";
 // Keep the explicit service filename to avoid ambiguity inside the redemptions module.
@@ -10,7 +10,11 @@ import {
   isRedemptionServiceError,
 } from "./redemptions.service";
 
-export const createRedemption = async (req: AuthRequest, res: Response) => {
+export const createRedemption = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user?.userId;
 
@@ -50,12 +54,7 @@ export const createRedemption = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    logControllerError(req, "Create redemption error", error);
-
-    return res.status(500).json({
-      ok: false,
-      message: "Error interno al registrar el canje",
-    });
+    return next(error);
   }
 };
 

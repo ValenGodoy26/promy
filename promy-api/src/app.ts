@@ -56,9 +56,9 @@ app.use(
   }),
 );
 
+app.use(attachRequestContext);
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(attachRequestContext);
 if (shouldServeLocalUploads()) {
   app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 }

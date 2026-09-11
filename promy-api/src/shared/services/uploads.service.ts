@@ -4,6 +4,7 @@ import path from "path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { env } from "../../config/env";
+import { ServiceError } from "../utils/service";
 
 type StoredUpload = {
   filename: string;
@@ -58,19 +59,32 @@ export function buildSafeUploadFilename(originalName?: string | null) {
 export async function optimizeCommerceImageUpload(input: {
   buffer: Buffer;
 }) {
-  const optimizedBuffer = await sharp(input.buffer)
-    .rotate()
-    .resize({
-      width: COMMERCE_IMAGE_MAX_WIDTH,
-      height: COMMERCE_IMAGE_MAX_HEIGHT,
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .webp({
-      quality: COMMERCE_IMAGE_QUALITY,
-      effort: 5,
-    })
-    .toBuffer();
+  let optimizedBuffer: Buffer;
+
+  try {
+    optimizedBuffer = await sharp(input.buffer)
+      .rotate()
+      .resize({
+        width: COMMERCE_IMAGE_MAX_WIDTH,
+        height: COMMERCE_IMAGE_MAX_HEIGHT,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({
+        quality: COMMERCE_IMAGE_QUALITY,
+        effort: 5,
+      })
+      .toBuffer();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /(unsupported image format|corrupt|unexpected end|pngload|jpegload|webpload)/i.test(error.message)
+    ) {
+      throw new ServiceError("La imagen esta corrupta o usa un formato no soportado", 415);
+    }
+
+    throw error;
+  }
 
   return {
     buffer: optimizedBuffer,

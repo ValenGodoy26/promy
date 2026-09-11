@@ -35,6 +35,16 @@ const weekdayByLabel: Record<string, Weekday> = {
   Saturday: Weekday.SATURDAY,
 };
 
+const weekdayOrder: Weekday[] = [
+  Weekday.SUNDAY,
+  Weekday.MONDAY,
+  Weekday.TUESDAY,
+  Weekday.WEDNESDAY,
+  Weekday.THURSDAY,
+  Weekday.FRIDAY,
+  Weekday.SATURDAY,
+];
+
 const promotionClockFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: env.PROMOTION_TIMEZONE,
   hour: "2-digit",
@@ -160,13 +170,29 @@ export function isPromotionScheduleActiveNow(
   schedule: PromotionScheduleWindow,
   now = new Date(),
 ) {
-  const currentWeekday = getWeekdayFromDate(now);
+  const { weekday: currentWeekday, hour, minute } = getPromotionLocalTimeParts(now);
+  const startMinutes = parsePromotionTimeToMinutes(schedule.startTime);
+  const endMinutes = parsePromotionTimeToMinutes(schedule.endTime);
 
-  if (schedule.weekday !== currentWeekday) {
+  if (startMinutes == null || endMinutes == null || startMinutes === endMinutes) {
     return false;
   }
 
-  return isCurrentTimeWithinPromotionWindow(schedule, now);
+  const currentMinutes = hour * 60 + minute;
+
+  if (startMinutes < endMinutes) {
+    return schedule.weekday === currentWeekday &&
+      currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+
+  if (schedule.weekday === currentWeekday) {
+    return currentMinutes >= startMinutes;
+  }
+
+  const currentIndex = weekdayOrder.indexOf(currentWeekday);
+  const previousWeekday = weekdayOrder[(currentIndex + weekdayOrder.length - 1) % weekdayOrder.length];
+
+  return schedule.weekday === previousWeekday && currentMinutes <= endMinutes;
 }
 
 export function hasPromotionSchedules(

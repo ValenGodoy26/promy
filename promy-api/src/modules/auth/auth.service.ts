@@ -30,18 +30,18 @@ const passwordSchema = z
   .regex(/\d/, "La contrasena debe incluir al menos un numero");
 
 export const registerSchema = z.object({
-  fullName: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres"),
-  email: z.string().trim().email("Email invalido"),
+  fullName: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120),
+  email: z.string().trim().email("Email invalido").max(191),
   password: passwordSchema,
-  phone: z.string().trim().min(6, "Telefono invalido").optional(),
+  phone: z.string().trim().min(6, "Telefono invalido").max(40).optional(),
 });
 
 export const registerCommerceSchema = z.object({
-  fullName: z.string().trim().min(3, "El nombre del responsable debe tener al menos 3 caracteres"),
-  email: z.string().trim().email("Email invalido"),
+  fullName: z.string().trim().min(3, "El nombre del responsable debe tener al menos 3 caracteres").max(120),
+  email: z.string().trim().email("Email invalido").max(191),
   password: passwordSchema,
-  phone: z.string().trim().min(6, "Telefono invalido").optional(),
-  commerceName: z.string().trim().min(3, "El nombre del comercio debe tener al menos 3 caracteres"),
+  phone: z.string().trim().min(6, "Telefono invalido").max(40).optional(),
+  commerceName: z.string().trim().min(3, "El nombre del comercio debe tener al menos 3 caracteres").max(120),
   shortDescription: z
     .string()
     .trim()
@@ -54,14 +54,14 @@ export const registerCommerceSchema = z.object({
     .min(10, "La descripcion debe tener al menos 10 caracteres")
     .max(1000)
     .optional(),
-  address: z.string().trim().min(5, "La direccion es obligatoria"),
+  address: z.string().trim().min(5, "La direccion es obligatoria").max(191),
   cityId: z.coerce.number().int().positive("Ciudad invalida"),
   categoryId: z.coerce.number().int().positive("Categoria invalida"),
   instagram: z.string().trim().max(80).optional(),
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().email("Email invalido"),
+  email: z.string().trim().email("Email invalido").max(191),
   password: z.string().min(PASSWORD_MIN_LENGTH, "Credenciales invalidas"),
 });
 
@@ -70,7 +70,7 @@ export const refreshSchema = z.object({
 });
 
 export const requestEmailVerificationSchema = z.object({
-  email: z.string().trim().email("Email invalido"),
+  email: z.string().trim().email("Email invalido").max(191),
 });
 
 export const verifyEmailSchema = z.object({
@@ -78,7 +78,7 @@ export const verifyEmailSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().trim().email("Email invalido"),
+  email: z.string().trim().email("Email invalido").max(191),
 });
 
 export const resetPasswordSchema = z.object({

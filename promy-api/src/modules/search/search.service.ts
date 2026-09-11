@@ -81,9 +81,8 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
       : null;
   const citySlug = input.city || DEFAULT_CITY_SLUG;
 
-  const findSearchResults = (useNativeSearch: boolean) =>
-    Promise.all([
-      prisma.commerce.findMany({
+  const findCommerces = (useNativeSearch: boolean) =>
+    prisma.commerce.findMany({
         where: {
           ...buildPublicCommerceWhere(),
           ...(origin
@@ -149,9 +148,11 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
             },
           },
         },
-        take: limit,
-      }),
-      prisma.promotion.findMany({
+      take: limit,
+    });
+
+  const findPromotions = (useNativeSearch: boolean, skip: number, take: number) =>
+    prisma.promotion.findMany({
         where: {
           ...buildPublicPromotionWhere(now),
           commerce: buildPublicCommerceWhere({
@@ -219,9 +220,31 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
             },
           },
         },
-        take: limit,
-      }),
-    ]);
+      orderBy: [{ title: "asc" }, { id: "asc" }],
+      skip,
+      take,
+    });
+
+  const findEligiblePromotions = async (useNativeSearch: boolean) => {
+    const eligible = [] as Awaited<ReturnType<typeof findPromotions>>;
+    const batchSize = Math.max(50, limit * 2);
+    let skip = 0;
+
+    while (eligible.length < limit) {
+      const batch = await findPromotions(useNativeSearch, skip, batchSize);
+      eligible.push(...filterPublicPromotionsVisibleNow(batch, now));
+      skip += batch.length;
+
+      if (batch.length < batchSize) {
+        break;
+      }
+    }
+
+    return eligible.slice(0, limit);
+  };
+
+  const findSearchResults = (useNativeSearch: boolean) =>
+    Promise.all([findCommerces(useNativeSearch), findEligiblePromotions(useNativeSearch)]);
 
   const [commerces, promotions] = await withFullTextSearchFallback(
     () => findSearchResults(true),
@@ -249,7 +272,7 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
 
         return left.name.localeCompare(right.name);
       }),
-    promotions: filterPublicPromotionsVisibleNow(promotions, now)
+    promotions: promotions
       .map((promotion) => ({
         ...promotion,
         distanceKm:

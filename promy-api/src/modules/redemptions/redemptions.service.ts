@@ -137,6 +137,26 @@ function isValidationCodeUniqueConstraintError(error: unknown) {
   );
 }
 
+function isPromotionUserConflict(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code === "P2034") {
+    return true;
+  }
+
+  if (error.code !== "P2002") {
+    return false;
+  }
+
+  const target = Array.isArray(error.meta?.target)
+    ? error.meta.target.join(" ")
+    : String(error.meta?.target ?? "");
+
+  return /promotionId.*userId|Redemption_promotionId_userId_key/i.test(target);
+}
+
 function buildValidationExpiresAt() {
   return new Date(Date.now() + env.REDEMPTION_CODE_TTL_MINUTES * 60 * 1000);
 }
@@ -281,6 +301,7 @@ export async function createRedemptionForUser(input: { userId: number; promotion
   let redemption:
     | Prisma.RedemptionGetPayload<{ select: typeof redemptionSelect }>
     | null = null;
+  let reusedConcurrentRedemption = false;
 
   for (let attempt = 1; attempt <= maxValidationCodeAttempts; attempt += 1) {
     const validationCode = buildValidationCode();
@@ -361,6 +382,24 @@ export async function createRedemptionForUser(input: { userId: number; promotion
         continue;
       }
 
+      if (isPromotionUserConflict(error)) {
+        const concurrentWinner = await prisma.redemption.findUnique({
+          where: {
+            promotionId_userId: {
+              promotionId,
+              userId,
+            },
+          },
+          select: redemptionSelect,
+        });
+
+        if (concurrentWinner) {
+          redemption = concurrentWinner;
+          reusedConcurrentRedemption = true;
+          break;
+        }
+      }
+
       throw error;
     }
   }
@@ -382,22 +421,24 @@ export async function createRedemptionForUser(input: { userId: number; promotion
     },
   });
 
-  publishRealtimeEvent({
-    type: "redemption.created",
-    targetRoles: ["ADMIN", "COMMERCE"],
-    commerceOwnerUserId: commerceOwner?.ownerUserId ?? null,
-    payload: {
-      redemptionId: redemption.id,
-      promotionId: promotion.id,
-      promotionTitle: promotion.title,
-      commerceId: promotion.commerce.id,
-      commerceName: promotion.commerce.name,
-      status: redemption.status,
-      validationMethod: redemption.validationMethod,
-    },
-  });
+  if (!reusedConcurrentRedemption) {
+    publishRealtimeEvent({
+      type: "redemption.created",
+      targetRoles: ["ADMIN", "COMMERCE"],
+      commerceOwnerUserId: commerceOwner?.ownerUserId ?? null,
+      payload: {
+        redemptionId: redemption.id,
+        promotionId: promotion.id,
+        promotionTitle: promotion.title,
+        commerceId: promotion.commerce.id,
+        commerceName: promotion.commerce.name,
+        status: redemption.status,
+        validationMethod: redemption.validationMethod,
+      },
+    });
+  }
 
-  if (commerceOwner?.ownerUserId) {
+  if (!reusedConcurrentRedemption && commerceOwner?.ownerUserId) {
     await createAppNotification({
       userId: commerceOwner.ownerUserId,
       type: AppNotificationType.REDEMPTION_CREATED,
@@ -413,9 +454,11 @@ export async function createRedemptionForUser(input: { userId: number; promotion
   }
 
   return {
-    statusCode: existingRedemption ? 200 : 201,
+    statusCode: existingRedemption || reusedConcurrentRedemption ? 200 : 201,
     message:
-      promotion.validationMethod === "QR"
+      reusedConcurrentRedemption
+        ? "El canje ya fue generado por otra solicitud concurrente."
+        : promotion.validationMethod === "QR"
         ? "Canje generado. Mostra el QR en el comercio; si hace falta, tambien pueden usar el codigo de respaldo."
         : "Canje generado. Mostra este codigo en el comercio para validarlo.",
     redemption,
