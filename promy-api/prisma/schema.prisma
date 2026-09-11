@@ -305,7 +305,7 @@ model AppNotification {
   type      AppNotificationType
   title     String
   body      String
-  data      String?
+  data      String?             @db.Text
   readAt    DateTime?
   createdAt DateTime            @default(now())
 
