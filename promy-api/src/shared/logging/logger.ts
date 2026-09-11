@@ -1,5 +1,9 @@
-import pino, { Logger } from "pino";
+import pino, { DestinationStream, Logger, LoggerOptions } from "pino";
 import type { Request } from "express";
+import {
+  sanitizeTelemetryError,
+  sanitizeTelemetryValue,
+} from "../observability/telemetrySanitizer";
 
 type SerializableRecord = Record<string, unknown>;
 type OperationalAuditLevel = "info" | "warn" | "error";
@@ -8,57 +12,15 @@ const DEFAULT_LOG_LEVEL =
   process.env.LOG_LEVEL?.trim().toLowerCase() ||
   (process.env.APP_ENV === "development" ? "debug" : "info");
 
-function isPlainObject(value: unknown): value is SerializableRecord {
-  return Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function sanitizeValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeValue(item));
-  }
-
-  if (isPlainObject(value)) {
-    const next: SerializableRecord = {};
-
-    for (const [key, nestedValue] of Object.entries(value)) {
-      const normalizedKey = key.toLowerCase();
-      if (
-        normalizedKey.includes("password") ||
-        normalizedKey.includes("token") ||
-        normalizedKey.includes("secret") ||
-        normalizedKey.includes("authorization") ||
-        normalizedKey.includes("cookie")
-      ) {
-        next[key] = "[REDACTED]";
-        continue;
-      }
-
-      next[key] = sanitizeValue(nestedValue);
-    }
-
-    return next;
-  }
-
-  return value;
-}
-
 export function sanitizeError(error: unknown) {
   if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
+    return sanitizeTelemetryError(error);
   }
 
-  if (isPlainObject(error)) {
-    return sanitizeValue(error);
-  }
-
-  return error;
+  return sanitizeTelemetryValue(error);
 }
 
-export const logger = pino({
+const loggerOptions: LoggerOptions = {
   level: DEFAULT_LOG_LEVEL,
   redact: {
     paths: [
@@ -80,7 +42,21 @@ export const logger = pino({
   },
   base: undefined,
   timestamp: pino.stdTimeFunctions.isoTime,
-});
+  hooks: {
+    logMethod(args, method) {
+      return (method as (...input: unknown[]) => void).apply(
+        this,
+        args.map((argument) => sanitizeTelemetryValue(argument)),
+      );
+    },
+  },
+};
+
+export function createAppLogger(destination?: DestinationStream) {
+  return destination ? pino(loggerOptions, destination) : pino(loggerOptions);
+}
+
+export const logger = createAppLogger();
 
 export function getRequestLogger(request?: Request) {
   return request?.log || logger;
@@ -114,7 +90,7 @@ export function logWarn(
     ? (target as Logger)
     : getRequestLogger(target as Request | undefined);
 
-  targetLogger.warn(sanitizeValue(context || {}), message);
+  targetLogger.warn(sanitizeTelemetryValue(context || {}), message);
 }
 
 export function logInfo(
@@ -126,7 +102,7 @@ export function logInfo(
     ? (target as Logger)
     : getRequestLogger(target as Request | undefined);
 
-  targetLogger.info(sanitizeValue(context || {}), message);
+  targetLogger.info(sanitizeTelemetryValue(context || {}), message);
 }
 
 export function logOperationalEvent(
@@ -139,7 +115,7 @@ export function logOperationalEvent(
     ? (target as Logger)
     : getRequestLogger(target as Request | undefined);
 
-  const payload = sanitizeValue({
+  const payload = sanitizeTelemetryValue({
     event,
     category: "operational-audit",
     ...(context || {}),

@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { logger } from "../shared/logging/logger";
+import { sanitizeTelemetryUrl } from "../shared/observability/telemetrySanitizer";
 
 export function attachRequestContext(req: Request, res: Response, next: NextFunction) {
   const headerValue = req.header("x-request-id")?.trim();
@@ -11,7 +12,7 @@ export function attachRequestContext(req: Request, res: Response, next: NextFunc
   req.log = logger.child({
     requestId,
     method: req.method,
-    path: req.originalUrl || req.url,
+    path: sanitizeTelemetryUrl(req.originalUrl || req.url),
   });
 
   res.setHeader("x-request-id", requestId);

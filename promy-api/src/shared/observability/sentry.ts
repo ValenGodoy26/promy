@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import * as Sentry from "@sentry/node";
 import { env } from "../../config/env";
+import { sanitizeTelemetryError, sanitizeTelemetryValue } from "./telemetrySanitizer";
 
 const sentryDsn = env.SENTRY_DSN?.trim();
 const sentryEnabled = Boolean(sentryDsn);
@@ -10,6 +11,10 @@ function toSampleRate(value: string | undefined) {
   if (!value) return 0;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+export function sanitizeSentryEvent<T>(event: T): T {
+  return sanitizeTelemetryValue(event) as T;
 }
 
 export function initApiSentry() {
@@ -23,6 +28,7 @@ export function initApiSentry() {
     environment: env.SENTRY_ENVIRONMENT || env.APP_ENV,
     release: env.SENTRY_RELEASE || undefined,
     tracesSampleRate: toSampleRate(env.SENTRY_TRACES_SAMPLE_RATE),
+    beforeSend: sanitizeSentryEvent,
   });
 
   sentryInitialized = true;
@@ -69,15 +75,20 @@ export function captureApiException(
     }
 
     if (extras) {
-      scope.setContext("extra", extras);
+      scope.setContext("extra", sanitizeTelemetryValue(extras) as Record<string, unknown>);
     }
 
     if (error instanceof Error) {
-      Sentry.captureException(error);
+      const sanitizedError = sanitizeTelemetryError(error);
+      const safeError = new Error(String(sanitizedError.message || "API error"));
+      safeError.name = String(sanitizedError.name || error.name);
+      safeError.stack = typeof sanitizedError.stack === "string" ? sanitizedError.stack : undefined;
+      Sentry.captureException(safeError);
       return;
     }
 
-    Sentry.captureException(new Error(typeof error === "string" ? error : "Unknown API error"));
+    const safeValue = sanitizeTelemetryValue(error);
+    Sentry.captureException(new Error(typeof safeValue === "string" ? safeValue : "Unknown API error"));
   });
 }
 

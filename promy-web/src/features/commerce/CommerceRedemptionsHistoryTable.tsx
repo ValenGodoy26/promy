@@ -7,12 +7,10 @@ function escapeCSVCell(value: string | number | null | undefined) {
   return `"${str.replace(/"/g, '""')}"`;
 }
 
-function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
+export function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
   const headers = [
     "ID",
     "Cliente",
-    "Email",
-    "Telefono",
     "Promocion",
     "Tipo",
     "Descuento",
@@ -27,8 +25,6 @@ function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
   const rows = redemptions.map((r) => [
     r.id,
     r.user.fullName,
-    r.user.email,
-    r.user.phone ?? "",
     r.promotion.title,
     r.promotion.promotionType,
     r.promotion.discountValue ?? "",
@@ -114,7 +110,6 @@ export function CommerceRedemptionsHistoryTable({
               <tr key={redemption.id}>
                 <td>
                   <div className="cell-primary">{redemption.user.fullName}</div>
-                  <span className="cell-sub">{redemption.user.email}</span>
                 </td>
                 <td>{redemption.promotion.title}</td>
                 <td>

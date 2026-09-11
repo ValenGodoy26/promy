@@ -595,7 +595,7 @@ export async function getCommerceDashboardByOwner(ownerUserId: number) {
         status: true,
         redeemedAt: true,
         createdAt: true,
-        user: { select: { id: true, fullName: true, email: true } },
+        user: { select: { id: true, fullName: true } },
         promotion: {
           select: {
             id: true,

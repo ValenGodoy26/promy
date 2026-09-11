@@ -98,8 +98,6 @@ const commerceRedemptionSelect = Prisma.validator<Prisma.RedemptionSelect>()({
     select: {
       id: true,
       fullName: true,
-      email: true,
-      phone: true,
     },
   },
   promotion: {

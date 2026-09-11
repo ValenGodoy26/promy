@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { logError } from "../shared/logging/logger";
 import { captureApiException } from "../shared/observability/sentry";
+import { sanitizeTelemetryUrl } from "../shared/observability/telemetrySanitizer";
 
 export const errorHandler = (
   error: Error,
@@ -12,14 +13,14 @@ export const errorHandler = (
   logError(req, error, "Unhandled request error", {
     requestId: req.requestId,
     method: req.method,
-    path: req.originalUrl,
+    path: sanitizeTelemetryUrl(req.originalUrl),
   });
 
   if (!(error instanceof ZodError) && error.message !== "Origin no permitida por CORS") {
     captureApiException(error, req, {
       requestId: req.requestId,
       method: req.method,
-      path: req.originalUrl,
+      path: sanitizeTelemetryUrl(req.originalUrl),
     });
   }
 
