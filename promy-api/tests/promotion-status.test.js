@@ -9,6 +9,7 @@ const {
   isPromotionCurrentlyAvailable,
   isPromotionScheduleActiveNow,
   isPromotionPubliclyVisibleNow,
+  isPromotionRedeemableNow,
   filterPublicPromotionsVisibleNow,
 } = require("../dist/shared/utils/promotionStatus.js");
 
@@ -78,6 +79,47 @@ test("filterPublicPromotionsVisibleNow keeps only promos visible right now", () 
   assert.deepEqual(
     filterPublicPromotionsVisibleNow(promotions, now).map((promotion) => promotion.id),
     [1],
+  );
+});
+
+test("isPromotionPubliclyVisibleNow rejects hidden promotions and hidden commerces", () => {
+  const now = new Date("2026-04-28T15:00:00.000Z");
+  const visible = {
+    status: PUBLIC_PROMOTION_STATUS,
+    isHiddenByAdmin: false,
+    startDate: new Date("2026-04-28T10:00:00.000Z"),
+    endDate: new Date("2026-04-28T20:00:00.000Z"),
+    commerce: { status: "APPROVED", isHiddenByAdmin: false },
+  };
+
+  assert.equal(isPromotionPubliclyVisibleNow(visible, now), true);
+  assert.equal(isPromotionPubliclyVisibleNow({ ...visible, isHiddenByAdmin: true }, now), false);
+  assert.equal(
+    isPromotionPubliclyVisibleNow(
+      { ...visible, commerce: { status: "APPROVED", isHiddenByAdmin: true } },
+      now,
+    ),
+    false,
+  );
+});
+
+test("isPromotionRedeemableNow requires an approved available commerce", () => {
+  const now = new Date("2026-04-28T15:00:00.000Z");
+  const promotion = {
+    status: PUBLIC_PROMOTION_STATUS,
+    isHiddenByAdmin: false,
+    startDate: new Date("2026-04-28T10:00:00.000Z"),
+    endDate: new Date("2026-04-28T20:00:00.000Z"),
+    commerce: { status: "APPROVED", isHiddenByAdmin: false },
+  };
+
+  assert.equal(isPromotionRedeemableNow(promotion, now), true);
+  assert.equal(
+    isPromotionRedeemableNow(
+      { ...promotion, commerce: { status: "INACTIVE", isHiddenByAdmin: false } },
+      now,
+    ),
+    false,
   );
 });
 

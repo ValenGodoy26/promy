@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../../config/prisma";
+import {
+  FEATURED_PROMOTIONS_CACHE_KEY,
+} from "../../shared/cache/publicCatalogCache";
 import { sharedTtlCache } from "../../shared/cache/ttlCache";
 import { findNearbyCommerceDistanceRows } from "../../shared/services/spatial.service";
 import {
@@ -11,6 +14,7 @@ import {
 } from "../../shared/utils/location";
 import {
   buildPublicPromotionWhere,
+  buildPublicCommerceWhere,
   filterPublicPromotionsVisibleNow,
   isPromotionPubliclyVisibleNow,
 } from "../../shared/utils/promotionStatus";
@@ -189,8 +193,7 @@ export async function getPromotionsCatalog(rawInput: PromotionsQueryInput) {
     prisma.promotion.findMany({
       where: {
         ...buildPublicPromotionWhere(now),
-        commerce: {
-          status: "APPROVED",
+        commerce: buildPublicCommerceWhere({
           ...(input.category
             ? {
                 category: {
@@ -205,7 +208,7 @@ export async function getPromotionsCatalog(rawInput: PromotionsQueryInput) {
                 },
               }
             : {}),
-        },
+        }),
         ...(input.commerceId ? { commerceId: input.commerceId } : {}),
         ...(input.search
           ? {
@@ -240,21 +243,35 @@ export async function getPromotionsCatalog(rawInput: PromotionsQueryInput) {
 
 export async function getFeaturedPromotionsCatalog() {
   const now = new Date();
-  const promotions = await sharedTtlCache.getOrSet("promotions:featured", 60 * 1000, () =>
+  const promotionIds = await sharedTtlCache.getOrSet(FEATURED_PROMOTIONS_CACHE_KEY, 60 * 1000, () =>
     prisma.promotion.findMany({
       where: {
         ...buildPublicPromotionWhere(now),
-        commerce: {
-          status: "APPROVED",
-        },
       },
-      select: promotionListSelect,
+      select: { id: true },
       take: 24,
       orderBy: [{ isFeatured: "desc" }, { featuredRank: "asc" }, { createdAt: "desc" }],
-    }),
+    }).then((promotions) => promotions.map((promotion) => promotion.id)),
   );
 
-  return filterPublicPromotionsVisibleNow(promotions, now).slice(0, 8);
+  if (promotionIds.length === 0) {
+    return [];
+  }
+
+  // Los IDs pueden vivir hasta 60 segundos, pero estado y contenido se releen siempre.
+  // Así una invalidación perdida nunca vuelve a publicar contenido retirado.
+  const promotions = await prisma.promotion.findMany({
+    where: {
+      id: { in: promotionIds },
+      ...buildPublicPromotionWhere(now),
+    },
+    select: promotionListSelect,
+  });
+  const orderById = new Map(promotionIds.map((id, index) => [id, index]));
+
+  return filterPublicPromotionsVisibleNow(promotions, now)
+    .sort((left, right) => (orderById.get(left.id) ?? 0) - (orderById.get(right.id) ?? 0))
+    .slice(0, 8);
 }
 
 export async function getPromotionDetails(promotionId: number) {
@@ -264,9 +281,6 @@ export async function getPromotionDetails(promotionId: number) {
     where: {
       id: promotionId,
       ...buildPublicPromotionWhere(now),
-      commerce: {
-        status: "APPROVED",
-      },
     },
     select: {
       id: true,
@@ -386,8 +400,7 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
     prisma.promotion.findMany({
       where: {
         ...buildPublicPromotionWhere(now),
-        commerce: {
-          status: "APPROVED",
+        commerce: buildPublicCommerceWhere({
           ...(origin
             ? {}
             : cityRecord
@@ -400,7 +413,7 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
                 },
               }),
           ...(categoryRecord ? { categoryId: categoryRecord.id } : {}),
-        },
+        }),
         ...(input.commerceId ? { commerceId: input.commerceId } : {}),
         ...(input.search
           ? {
@@ -446,9 +459,7 @@ export async function getNearbyPromotionsCatalog(rawInput: PromotionsQueryInput)
       prisma.promotion.findMany({
         where: {
           ...buildPublicPromotionWhere(now),
-          commerce: {
-            status: "APPROVED",
-          },
+          commerce: buildPublicCommerceWhere(),
           ...(input.commerceId ? { commerceId: input.commerceId } : {}),
           commerceId: {
             in: nearbyCommerceIds,

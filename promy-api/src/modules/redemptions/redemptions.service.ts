@@ -8,6 +8,7 @@ import {
   buildPublicPromotionWhere,
   isCurrentTimeWithinPromotionWindow,
   isPromotionCurrentlyAvailable,
+  isPromotionRedeemableNow,
   parsePromotionTimeToMinutes,
 } from "../../shared/utils/promotionStatus";
 import { createAppNotification } from "../notifications/notifications.service";
@@ -154,9 +155,6 @@ export async function createRedemptionForUser(input: { userId: number; promotion
     where: {
       id: promotionId,
       ...buildPublicPromotionWhere(now),
-      commerce: {
-        status: "APPROVED",
-      },
     },
     select: {
       id: true,
@@ -459,186 +457,265 @@ export async function validateCommerceRedemptionByCode(input: {
   const { ownerUserId } = input;
   const validationCode = input.validationCode.trim().toUpperCase();
 
-  const redemption = await prisma.redemption.findFirst({
+  const redemptionReference = await prisma.redemption.findFirst({
     where: {
       validationCode,
       commerce: {
         ownerUserId,
       },
     },
-    select: commerceRedemptionSelect,
+    select: {
+      id: true,
+      promotionId: true,
+    },
   });
 
-  if (!redemption) {
+  if (!redemptionReference) {
     throw new RedemptionServiceError(
       "No encontramos un canje pendiente con ese codigo en este comercio",
       404,
     );
   }
 
-  if (redemption.status === "SUCCESS") {
-    throw new RedemptionServiceError("Este canje ya fue validado anteriormente", 409, {
-      redemption,
-    });
-  }
+  const transactionResult = await prisma.$transaction(
+    async (tx) => {
+      // Los locks de promoción y comercio serializan validaciones que compiten por
+      // el cupo y las ordenan frente a cambios concurrentes de moderación.
+      await tx.$queryRaw(
+        Prisma.sql`
+          SELECT promotion.id AS promotionId, commerce.id AS commerceId
+          FROM Promotion AS promotion
+          INNER JOIN Commerce AS commerce ON commerce.id = promotion.commerceId
+          WHERE promotion.id = ${redemptionReference.promotionId}
+          FOR UPDATE
+        `,
+      );
+      const now = new Date();
 
-  const now = new Date();
-
-  if (
-    redemption.validationBlockedUntil &&
-    redemption.validationBlockedUntil.getTime() > now.getTime()
-  ) {
-    throw new RedemptionServiceError(
-      "Este canje quedo bloqueado temporalmente por demasiados intentos fallidos. Intenta nuevamente mas tarde.",
-      429,
-      {
-        code: "REDEMPTION_TEMPORARILY_BLOCKED",
-        blockedUntil: redemption.validationBlockedUntil,
-        redemption,
-      },
-    );
-  }
-
-  if (redemption.status !== "PENDING") {
-    throw new RedemptionServiceError("Este canje no esta disponible para validar", 409, {
-      redemption,
-    });
-  }
-
-  if (typeof redemption.promotion.maxRedemptions === "number") {
-    const successCount = await prisma.redemption.count({
-      where: {
-        promotionId: redemption.promotion.id,
-        status: RedemptionStatus.SUCCESS,
-      },
-    });
-
-    if (successCount >= redemption.promotion.maxRedemptions) {
-      const cancelledRedemption = await prisma.redemption.update({
+      const redemption = await tx.redemption.findFirst({
         where: {
-          id: redemption.id,
+          id: redemptionReference.id,
+          validationCode,
+          commerce: { ownerUserId },
         },
-        data: {
-          status: RedemptionStatus.CANCELLED,
-          lastValidationAttemptAt: now,
+        select: {
+          id: true,
+          status: true,
+          validationExpiresAt: true,
+          failedValidationAttempts: true,
+          validationBlockedUntil: true,
+          promotion: {
+            select: {
+              id: true,
+              status: true,
+              isHiddenByAdmin: true,
+              maxRedemptions: true,
+              startDate: true,
+              endDate: true,
+              startTime: true,
+              endTime: true,
+              schedules: promotionScheduleSelect,
+              commerce: {
+                select: {
+                  status: true,
+                  isHiddenByAdmin: true,
+                },
+              },
+            },
+          },
         },
-        select: commerceRedemptionSelect,
       });
 
-      throw new RedemptionServiceError(
-        "La promocion ya alcanzo su cupo maximo de canjes y este codigo quedo cancelado.",
-        409,
-        {
-          code: "PROMOTION_CAP_REACHED",
-          redemption: cancelledRedemption,
-          maxRedemptions: redemption.promotion.maxRedemptions,
-        },
-      );
-    }
-  }
+      if (!redemption) {
+        return {
+          error: new RedemptionServiceError(
+            "No encontramos un canje pendiente con ese codigo en este comercio",
+            404,
+          ),
+        };
+      }
 
-  const validationExpired =
-    redemption.validationExpiresAt && redemption.validationExpiresAt.getTime() < now.getTime();
+      const getResponseRedemption = () =>
+        tx.redemption.findUnique({
+          where: { id: redemption.id },
+          select: commerceRedemptionSelect,
+        });
 
-  if (validationExpired) {
-    const failedAttempts = redemption.failedValidationAttempts + 1;
-    const blockedUntil =
-      failedAttempts >= env.REDEMPTION_MAX_FAILED_ATTEMPTS
-        ? new Date(
-            now.getTime() + env.REDEMPTION_VALIDATION_BLOCK_MINUTES * 60 * 1000,
-          )
-        : null;
-    const nextStatus =
-      failedAttempts >= env.REDEMPTION_MAX_FAILED_ATTEMPTS ? "FAILED" : "PENDING";
+      if (redemption.status === RedemptionStatus.SUCCESS) {
+        return {
+          error: new RedemptionServiceError("Este canje ya fue validado anteriormente", 409, {
+            redemption: await getResponseRedemption(),
+          }),
+        };
+      }
 
-    const expiredRedemption = await prisma.redemption.update({
-      where: {
-        id: redemption.id,
-      },
-      data: {
-        failedValidationAttempts: failedAttempts,
-        lastValidationAttemptAt: now,
-        status: nextStatus,
-        validationBlockedUntil: blockedUntil,
-      },
-      select: commerceRedemptionSelect,
-    });
-
-    throw new RedemptionServiceError(
-      nextStatus === "FAILED"
-        ? "El codigo vencio y el canje quedo bloqueado temporalmente por demasiados intentos."
-        : "El codigo de validacion vencio. El cliente debe generar un nuevo canje.",
-      409,
-      {
-        redemption: expiredRedemption,
-        ...(blockedUntil ? { blockedUntil } : {}),
-      },
-    );
-  }
-
-  const updateResult = await prisma.redemption.updateMany({
-    where: {
-      id: redemption.id,
-      status: "PENDING",
-      validationCode,
-      failedValidationAttempts: {
-        lt: env.REDEMPTION_MAX_FAILED_ATTEMPTS,
-      },
-      AND: [
-        {
-          OR: [
-            { validationExpiresAt: null },
+      if (
+        redemption.validationBlockedUntil &&
+        redemption.validationBlockedUntil.getTime() > now.getTime()
+      ) {
+        return {
+          error: new RedemptionServiceError(
+            "Este canje quedo bloqueado temporalmente por demasiados intentos fallidos. Intenta nuevamente mas tarde.",
+            429,
             {
-              validationExpiresAt: {
-                gte: now,
+              code: "REDEMPTION_TEMPORARILY_BLOCKED",
+              blockedUntil: redemption.validationBlockedUntil,
+              redemption: await getResponseRedemption(),
+            },
+          ),
+        };
+      }
+
+      if (redemption.status !== RedemptionStatus.PENDING) {
+        return {
+          error: new RedemptionServiceError("Este canje no esta disponible para validar", 409, {
+            redemption: await getResponseRedemption(),
+          }),
+        };
+      }
+
+      if (!isPromotionRedeemableNow(redemption.promotion, now)) {
+        await tx.redemption.updateMany({
+          where: { id: redemption.id, status: RedemptionStatus.PENDING },
+          data: {
+            status: RedemptionStatus.CANCELLED,
+            lastValidationAttemptAt: now,
+          },
+        });
+
+        return {
+          error: new RedemptionServiceError(
+            "La promocion ya no esta disponible y este codigo quedo cancelado.",
+            409,
+            {
+              code: "PROMOTION_NOT_AVAILABLE",
+              redemption: await getResponseRedemption(),
+            },
+          ),
+        };
+      }
+
+      if (typeof redemption.promotion.maxRedemptions === "number") {
+        const successCount = await tx.redemption.count({
+          where: {
+            promotionId: redemption.promotion.id,
+            status: RedemptionStatus.SUCCESS,
+          },
+        });
+
+        if (successCount >= redemption.promotion.maxRedemptions) {
+          await tx.redemption.updateMany({
+            where: { id: redemption.id, status: RedemptionStatus.PENDING },
+            data: {
+              status: RedemptionStatus.CANCELLED,
+              lastValidationAttemptAt: now,
+            },
+          });
+
+          return {
+            error: new RedemptionServiceError(
+              "La promocion ya alcanzo su cupo maximo de canjes y este codigo quedo cancelado.",
+              409,
+              {
+                code: "PROMOTION_CAP_REACHED",
+                redemption: await getResponseRedemption(),
+                maxRedemptions: redemption.promotion.maxRedemptions,
               },
+            ),
+          };
+        }
+      }
+
+      const validationExpired =
+        redemption.validationExpiresAt && redemption.validationExpiresAt.getTime() < now.getTime();
+
+      if (validationExpired) {
+        const failedAttempts = redemption.failedValidationAttempts + 1;
+        const blockedUntil =
+          failedAttempts >= env.REDEMPTION_MAX_FAILED_ATTEMPTS
+            ? new Date(
+                now.getTime() + env.REDEMPTION_VALIDATION_BLOCK_MINUTES * 60 * 1000,
+              )
+            : null;
+        const nextStatus =
+          failedAttempts >= env.REDEMPTION_MAX_FAILED_ATTEMPTS
+            ? RedemptionStatus.FAILED
+            : RedemptionStatus.PENDING;
+
+        await tx.redemption.update({
+          where: { id: redemption.id },
+          data: {
+            failedValidationAttempts: failedAttempts,
+            lastValidationAttemptAt: now,
+            status: nextStatus,
+            validationBlockedUntil: blockedUntil,
+          },
+        });
+
+        return {
+          error: new RedemptionServiceError(
+            nextStatus === RedemptionStatus.FAILED
+              ? "El codigo vencio y el canje quedo bloqueado temporalmente por demasiados intentos."
+              : "El codigo de validacion vencio. El cliente debe generar un nuevo canje.",
+            409,
+            {
+              redemption: await getResponseRedemption(),
+              ...(blockedUntil ? { blockedUntil } : {}),
+            },
+          ),
+        };
+      }
+
+      const updateResult = await tx.redemption.updateMany({
+        where: {
+          id: redemption.id,
+          status: RedemptionStatus.PENDING,
+          validationCode,
+          failedValidationAttempts: { lt: env.REDEMPTION_MAX_FAILED_ATTEMPTS },
+          AND: [
+            {
+              OR: [
+                { validationExpiresAt: null },
+                { validationExpiresAt: { gte: now } },
+              ],
+            },
+            {
+              OR: [
+                { validationBlockedUntil: null },
+                { validationBlockedUntil: { lte: now } },
+              ],
             },
           ],
         },
-        {
-          OR: [
-            { validationBlockedUntil: null },
-            {
-              validationBlockedUntil: {
-                lte: now,
-              },
-            },
-          ],
+        data: {
+          status: RedemptionStatus.SUCCESS,
+          redeemedAt: now,
+          lastValidationAttemptAt: now,
+          validatedByUserId: ownerUserId,
+          validationBlockedUntil: null,
         },
-      ],
-    },
-    data: {
-      status: "SUCCESS",
-      redeemedAt: now,
-      lastValidationAttemptAt: now,
-      validatedByUserId: ownerUserId,
-      validationBlockedUntil: null,
-    },
-  });
+      });
 
-  if (updateResult.count === 0) {
-    const currentState = await prisma.redemption.findFirst({
-      where: {
-        id: redemption.id,
-      },
-      select: commerceRedemptionSelect,
-    });
+      if (updateResult.count === 0) {
+        return {
+          error: new RedemptionServiceError(
+            "Este canje ya cambio de estado mientras intentabas validarlo.",
+            409,
+            { redemption: await getResponseRedemption() },
+          ),
+        };
+      }
 
-    throw new RedemptionServiceError(
-      "Este canje ya cambio de estado mientras intentabas validarlo.",
-      409,
-      {
-        redemption: currentState,
-      },
-    );
+      return { redemption: await getResponseRedemption() };
+    },
+    { maxWait: 20_000, timeout: 20_000 },
+  );
+
+  if ("error" in transactionResult) {
+    throw transactionResult.error;
   }
 
-  const validatedRedemption = await prisma.redemption.findUnique({
-    where: {
-      id: redemption.id,
-    },
-    select: commerceRedemptionSelect,
-  });
+  const validatedRedemption = transactionResult.redemption;
 
   if (!validatedRedemption) {
     throw new RedemptionServiceError("No pudimos recuperar el canje validado", 404);

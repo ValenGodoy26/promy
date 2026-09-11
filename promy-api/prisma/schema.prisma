@@ -173,6 +173,7 @@ model Commerce {
   isFeatured       Boolean        @default(false)
   featuredRank     Int            @default(0)
   isHiddenByAdmin  Boolean        @default(false)
+  isSuspendedByAdmin Boolean      @default(false)
   adminNote        String?
   adminEditedAt    DateTime?
   adminEditedByUserId Int?

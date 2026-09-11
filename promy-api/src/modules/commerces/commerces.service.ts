@@ -10,6 +10,7 @@ import {
 import { findNearbyCommerceDistanceRows } from "../../shared/services/spatial.service";
 import {
   buildPublicPromotionWhere,
+  buildPublicCommerceWhere,
   filterPublicPromotionsVisibleNow,
 } from "../../shared/utils/promotionStatus";
 import {
@@ -199,8 +200,7 @@ export async function getCommercesCatalog(rawInput: CommercesQueryInput) {
   const findCommercesCatalog = (useNativeSearch: boolean) =>
     prisma.commerce.findMany({
       where: {
-        status: "APPROVED",
-        isHiddenByAdmin: false,
+        ...buildPublicCommerceWhere(),
         ...(input.category
           ? {
               category: {
@@ -253,8 +253,7 @@ export async function getCommerceDetails(commerceId: number) {
   const commerce = await prisma.commerce.findFirst({
     where: {
       id: commerceId,
-      status: "APPROVED",
-      isHiddenByAdmin: false,
+      ...buildPublicCommerceWhere(),
     },
     select: {
       id: true,
@@ -380,8 +379,7 @@ export async function getNearbyCommercesCatalog(rawInput: CommercesQueryInput) {
   const findNearbyCommerces = (useNativeSearch: boolean) =>
     prisma.commerce.findMany({
       where: {
-        status: "APPROVED",
-        isHiddenByAdmin: false,
+        ...buildPublicCommerceWhere(),
         ...(origin
           ? {}
           : cityRecord
@@ -439,8 +437,7 @@ export async function getNearbyCommercesCatalog(rawInput: CommercesQueryInput) {
       prisma.commerce.findMany({
         where: {
           id: { in: nearbyIds },
-          status: "APPROVED",
-          isHiddenByAdmin: false,
+          ...buildPublicCommerceWhere(),
           ...(input.search
             ? {
                 OR: getCommerceSearchConditions(input.search, useNativeSearch),

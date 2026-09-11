@@ -6,6 +6,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import prisma from "../../config/prisma";
+import { invalidatePublicCatalogCache } from "../../shared/cache/publicCatalogCache";
 import { sharedTtlCache } from "../../shared/cache/ttlCache";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { logOperationalEvent, logger, logWarn } from "../../shared/logging/logger";
@@ -1253,6 +1254,12 @@ export async function updateCommerceStatusByAdmin(input: {
       data: {
         status: input.status,
         moderationNote: input.note || null,
+        ...(input.status === CommerceStatus.INACTIVE ? { isHiddenByAdmin: true } : {}),
+        ...(input.status === CommerceStatus.INACTIVE
+          ? { isSuspendedByAdmin: true }
+          : input.status === CommerceStatus.APPROVED
+            ? { isSuspendedByAdmin: false }
+            : {}),
       },
       select: {
         id: true,
@@ -1384,7 +1391,7 @@ export async function updateCommerceStatusByAdmin(input: {
     note: input.note || null,
   });
 
-  await sharedTtlCache.delete("promotions:featured");
+  await invalidatePublicCatalogCache();
 
   return updatedCommerce;
 }
@@ -1471,6 +1478,8 @@ export async function updateCommerceByAdmin(input: {
       isHiddenByAdmin: commerce.isHiddenByAdmin,
     },
   });
+
+  await invalidatePublicCatalogCache();
 
   return {
     ...commerce,
@@ -1779,6 +1788,8 @@ export async function updatePromotionByAdmin(input: {
     },
   });
 
+  await invalidatePublicCatalogCache();
+
   return promotion;
 }
 
@@ -1899,7 +1910,7 @@ export async function updatePromotionStatusByAdmin(input: {
     note: input.note || null,
   });
 
-  await sharedTtlCache.delete("promotions:featured");
+  await invalidatePublicCatalogCache();
 
   return promotion;
 }

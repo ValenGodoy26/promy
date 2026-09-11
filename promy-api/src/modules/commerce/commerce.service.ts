@@ -1,6 +1,7 @@
 import { CommerceStatus, Prisma, PromotionStatus, PromotionType, ValidationMethod, Weekday } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../../config/prisma";
+import { invalidatePublicCatalogCache } from "../../shared/cache/publicCatalogCache";
 import { parsePromotionTimeToMinutes } from "../../shared/utils/promotionStatus";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
@@ -703,6 +704,8 @@ export async function updateManagedCommerceByOwner(params: {
     select: commerceSelect,
   });
 
+  await invalidatePublicCatalogCache();
+
   publishRealtimeEvent({
     type: "commerce.updated",
     targetRoles: ["ADMIN", "COMMERCE"],
@@ -742,6 +745,18 @@ export async function updateManagedCommerceStatusByOwner(params: {
     return currentCommerce;
   }
 
+  if (
+    params.status === CommerceStatus.APPROVED &&
+    commerce.status === CommerceStatus.INACTIVE &&
+    commerce.isSuspendedByAdmin
+  ) {
+    throw new CommerceServiceError(
+      "Este comercio fue inactivado por administracion y solo un administrador puede reactivarlo.",
+      409,
+      { code: "COMMERCE_ADMIN_SUSPENDED" },
+    );
+  }
+
   const updatedCommerce = await prisma.commerce.update({
     where: { id: commerce.id },
     data: {
@@ -749,6 +764,8 @@ export async function updateManagedCommerceStatusByOwner(params: {
     },
     select: commerceSelect,
   });
+
+  await invalidatePublicCatalogCache();
 
   publishRealtimeEvent({
     type: "commerce.status.changed",
@@ -796,6 +813,8 @@ export async function createPromotionForOwner(params: {
     data: buildPromotionCreateData(commerce.id, data),
     select: promotionSelect,
   });
+
+  await invalidatePublicCatalogCache();
 
   publishRealtimeEvent({
     type: "promotion.created",
@@ -873,6 +892,8 @@ export async function updatePromotionForOwner(params: {
     });
   });
 
+  await invalidatePublicCatalogCache();
+
   publishRealtimeEvent({
     type: "promotion.updated",
     targetRoles: ["ADMIN", "COMMERCE"],
@@ -921,6 +942,8 @@ export async function deletePromotionForOwner(params: {
   await prisma.promotion.delete({
     where: { id: existingPromotion.id },
   });
+
+  await invalidatePublicCatalogCache();
 
   publishRealtimeEvent({
     type: "promotion.deleted",

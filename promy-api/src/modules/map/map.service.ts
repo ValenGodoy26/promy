@@ -9,6 +9,7 @@ import {
 } from "../../shared/utils/location";
 import {
   buildPublicPromotionWhere,
+  buildPublicCommerceWhere,
   filterPublicPromotionsVisibleNow,
 } from "../../shared/utils/promotionStatus";
 import {
@@ -75,8 +76,7 @@ export async function resolveGeoContext(input: MapQueryInput) {
   const fallbackCitySlug = input.city || input.fallbackCity || DEFAULT_CITY_SLUG;
   const commerces = await prisma.commerce.findMany({
     where: {
-      status: "APPROVED",
-      isHiddenByAdmin: false,
+      ...buildPublicCommerceWhere(),
       city: {
         slug: fallbackCitySlug,
       },
@@ -143,8 +143,7 @@ export async function listMapMarkers(rawInput: MapQueryInput) {
   const findMapMarkers = (useNativeSearch: boolean) =>
     prisma.commerce.findMany({
       where: {
-        status: "APPROVED",
-        isHiddenByAdmin: false,
+        ...buildPublicCommerceWhere(),
         ...(context.source !== "device"
           ? {
               city: {
@@ -249,8 +248,7 @@ export async function listMapMarkers(rawInput: MapQueryInput) {
       prisma.commerce.findMany({
         where: {
           id: { in: nearbyIds },
-          status: "APPROVED",
-          isHiddenByAdmin: false,
+          ...buildPublicCommerceWhere(),
           ...(input.search
             ? {
                 OR: getCommerceSearchConditions(input.search, useNativeSearch),

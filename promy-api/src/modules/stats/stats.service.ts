@@ -1,4 +1,5 @@
 import prisma from "../../config/prisma";
+import { buildPublicCommerceWhere } from "../../shared/utils/promotionStatus";
 import { buildPublicPromotionWhere } from "../../shared/utils/promotionStatus";
 
 export async function getPublicStats() {
@@ -7,16 +8,14 @@ export async function getPublicStats() {
   const [approvedCommerces, activePromotions, activeCities] = await Promise.all([
     prisma.commerce.count({
       where: {
-        status: "APPROVED",
-        isHiddenByAdmin: false,
+        ...buildPublicCommerceWhere(),
       },
     }),
     prisma.promotion.count({
       where: {
         ...buildPublicPromotionWhere(now),
         commerce: {
-          status: "APPROVED",
-          isHiddenByAdmin: false,
+          ...buildPublicCommerceWhere(),
         },
       },
     }),

@@ -8,6 +8,7 @@ import {
 } from "../../shared/utils/location";
 import {
   buildPublicPromotionWhere,
+  buildPublicCommerceWhere,
   filterPublicPromotionsVisibleNow,
 } from "../../shared/utils/promotionStatus";
 import {
@@ -84,7 +85,7 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
     Promise.all([
       prisma.commerce.findMany({
         where: {
-          status: "APPROVED",
+          ...buildPublicCommerceWhere(),
           ...(origin
             ? {}
             : {
@@ -153,8 +154,7 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
       prisma.promotion.findMany({
         where: {
           ...buildPublicPromotionWhere(now),
-          commerce: {
-            status: "APPROVED",
+          commerce: buildPublicCommerceWhere({
             ...(origin
               ? {}
               : {
@@ -162,7 +162,7 @@ export async function performCatalogSearch(rawInput: SearchQueryInput) {
                     slug: citySlug,
                   },
                 }),
-          },
+          }),
           OR: getPromotionSearchConditions(input.q, useNativeSearch),
         },
         select: {

@@ -1,4 +1,4 @@
-import { Prisma, PromotionStatus, Weekday } from "@prisma/client";
+import { CommerceStatus, Prisma, PromotionStatus, Weekday } from "@prisma/client";
 import { env } from "../../config/env";
 
 export const PUBLIC_PROMOTION_STATUS = PromotionStatus.APPROVED_VISIBLE;
@@ -10,12 +10,19 @@ export type PromotionScheduleWindow = {
 };
 
 export type PromotionAvailabilityWindow = {
+  [key: string]: unknown;
   status?: PromotionStatus | string | null;
+  isHiddenByAdmin?: boolean | null;
   startDate: Date | null;
   endDate: Date | null;
   startTime?: string | null;
   endTime?: string | null;
   schedules?: PromotionScheduleWindow[] | null;
+  commerce?: {
+    [key: string]: unknown;
+    status?: CommerceStatus | string | null;
+    isHiddenByAdmin?: boolean | null;
+  } | null;
 };
 
 const weekdayByLabel: Record<string, Weekday> = {
@@ -49,14 +56,22 @@ function getPromotionLocalTimeParts(now = new Date()) {
   };
 }
 
+export function buildPublicCommerceWhere(
+  additionalWhere: Prisma.CommerceWhereInput = {},
+): Prisma.CommerceWhereInput {
+  return {
+    ...additionalWhere,
+    status: CommerceStatus.APPROVED,
+    isHiddenByAdmin: false,
+  };
+}
+
 export function buildPublicPromotionWhere(now = new Date()): Prisma.PromotionWhereInput {
   return {
     status: PUBLIC_PROMOTION_STATUS,
     isHiddenByAdmin: false,
     commerce: {
-      is: {
-        isHiddenByAdmin: false,
-      },
+      is: buildPublicCommerceWhere(),
     },
     AND: [
       {
@@ -190,7 +205,26 @@ export function isPromotionPubliclyVisibleNow(
 ) {
   return (
     promotion.status === PUBLIC_PROMOTION_STATUS &&
+    promotion.isHiddenByAdmin !== true &&
+    (promotion.commerce?.status === undefined ||
+      promotion.commerce.status === CommerceStatus.APPROVED) &&
+    promotion.commerce?.isHiddenByAdmin !== true &&
     isPromotionCurrentlyAvailable(promotion, now)
+  );
+}
+
+export function isPromotionRedeemableNow(
+  promotion: PromotionAvailabilityWindow & {
+    commerce: {
+      status: CommerceStatus | string;
+      isHiddenByAdmin: boolean;
+    };
+  },
+  now = new Date(),
+) {
+  return (
+    promotion.commerce.status === CommerceStatus.APPROVED &&
+    isPromotionPubliclyVisibleNow(promotion, now)
   );
 }
 

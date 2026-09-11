@@ -22,6 +22,7 @@ const SMOKES = [
   "scripts/qa-real-e2e-smoke.js",
   "scripts/qa-account-deletion-smoke.js",
   "scripts/qa-expiration-smoke.js",
+  "scripts/qa-domain-integrity-smoke.js",
 ];
 
 function getAvailablePort() {

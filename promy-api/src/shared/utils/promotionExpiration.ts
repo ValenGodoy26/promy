@@ -1,5 +1,6 @@
 import { PromotionStatus } from "@prisma/client";
 import prisma from "../../config/prisma";
+import { invalidatePublicCatalogCache } from "../cache/publicCatalogCache";
 import { logError, logInfo } from "../logging/logger";
 
 const EXPIRATION_CHECK_COOLDOWN_MS = 60 * 1000;
@@ -27,6 +28,7 @@ async function executeExpirationSweep(source: string) {
   lastExpirationRunAt = Date.now();
 
   if (result.count > 0) {
+    await invalidatePublicCatalogCache();
     logInfo(undefined, "Promociones expiradas automaticamente", {
       source,
       affectedCount: result.count,
