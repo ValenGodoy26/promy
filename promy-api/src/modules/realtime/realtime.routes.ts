@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import {
+  requireActiveSession,
+  requireAuth,
+  requireRole,
+} from "../../middlewares/auth.middleware";
 import { realtimeLimiter } from "../../middlewares/rateLimiters";
 import {
   createRealtimeStreamToken,
@@ -13,6 +17,7 @@ router.post(
   "/stream-token",
   realtimeLimiter,
   requireAuth,
+  requireActiveSession,
   requireRole(UserRole.ADMIN, UserRole.COMMERCE),
   createRealtimeStreamToken,
 );

@@ -23,6 +23,7 @@ const SMOKES = [
   "scripts/qa-account-deletion-smoke.js",
   "scripts/qa-expiration-smoke.js",
   "scripts/qa-domain-integrity-smoke.js",
+  "scripts/qa-auth-security-smoke.js",
 ];
 
 function getAvailablePort() {

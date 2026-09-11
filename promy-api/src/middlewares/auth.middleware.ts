@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { CommerceStatus, UserRole } from "@prisma/client";
+import { CommerceStatus, UserRole, UserStatus } from "@prisma/client";
 import prisma from "../config/prisma";
 import {
   AUTH_FORBIDDEN_MESSAGE,
@@ -69,6 +69,72 @@ export const requireRole =
 
     return next();
   };
+
+export async function getCurrentSessionState(
+  payload: Pick<AccessTokenPayload, "userId" | "role" | "sessionId" | "sessionVersion">,
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: {
+      role: true,
+      status: true,
+      sessionVersion: true,
+      sessions: {
+        where: {
+          id: payload.sessionId,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+
+  if (!user || user.role !== payload.role || user.sessionVersion !== payload.sessionVersion) {
+    return "invalid" as const;
+  }
+
+  if (user.status !== UserStatus.ACTIVE) {
+    return "blocked" as const;
+  }
+
+  return user.sessions.length === 1 ? ("active" as const) : ("invalid" as const);
+}
+
+export const requireActiveSession = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ ok: false, message: AUTH_REQUIRED_MESSAGE });
+    }
+
+    const state = await getCurrentSessionState(req.user);
+
+    if (state === "blocked") {
+      return res.status(403).json({
+        ok: false,
+        message: "Tu usuario no esta activo",
+        code: "USER_NOT_ACTIVE",
+      });
+    }
+
+    if (state !== "active") {
+      return res.status(401).json({ ok: false, message: AUTH_TOKEN_INVALID_MESSAGE });
+    }
+
+    return next();
+  } catch (error) {
+    logError(req, error, "Require active session middleware failed");
+    return res.status(500).json({
+      ok: false,
+      message: "Error interno al validar la sesion",
+      requestId: req.requestId,
+    });
+  }
+};
 
 export const requireVerifiedEmail = async (
   req: AuthRequest,

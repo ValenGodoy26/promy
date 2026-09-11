@@ -252,8 +252,6 @@ export const refresh = async (req: Request, res: Response) => {
       user: result.user,
     });
   } catch (error) {
-    clearRefreshCookie(res);
-
     if (isServiceError(error)) {
       return res.status(error.statusCode).json({
         ok: false,

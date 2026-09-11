@@ -1,6 +1,6 @@
 import { AppNotificationType, Prisma, User, UserRole, UserStatus } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { createHash, randomUUID } from "crypto";
+import { createHash, randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import prisma from "../../config/prisma";
 import { env, isDevelopment, isTest } from "../../config/env";
@@ -125,7 +125,7 @@ export function buildRefreshTokenFingerprint(refreshToken: string) {
 }
 
 async function hashRefreshToken(refreshToken: string) {
-  return bcrypt.hash(buildRefreshTokenFingerprint(refreshToken), 10);
+  return buildRefreshTokenFingerprint(refreshToken);
 }
 
 function buildOpaqueTokenFingerprint(token: string) {
@@ -258,8 +258,14 @@ async function sendWelcomeEmail(params: {
 }
 
 async function verifyStoredRefreshToken(refreshToken: string, storedHash: string) {
+  const fingerprint = buildRefreshTokenFingerprint(refreshToken);
+
+  if (/^[a-f0-9]{64}$/.test(storedHash)) {
+    return timingSafeEqual(Buffer.from(fingerprint, "hex"), Buffer.from(storedHash, "hex"));
+  }
+
   const fingerprintMatches = await bcrypt.compare(
-    buildRefreshTokenFingerprint(refreshToken),
+    fingerprint,
     storedHash,
   );
 
@@ -714,16 +720,15 @@ export async function refreshUserSession(input: { refreshToken: string }) {
   );
 
   if (!validRefreshToken) {
-    await prisma.session.deleteMany({
-      where: { id: session.id },
-    });
-
     throw new ServiceError(AUTH_REFRESH_INVALID_MESSAGE, 401);
   }
 
   if (session.expiresAt < new Date()) {
-    await prisma.session.delete({
-      where: { id: session.id },
+    await prisma.session.deleteMany({
+      where: {
+        id: session.id,
+        refreshTokenHash: session.refreshTokenHash,
+      },
     });
 
     throw new ServiceError(AUTH_REFRESH_INVALID_MESSAGE, 401);
@@ -733,7 +738,10 @@ export async function refreshUserSession(input: { refreshToken: string }) {
 
   if (payload.sessionVersion !== session.user.sessionVersion) {
     await prisma.session.deleteMany({
-      where: { id: session.id },
+      where: {
+        id: session.id,
+        refreshTokenHash: session.refreshTokenHash,
+      },
     });
 
     throw new ServiceError(AUTH_REFRESH_INVALID_MESSAGE, 401);
@@ -756,14 +764,22 @@ export async function refreshUserSession(input: { refreshToken: string }) {
 
   const refreshTokenHash = await hashRefreshToken(refreshToken);
 
-  await prisma.session.update({
-    where: { id: session.id },
+  const rotation = await prisma.session.updateMany({
+    where: {
+      id: session.id,
+      refreshTokenHash: session.refreshTokenHash,
+      expiresAt: { gte: new Date() },
+    },
     data: {
       refreshTokenHash,
       expiresAt: getRefreshExpiresAt(),
       lastUsedAt: new Date(),
     },
   });
+
+  if (rotation.count !== 1) {
+    throw new ServiceError(AUTH_REFRESH_INVALID_MESSAGE, 401);
+  }
 
   return {
     accessToken,
@@ -782,8 +798,20 @@ export async function logoutUserSession(input: { refreshToken?: string }) {
   try {
     const payload = verifyRefreshToken(refreshToken);
 
-    await prisma.session.deleteMany({
+    const session = await prisma.session.findUnique({
       where: { id: payload.sessionId },
+      select: { id: true, refreshTokenHash: true },
+    });
+
+    if (!session || !(await verifyStoredRefreshToken(refreshToken, session.refreshTokenHash))) {
+      return;
+    }
+
+    await prisma.session.deleteMany({
+      where: {
+        id: session.id,
+        refreshTokenHash: session.refreshTokenHash,
+      },
     });
   } catch {
     // Mantenemos logout idempotente y silencioso.

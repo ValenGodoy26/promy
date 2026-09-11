@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import {
+  requireActiveSession,
+  requireAuth,
+  requireRole,
+} from "../../middlewares/auth.middleware";
 import {
   createAdminCategory,
   getAdminAuditLogs,
@@ -19,7 +23,7 @@ import { adminWriteLimiter } from "../../middlewares/rateLimiters";
 
 const router = Router();
 
-router.use(requireAuth, requireRole(UserRole.ADMIN));
+router.use(requireAuth, requireActiveSession, requireRole(UserRole.ADMIN));
 
 router.get("/dashboard", getAdminDashboard);
 router.get("/audit-logs", getAdminAuditLogs);

@@ -1,7 +1,11 @@
 import { Router } from "express";
 import multer from "multer";
 import { UserRole } from "@prisma/client";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import {
+  requireActiveSession,
+  requireAuth,
+  requireRole,
+} from "../../middlewares/auth.middleware";
 import { uploadLimiter } from "../../middlewares/rateLimiters";
 import { storeCommerceImageUpload } from "../../shared/services/uploads.service";
 
@@ -60,6 +64,7 @@ router.post(
   "/commerce-image",
   uploadLimiter,
   requireAuth,
+  requireActiveSession,
   requireRole(UserRole.COMMERCE, UserRole.ADMIN),
   upload.single("file"),
   async (req, res, next) => {

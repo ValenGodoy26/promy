@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { UserRole } from "@prisma/client";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import {
+  requireActiveSession,
+  requireAuth,
+  requireRole,
+} from "../../middlewares/auth.middleware";
 import {
   requireManagedCommerce,
   requireOperableCommerce,
@@ -21,7 +25,12 @@ import { redemptionValidationLimiter } from "../../middlewares/rateLimiters";
 
 const router = Router();
 
-router.use(requireAuth, requireRole(UserRole.COMMERCE), requireManagedCommerce);
+router.use(
+  requireAuth,
+  requireActiveSession,
+  requireRole(UserRole.COMMERCE),
+  requireManagedCommerce,
+);
 
 router.get("/dashboard", getCommerceDashboard);
 

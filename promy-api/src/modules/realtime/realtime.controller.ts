@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { UserRole } from "@prisma/client";
-import { AuthRequest } from "../../middlewares/auth.middleware";
+import { AuthRequest, getCurrentSessionState } from "../../middlewares/auth.middleware";
 import { signRealtimeStreamToken, verifyRealtimeStreamToken } from "../../shared/utils/jwt";
 import {
   registerRealtimeClient,
@@ -28,6 +28,8 @@ export const createRealtimeStreamToken = (req: AuthRequest, res: Response) => {
   const streamToken = signRealtimeStreamToken({
     userId: user.userId,
     role: user.role,
+    sessionId: user.sessionId,
+    sessionVersion: user.sessionVersion,
   });
 
   return res.status(200).json({
@@ -36,7 +38,7 @@ export const createRealtimeStreamToken = (req: AuthRequest, res: Response) => {
   });
 };
 
-export const openRealtimeEventsStream = (req: Request, res: Response) => {
+export const openRealtimeEventsStream = async (req: Request, res: Response) => {
   const streamToken =
     typeof req.query.streamToken === "string" ? req.query.streamToken.trim() : "";
 
@@ -50,14 +52,26 @@ export const openRealtimeEventsStream = (req: Request, res: Response) => {
   try {
     const payload = verifyRealtimeStreamToken(streamToken);
 
-    if (payload.kind !== "realtime-stream") {
-      throw new Error("Invalid token kind");
-    }
-
     if (payload.role !== UserRole.ADMIN && payload.role !== UserRole.COMMERCE) {
       return res.status(403).json({
         ok: false,
         message: "Este canal en tiempo real no esta disponible para este rol",
+      });
+    }
+
+    const sessionState = await getCurrentSessionState(payload);
+
+    if (sessionState === "blocked") {
+      return res.status(403).json({
+        ok: false,
+        message: "Tu usuario no esta activo",
+      });
+    }
+
+    if (sessionState !== "active") {
+      return res.status(401).json({
+        ok: false,
+        message: "Stream token invalido o vencido",
       });
     }
 

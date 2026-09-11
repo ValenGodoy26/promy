@@ -7,6 +7,7 @@ export interface AccessTokenPayload {
   role: UserRole;
   sessionId: number;
   sessionVersion: number;
+  tokenKind: "access";
 }
 
 export interface RefreshTokenPayload {
@@ -15,16 +16,23 @@ export interface RefreshTokenPayload {
   sessionId: number;
   sessionVersion: number;
   tokenId: string;
+  tokenKind: "refresh";
 }
 
 export interface RealtimeStreamTokenPayload {
   userId: number;
   role: UserRole;
-  kind: "realtime-stream";
+  sessionId: number;
+  sessionVersion: number;
+  tokenKind: "realtime-stream";
 }
 
 const ACCESS_SECRET = env.JWT_SECRET;
 const REFRESH_SECRET = env.JWT_REFRESH_SECRET;
+const TOKEN_ISSUER = "promy";
+const ACCESS_AUDIENCE = "promy-api";
+const REFRESH_AUDIENCE = "promy-refresh";
+const REALTIME_AUDIENCE = "promy-realtime";
 
 const ACCESS_EXPIRES_IN = env.JWT_EXPIRES_IN as SignOptions["expiresIn"];
 const REFRESH_EXPIRES_IN = env.JWT_REFRESH_EXPIRES_IN as SignOptions["expiresIn"];
@@ -59,39 +67,74 @@ export const getRefreshTtlMs = () => {
   return durationToMs(env.JWT_REFRESH_EXPIRES_IN);
 };
 
-export const signAccessToken = (payload: AccessTokenPayload) => {
-  return jwt.sign(payload, ACCESS_SECRET, {
+export const signAccessToken = (payload: Omit<AccessTokenPayload, "tokenKind">) => {
+  return jwt.sign({ ...payload, tokenKind: "access" }, ACCESS_SECRET, {
     expiresIn: ACCESS_EXPIRES_IN,
+    issuer: TOKEN_ISSUER,
+    audience: ACCESS_AUDIENCE,
   });
 };
 
-export const signRefreshToken = (payload: RefreshTokenPayload) => {
-  return jwt.sign(payload, REFRESH_SECRET, {
+export const signRefreshToken = (payload: Omit<RefreshTokenPayload, "tokenKind">) => {
+  return jwt.sign({ ...payload, tokenKind: "refresh" }, REFRESH_SECRET, {
     expiresIn: REFRESH_EXPIRES_IN,
+    issuer: TOKEN_ISSUER,
+    audience: REFRESH_AUDIENCE,
   });
 };
 
 export const verifyAccessToken = (token: string) => {
-  return jwt.verify(token, ACCESS_SECRET) as AccessTokenPayload;
+  const payload = jwt.verify(token, ACCESS_SECRET, {
+    issuer: TOKEN_ISSUER,
+    audience: ACCESS_AUDIENCE,
+  }) as AccessTokenPayload;
+
+  if (payload.tokenKind !== "access") {
+    throw new Error("Invalid access token kind");
+  }
+
+  return payload;
 };
 
 export const verifyRefreshToken = (token: string) => {
-  return jwt.verify(token, REFRESH_SECRET) as RefreshTokenPayload;
+  const payload = jwt.verify(token, REFRESH_SECRET, {
+    issuer: TOKEN_ISSUER,
+    audience: REFRESH_AUDIENCE,
+  }) as RefreshTokenPayload;
+
+  if (payload.tokenKind !== "refresh") {
+    throw new Error("Invalid refresh token kind");
+  }
+
+  return payload;
 };
 
-export const signRealtimeStreamToken = (payload: Omit<RealtimeStreamTokenPayload, "kind">) => {
+export const signRealtimeStreamToken = (
+  payload: Omit<RealtimeStreamTokenPayload, "tokenKind">,
+) => {
   return jwt.sign(
     {
       ...payload,
-      kind: "realtime-stream",
+      tokenKind: "realtime-stream",
     } satisfies RealtimeStreamTokenPayload,
     ACCESS_SECRET,
     {
       expiresIn: "5m",
+      issuer: TOKEN_ISSUER,
+      audience: REALTIME_AUDIENCE,
     },
   );
 };
 
 export const verifyRealtimeStreamToken = (token: string) => {
-  return jwt.verify(token, ACCESS_SECRET) as RealtimeStreamTokenPayload;
+  const payload = jwt.verify(token, ACCESS_SECRET, {
+    issuer: TOKEN_ISSUER,
+    audience: REALTIME_AUDIENCE,
+  }) as RealtimeStreamTokenPayload;
+
+  if (payload.tokenKind !== "realtime-stream") {
+    throw new Error("Invalid realtime token kind");
+  }
+
+  return payload;
 };

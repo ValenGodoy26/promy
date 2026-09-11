@@ -19,6 +19,11 @@ class QaHttpClient {
     return this.cookies.get(name) || null;
   }
 
+  setCookie(name, value) {
+    if (value) this.cookies.set(name, value);
+    else this.cookies.delete(name);
+  }
+
   storeResponseCookies(headers) {
     const values =
       typeof headers.getSetCookie === "function"
