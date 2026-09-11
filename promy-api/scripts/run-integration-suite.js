@@ -51,6 +51,8 @@ async function main() {
   const env = {
     ...process.env,
     APP_ENV: "test",
+    NODE_ENV: "test",
+    TRUST_PROXY: "loopback",
     PORT: String(port),
     QA_PORT: String(port),
     QA_BASE_URL: baseUrl,

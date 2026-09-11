@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { logger } from "../shared/logging/logger";
+import { parseTrustProxy } from "./proxy";
 
 const weakJwtSecretValues = new Set([
   "promy_jwt_secret_dev",
@@ -9,7 +10,12 @@ const weakJwtSecretValues = new Set([
   "dev-secret",
   "development-secret",
   "secret",
+  "promy-local-jwt-s3cret-9f84k2m1q7r6x5a4",
+  "promy-local-refresh-s3cret-8d73j1n2p4q6w9",
 ]);
+
+const obviousPlaceholder =
+  /(change[-_ ]?me|replace[-_ ]?me|placeholder|example|sample|demo|development|testing|test[-_ ]|local[-_ ]|your[-_ ]|x{4,})/i;
 
 function emptyStringToUndefined(value: unknown) {
   return typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -21,21 +27,65 @@ function isWeakJwtSecret(secret: string) {
   return (
     normalized.length < 32 ||
     weakJwtSecretValues.has(normalized) ||
-    normalized.includes("dev") ||
-    normalized.includes("example") ||
-    normalized.includes("test") ||
-    normalized.includes("demo")
+    obviousPlaceholder.test(normalized) ||
+    new Set(secret).size < 10
   );
+}
+
+function isWeakProviderSecret(secret: string) {
+  return secret.trim().length < 16 || obviousPlaceholder.test(secret);
+}
+
+function isLocalHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function isSecurePublicUrl(value: string | undefined) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !isLocalHostname(url.hostname) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function isSecureCorsOrigin(value: string) {
+  if (!isSecurePublicUrl(value)) return false;
+  const url = new URL(value);
+  return (url.pathname === "/" || url.pathname === "") && !url.search && !url.hash;
+}
+
+function isProductionDatabaseUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const databaseName = url.pathname.replace(/^\//, "");
+    return (
+      url.protocol === "mysql:" &&
+      Boolean(url.hostname && url.username && url.password && databaseName) &&
+      !obviousPlaceholder.test(`${url.username}:${url.password}/${databaseName}`)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function canUseWeakSecrets(appEnv: "development" | "test" | "production", allowWeakSecrets?: string) {
   return appEnv === "development" && allowWeakSecrets === "1";
 }
 
-const envSchema = z
+export const envSchema = z
   .object({
+    NODE_ENV: z.preprocess(
+      emptyStringToUndefined,
+      z.enum(["development", "test", "production"]).optional(),
+    ),
     PORT: z.coerce.number().int().positive().default(4000),
-    APP_ENV: z.enum(["development", "test", "production"]).default("development"),
+    APP_ENV: z.preprocess(
+      emptyStringToUndefined,
+      z.enum(["development", "test", "production"]).optional(),
+    ),
+    TRUST_PROXY: z.string().trim().min(1).default("none"),
     CORS_ORIGIN: z.string().default("*"),
     PUBLIC_WEB_URL: z
       .string()
@@ -109,11 +159,46 @@ const envSchema = z
     DATABASE_URL: z.string().min(1, "DATABASE_URL es obligatoria"),
   })
   .superRefine((env, ctx) => {
-    const production = env.APP_ENV === "production";
-    const weakSecretsAllowed = canUseWeakSecrets(env.APP_ENV, env.ALLOW_WEAK_SECRETS);
+    const appEnv = env.APP_ENV || "development";
+    const production = appEnv === "production";
+    const weakSecretsAllowed = canUseWeakSecrets(appEnv, env.ALLOW_WEAK_SECRETS);
     const explicitOrigins = env.CORS_ORIGIN.split(",")
       .map((origin) => origin.trim())
       .filter(Boolean);
+
+    if (!env.APP_ENV && (env.NODE_ENV === "production" || env.NODE_ENV === "test")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["APP_ENV"],
+        message: `APP_ENV es obligatoria cuando NODE_ENV=${env.NODE_ENV}.`,
+      });
+    }
+
+    if (env.APP_ENV && env.NODE_ENV && env.APP_ENV !== env.NODE_ENV) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["APP_ENV"],
+        message: "APP_ENV y NODE_ENV deben coincidir cuando ambos estan definidos.",
+      });
+    }
+
+    if (env.ALLOW_WEAK_SECRETS === "1" && appEnv !== "development") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ALLOW_WEAK_SECRETS"],
+        message: "ALLOW_WEAK_SECRETS=1 solo puede utilizarse en development.",
+      });
+    }
+
+    try {
+      parseTrustProxy(env.TRUST_PROXY);
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["TRUST_PROXY"],
+        message: error instanceof Error ? error.message : "TRUST_PROXY invalido.",
+      });
+    }
 
     if (!weakSecretsAllowed) {
       if (isWeakJwtSecret(env.JWT_SECRET)) {
@@ -136,12 +221,37 @@ const envSchema = z
     }
 
     if (production) {
+      if (!isProductionDatabaseUrl(env.DATABASE_URL)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["DATABASE_URL"],
+          message:
+            "DATABASE_URL debe ser una URL MySQL completa, con usuario, password, host y base sin placeholders en produccion.",
+        });
+      }
+
       if (!env.PUBLIC_WEB_URL) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["PUBLIC_WEB_URL"],
           message:
             "PUBLIC_WEB_URL es obligatoria en produccion para construir enlaces de verificacion y recuperacion.",
+        });
+      }
+
+      if (env.PUBLIC_WEB_URL && !isSecurePublicUrl(env.PUBLIC_WEB_URL)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PUBLIC_WEB_URL"],
+          message: "PUBLIC_WEB_URL debe usar HTTPS y un host no local en produccion.",
+        });
+      }
+
+      if (env.PUBLIC_API_BASE_URL && !isSecurePublicUrl(env.PUBLIC_API_BASE_URL)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PUBLIC_API_BASE_URL"],
+          message: "PUBLIC_API_BASE_URL debe usar HTTPS y un host no local en produccion.",
         });
       }
 
@@ -161,6 +271,17 @@ const envSchema = z
           message:
             "CORS_ORIGIN debe listar dominios explicitos en produccion. No uses '*'.",
         });
+      }
+
+      for (const origin of explicitOrigins) {
+        if (!isSecureCorsOrigin(origin)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["CORS_ORIGIN"],
+            message: "Cada CORS_ORIGIN debe ser un origen HTTPS no local en produccion.",
+          });
+          break;
+        }
       }
 
       if (env.AUTH_EMAIL_PROVIDER !== "resend") {
@@ -188,12 +309,44 @@ const envSchema = z
         });
       }
 
+      if (env.RESEND_API_KEY && isWeakProviderSecret(env.RESEND_API_KEY)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["RESEND_API_KEY"],
+          message: "RESEND_API_KEY parece un placeholder o es demasiado corta para produccion.",
+        });
+      }
+
+      if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["JWT_REFRESH_SECRET"],
+          message: "JWT_REFRESH_SECRET debe ser independiente de JWT_SECRET en produccion.",
+        });
+      }
+
       if (env.UPLOADS_DRIVER === "s3" && !env.UPLOADS_PUBLIC_BASE_URL) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["UPLOADS_PUBLIC_BASE_URL"],
           message:
             "UPLOADS_PUBLIC_BASE_URL es obligatoria en produccion si UPLOADS_DRIVER=s3.",
+        });
+      }
+
+      if (env.UPLOADS_PUBLIC_BASE_URL && !isSecurePublicUrl(env.UPLOADS_PUBLIC_BASE_URL)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["UPLOADS_PUBLIC_BASE_URL"],
+          message: "UPLOADS_PUBLIC_BASE_URL debe usar HTTPS y un host no local en produccion.",
+        });
+      }
+
+      if (env.S3_ENDPOINT && !isSecurePublicUrl(env.S3_ENDPOINT)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_ENDPOINT"],
+          message: "S3_ENDPOINT debe usar HTTPS y un host no local en produccion.",
         });
       }
     }
@@ -224,15 +377,42 @@ const envSchema = z
           });
         }
       }
-    }
-  });
 
-const parsedEnv = envSchema.safeParse(process.env);
+      if (production && env.S3_ACCESS_KEY_ID && isWeakProviderSecret(env.S3_ACCESS_KEY_ID)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_ACCESS_KEY_ID"],
+          message: "S3_ACCESS_KEY_ID parece un placeholder o es demasiado corto para produccion.",
+        });
+      }
+
+      if (production && env.S3_SECRET_ACCESS_KEY && isWeakProviderSecret(env.S3_SECRET_ACCESS_KEY)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_SECRET_ACCESS_KEY"],
+          message: "S3_SECRET_ACCESS_KEY parece un placeholder o es demasiado corto para produccion.",
+        });
+      }
+    }
+  })
+  .transform((env) => ({
+    ...env,
+    APP_ENV: env.APP_ENV || ("development" as const),
+  }));
+
+export function validateEnvironment(source: NodeJS.ProcessEnv) {
+  return envSchema.safeParse(source);
+}
+
+const parsedEnv = validateEnvironment(process.env);
 
 if (!parsedEnv.success) {
+  const configurationErrors = Object.entries(parsedEnv.error.flatten().fieldErrors).flatMap(
+    ([field, messages]) => (messages || []).map((message) => ({ field, message })),
+  );
   logger.error(
     {
-      errors: parsedEnv.error.flatten().fieldErrors,
+      configurationErrors,
     },
     "Variables de entorno invalidas",
   );

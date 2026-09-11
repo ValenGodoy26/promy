@@ -43,6 +43,8 @@ Variables esperadas:
 ```env
 PORT=4000
 APP_ENV=development
+NODE_ENV=development
+TRUST_PROXY=none
 CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 PUBLIC_WEB_URL=http://localhost:5173
 PUBLIC_API_BASE_URL=http://localhost:4000
@@ -56,13 +58,29 @@ DATABASE_URL=mysql://user:password@localhost:3306/promy
 
 Reglas de seguridad de arranque:
 
+- `APP_ENV` controla el comportamiento de PROMY. Si `NODE_ENV` es `test` o `production`, `APP_ENV` es obligatorio; si ambos existen deben coincidir. Sólo la ausencia de ambos (o `NODE_ENV=development`) conserva el fallback local a `development`.
 - En `production`, `JWT_SECRET` y `JWT_REFRESH_SECRET` deben ser secretos aleatorios de al menos 32 caracteres.
+- En `production`, ambos JWT secrets deben ser distintos y no pueden usar valores conocidos del repositorio ni placeholders. El token SSE usa `JWT_SECRET` con audience/kind separados; no existe hoy un tercer secreto SSE.
 - En `production`, `AUTH_EMAIL_PROVIDER` debe ser `resend`.
 - `AUTH_EMAIL_PROVIDER=test` no envia trafico externo, expone previews de tokens para QA y solo es valido con `APP_ENV=test`.
 - En `production`, `AUTH_EMAIL_FROM`, `RESEND_API_KEY`, `PUBLIC_WEB_URL` y `CORS_ORIGIN` explicito son obligatorios.
 - En `production`, `CORS_ORIGIN` no puede ser `*`.
 - Si `UPLOADS_DRIVER=local`, conviene definir `PUBLIC_API_BASE_URL` para construir URLs publicas estables.
 - Si `UPLOADS_DRIVER=s3`, debes definir `UPLOADS_PUBLIC_BASE_URL`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` y `S3_SECRET_ACCESS_KEY`. Cloudflare R2 funciona con `S3_REGION=auto`.
+
+Clasificación de configuración crítica:
+
+- Siempre requerida: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`.
+- Producción: `APP_ENV=production`, `PUBLIC_WEB_URL`, `CORS_ORIGIN` HTTPS explícito, `AUTH_EMAIL_PROVIDER=resend`, `AUTH_EMAIL_FROM` y `RESEND_API_KEY`.
+- Condicional: `PUBLIC_API_BASE_URL` con uploads locales; variables S3 y `UPLOADS_PUBLIC_BASE_URL` sólo con `UPLOADS_DRIVER=s3`; Sentry/Redis/Expo sólo si se habilitan sus integraciones.
+- Opcional: release/environment de Sentry, reply-to, tuning de TTL y prefijos.
+
+Política de proxy:
+
+- `TRUST_PROXY=none` es el default seguro para conexión directa y descarta `Forwarded`/`X-Forwarded-*` antes de rate limiting y logging.
+- Si existe un reverse proxy, declarar aliases (`loopback`, `linklocal`, `uniquelocal`), IPs o CIDRs exactos separados por coma.
+- Se rechazan booleanos, comodines y cantidades de saltos como `1`, porque no describen de forma segura una topología variable.
+- La configuración no reemplaza el aislamiento del origin. En staging debe verificarse que sólo el proxy autorizado alcance la API y que sobrescriba headers forwarded.
 
 ## Prisma
 

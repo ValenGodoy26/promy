@@ -8,14 +8,16 @@ import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { attachRequestContext } from "./middlewares/requestContext.middleware";
 import { publicReadLimiter } from "./middlewares/rateLimiters";
-import { allowedOrigins, isProduction } from "./config/env";
+import { allowedOrigins, env, isProduction } from "./config/env";
+import { buildExpressTrustProxy, discardUntrustedForwardedHeaders } from "./config/proxy";
 import { shouldServeLocalUploads } from "./shared/services/uploads.service";
 
 const app = express();
 
-app.set("trust proxy", 1);
+app.set("trust proxy", buildExpressTrustProxy(env.TRUST_PROXY));
 app.disable("x-powered-by");
 app.use(compression());
+app.use(discardUntrustedForwardedHeaders(env.TRUST_PROXY));
 
 function isLocalDevelopmentOrigin(origin: string) {
   if (isProduction) {

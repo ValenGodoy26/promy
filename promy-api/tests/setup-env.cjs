@@ -1,4 +1,7 @@
 process.env.APP_ENV = process.env.APP_ENV || "development";
+process.env.NODE_ENV = process.env.NODE_ENV || "development";
+process.env.TRUST_PROXY = process.env.TRUST_PROXY || "none";
+process.env.ALLOW_WEAK_SECRETS = process.env.ALLOW_WEAK_SECRETS || "1";
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 process.env.PUBLIC_WEB_URL = process.env.PUBLIC_WEB_URL || "http://localhost:5173";
 process.env.PUBLIC_API_BASE_URL = process.env.PUBLIC_API_BASE_URL || "http://localhost:4000";
