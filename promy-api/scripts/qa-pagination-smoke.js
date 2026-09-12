@@ -41,6 +41,49 @@ async function collectPages(client, path, token, limit, itemKey) {
   return { items, total };
 }
 
+function paginatedPath(path, parameters) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${new URLSearchParams(parameters)}`;
+}
+
+async function assertPaginationContract(client, path, token, itemKey, pageBased = false) {
+  const headers = { Authorization: `Bearer ${token}` };
+  for (const limit of [0, 101]) {
+    const response = await client.request(paginatedPath(path, {
+      ...(pageBased ? { page: "1" } : {}),
+      limit: String(limit),
+    }), { headers });
+    assert(response.status === 400, `${path}: limit=${limit} must return 400`);
+  }
+
+  for (const limit of [1, 100]) {
+    const response = await client.request(paginatedPath(path, {
+      ...(pageBased ? { page: "1" } : {}),
+      limit: String(limit),
+    }), { headers });
+    assert(response.ok, `${path}: limit=${limit} must be accepted`);
+    assert(Array.isArray(response.data[itemKey]), `${path}: missing ${itemKey}`);
+    assert(typeof response.data.hasMore === "boolean", `${path}: hasMore must be boolean`);
+    if (pageBased) {
+      assert(typeof response.data.total === "number", `${path}: total must be numeric`);
+    } else if (response.data.hasMore) {
+      assert(typeof response.data.nextCursor === "string" && response.data.nextCursor, `${path}: hasMore requires nextCursor`);
+    }
+  }
+
+  const deterministicUrl = paginatedPath(path, {
+    ...(pageBased ? { page: "1" } : {}),
+    limit: "13",
+  });
+  const first = await client.request(deterministicUrl, { headers });
+  const second = await client.request(deterministicUrl, { headers });
+  assert(first.ok && second.ok, `${path}: deterministic order requests failed`);
+  assert(
+    JSON.stringify(first.data[itemKey].map((item) => item.id)) === JSON.stringify(second.data[itemKey].map((item) => item.id)),
+    `${path}: repeated first page changed order`,
+  );
+}
+
 function assertExhaustive(items, expected, label) {
   const ids = items.map((item) => item.id);
   assert(ids.length === expected, `${label}: expected ${expected}, got ${ids.length}`);
@@ -89,6 +132,12 @@ async function main() {
   const clientSession = await loginMobile(mobile, clientUser.email, password);
   const commerceSession = await loginWeb(web, "comercio@promy.com", "demo1234");
   const adminSession = await loginWeb(web, "admin@promy.com", "demo1234");
+  await assertPaginationContract(mobile, "/redemptions/me", clientSession.accessToken, "redemptions");
+  await assertPaginationContract(web, "/commerce/redemptions", commerceSession.accessToken, "redemptions");
+  await assertPaginationContract(mobile, "/notifications/me", clientSession.accessToken, "notifications");
+  await assertPaginationContract(web, `/admin/commerces?search=${encodeURIComponent(marker)}`, adminSession.accessToken, "commerces", true);
+  await assertPaginationContract(web, `/admin/promotions?search=${encodeURIComponent(marker)}`, adminSession.accessToken, "promotions", true);
+  await assertPaginationContract(web, `/admin/audit-logs?search=${encodeURIComponent(marker)}&incidentOnly=true`, adminSession.accessToken, "auditLogs", true);
   const userRedemptions = await collectCursor(mobile, "/redemptions/me", clientSession.accessToken, 13);
   const commerceRedemptions = await collectCursor(web, "/commerce/redemptions", commerceSession.accessToken, 17);
   const notifications = await collectCursor(mobile, "/notifications/me", clientSession.accessToken, 19);
@@ -106,7 +155,7 @@ async function main() {
   assertExhaustive(audit.items, 63, "admin audit");
   assert(audit.total === 63, "admin audit total mismatch");
 
-  console.log(JSON.stringify({ smoke: "pagination", redemptions: 65, notifications: 73, adminCommerces: 55, adminPromotions: 65, auditLogs: 63, duplicates: 0, lastReachable: true, filtersCombined: true, status: "PASS" }));
+  console.log(JSON.stringify({ smoke: "pagination", redemptions: 65, notifications: 73, adminCommerces: 55, adminPromotions: 65, auditLogs: 63, duplicates: 0, lastReachable: true, filtersCombined: true, limitsValidated: 6, deterministicOrder: true, hasMoreCoherent: true, status: "PASS" }));
 
   await prisma.adminActionLog.deleteMany({ where: { note: { startsWith: marker } } });
   await prisma.promotion.deleteMany({ where: { id: { in: promotions.map((item) => item.id) } } });
