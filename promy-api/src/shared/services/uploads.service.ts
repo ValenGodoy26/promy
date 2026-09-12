@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -53,7 +54,7 @@ export function buildSafeUploadFilename(originalName?: string | null) {
     .slice(0, 48)
     .toLowerCase();
 
-  return `${Date.now()}-${safeBase || "image"}.webp`;
+  return `${randomUUID()}-${safeBase || "image"}.webp`;
 }
 
 export async function optimizeCommerceImageUpload(input: {

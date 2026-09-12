@@ -12,6 +12,16 @@ type EmailDeliveryResult = {
   delivery: "console" | "test" | "resend";
 };
 
+const testEmailOutbox: SendEmailInput[] = [];
+
+export function clearTestEmailOutbox() {
+  testEmailOutbox.length = 0;
+}
+
+export function getTestEmailOutbox() {
+  return testEmailOutbox.map((email) => ({ ...email }));
+}
+
 function ensureConfiguredForProvider() {
   if (!env.AUTH_EMAIL_FROM) {
     throw new ServiceError(
@@ -68,6 +78,8 @@ export async function sendTransactionalEmail(input: SendEmailInput): Promise<Ema
         { code: "EMAIL_TEST_PROVIDER_FORBIDDEN" },
       );
     }
+
+    testEmailOutbox.push({ ...input });
 
     return {
       delivery: "test",

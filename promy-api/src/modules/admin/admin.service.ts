@@ -11,6 +11,7 @@ import { sharedTtlCache } from "../../shared/cache/ttlCache";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { logOperationalEvent, logger, logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
+import { escapeHtmlText } from "../../shared/security/html";
 import { createAppNotification } from "../notifications/notifications.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
@@ -231,14 +232,20 @@ async function sendCommerceStatusEmail(params: {
       : params.note
       ? `Tu alta de ${params.commerceName} necesita correcciones: ${params.note}`
       : `Tu alta de ${params.commerceName} necesita correcciones antes de poder operar.`;
+  const htmlBody =
+    params.status === "APPROVED"
+      ? `Tu comercio ${escapeHtmlText(params.commerceName)} ya fue aprobado y puede operar promociones en PROMY.`
+      : params.note
+      ? `Tu alta de ${escapeHtmlText(params.commerceName)} necesita correcciones: ${escapeHtmlText(params.note)}`
+      : `Tu alta de ${escapeHtmlText(params.commerceName)} necesita correcciones antes de poder operar.`;
 
   await sendTransactionalEmail({
     to: params.email,
     subject,
     text: `${params.fullName}, ${body}`,
     html: `
-      <p>${params.fullName},</p>
-      <p>${body}</p>
+      <p>${escapeHtmlText(params.fullName)},</p>
+      <p>${htmlBody}</p>
       <p>Equipo PROMY</p>
     `,
   });

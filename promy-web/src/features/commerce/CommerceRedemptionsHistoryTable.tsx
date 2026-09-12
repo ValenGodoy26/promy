@@ -1,11 +1,7 @@
 import React from "react";
 import type { CommerceManagedRedemption } from "../../types/api";
 import { formatDate, StatusBadge } from "./CommerceShared";
-
-function escapeCSVCell(value: string | number | null | undefined) {
-  const str = value == null ? "" : String(value);
-  return `"${str.replace(/"/g, '""')}"`;
-}
+import { escapeCSVCell } from "./csv";
 
 export function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
   const headers = [

@@ -7,39 +7,30 @@ import { env, isDevelopment, isTest } from "../../config/env";
 import { AUTH_REFRESH_INVALID_MESSAGE } from "../../shared/http/auth";
 import { logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
+import { escapeHtmlAttribute, escapeHtmlText } from "../../shared/security/html";
+import { newPasswordSchema, PASSWORD_MIN_LENGTH } from "../../shared/security/passwordPolicy";
 import { getRefreshExpiresAt, signAccessToken, signRefreshToken, verifyRefreshToken } from "../../shared/utils/jwt";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { cleanText, ServiceError } from "../../shared/utils/service";
 import { createAppNotification } from "../notifications/notifications.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
-const PASSWORD_MIN_LENGTH = 8;
 const EMAIL_TOKEN_TTL_HOURS = 24;
 const PASSWORD_RESET_TTL_MINUTES = 30;
 const DUMMY_PASSWORD_HASH =
   "$2b$10$5aMEhzxXgtrtXu6JG67biOTo0nH9bjbqOl7lQ31eeNpxK7Ygz/UTa";
 
-const passwordSchema = z
-  .string()
-  .min(
-    PASSWORD_MIN_LENGTH,
-    `La contrasena debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`,
-  )
-  .regex(/[A-Z]/, "La contrasena debe incluir al menos una mayuscula")
-  .regex(/[a-z]/, "La contrasena debe incluir al menos una minuscula")
-  .regex(/\d/, "La contrasena debe incluir al menos un numero");
-
 export const registerSchema = z.object({
   fullName: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120),
   email: z.string().trim().email("Email invalido").max(191),
-  password: passwordSchema,
+  password: newPasswordSchema,
   phone: z.string().trim().min(6, "Telefono invalido").max(40).optional(),
 });
 
 export const registerCommerceSchema = z.object({
   fullName: z.string().trim().min(3, "El nombre del responsable debe tener al menos 3 caracteres").max(120),
   email: z.string().trim().email("Email invalido").max(191),
-  password: passwordSchema,
+  password: newPasswordSchema,
   phone: z.string().trim().min(6, "Telefono invalido").max(40).optional(),
   commerceName: z.string().trim().min(3, "El nombre del comercio debe tener al menos 3 caracteres").max(120),
   shortDescription: z
@@ -83,7 +74,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().trim().min(20, "Token invalido"),
-  password: passwordSchema,
+  password: newPasswordSchema,
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -187,15 +178,17 @@ async function sendEmailVerificationEmail(params: {
 
   const preview = buildAuthActionPreview("/verify-email", params.token);
   const greeting = cleanText(params.fullName) ?? "Hola";
+  const htmlGreeting = escapeHtmlText(greeting);
+  const htmlLink = escapeHtmlAttribute(link);
 
   await sendTransactionalEmail({
     to: params.email,
     subject: "Verifica tu email en PROMY",
     text: `${greeting}, verifica tu email para activar tu cuenta en PROMY: ${link}`,
     html: `
-      <p>${greeting},</p>
+      <p>${htmlGreeting},</p>
       <p>Necesitamos verificar tu email para activar tu cuenta en PROMY.</p>
-      <p><a href="${link}">Verificar email</a></p>
+      <p><a href="${htmlLink}">Verificar email</a></p>
       <p>Si no solicitaste este registro, puedes ignorar este mensaje.</p>
     `,
   });
@@ -218,15 +211,17 @@ async function sendPasswordResetEmail(params: {
 
   const preview = buildAuthActionPreview("/reset-password", params.token);
   const greeting = cleanText(params.fullName) ?? "Hola";
+  const htmlGreeting = escapeHtmlText(greeting);
+  const htmlLink = escapeHtmlAttribute(link);
 
   await sendTransactionalEmail({
     to: params.email,
     subject: "Recupera tu contrasena de PROMY",
     text: `${greeting}, usa este enlace para recuperar tu contrasena en PROMY: ${link}`,
     html: `
-      <p>${greeting},</p>
+      <p>${htmlGreeting},</p>
       <p>Recibimos una solicitud para restablecer tu contrasena en PROMY.</p>
-      <p><a href="${link}">Restablecer contrasena</a></p>
+      <p><a href="${htmlLink}">Restablecer contrasena</a></p>
       <p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
     `,
   });
@@ -250,8 +245,8 @@ async function sendWelcomeEmail(params: {
     subject: params.role === "COMMERCE" ? "Bienvenido a PROMY Comercios" : "Bienvenido a PROMY",
     text: `${greeting}, ${body}`,
     html: `
-      <p>${greeting},</p>
-      <p>${body}</p>
+      <p>${escapeHtmlText(greeting)},</p>
+      <p>${escapeHtmlText(body)}</p>
       <p>Equipo PROMY</p>
     `,
   });
@@ -493,12 +488,13 @@ async function issuePasswordResetToken(userId: number) {
 }
 
 export async function registerClient(input: RegisterInput) {
+  const password = newPasswordSchema.parse(input.password);
   const email = normalizeEmail(input.email);
   const phone = cleanText(input.phone) ?? null;
 
   await ensureEmailAvailable(email);
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
     data: {
@@ -538,6 +534,7 @@ export async function registerClient(input: RegisterInput) {
 }
 
 export async function registerCommerceOwner(input: RegisterCommerceInput) {
+  const password = newPasswordSchema.parse(input.password);
   const email = normalizeEmail(input.email);
   const phone = cleanText(input.phone) ?? null;
   const instagram = cleanText(input.instagram) ?? null;
@@ -581,7 +578,7 @@ export async function registerCommerceOwner(input: RegisterCommerceInput) {
     throw new ServiceError("La categoria seleccionada no existe o esta inactiva", 400);
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const result = await prisma.$transaction(async (tx) => {
     const owner = await tx.user.create({
@@ -932,6 +929,7 @@ export async function requestPasswordReset(input: { email: string }) {
 }
 
 export async function resetUserPassword(input: { token: string; password: string }) {
+  const password = newPasswordSchema.parse(input.password);
   const tokenHash = buildOpaqueTokenFingerprint(input.token);
 
   const user = await prisma.user.findFirst({
@@ -950,7 +948,7 @@ export async function resetUserPassword(input: { token: string; password: string
     throw new ServiceError("El enlace para recuperar la contrasena no es valido o ya vencio", 400);
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   await prisma.$transaction([
     prisma.user.update({

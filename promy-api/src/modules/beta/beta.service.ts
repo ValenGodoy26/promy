@@ -2,6 +2,7 @@ import { z } from "zod";
 import prisma from "../../config/prisma";
 import { logOperationalEvent, logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
+import { escapeHtmlText } from "../../shared/security/html";
 
 export const createBetaAccessRequestSchema = z.object({
   email: z.string().trim().email("Email invalido").max(120, "Email demasiado largo"),
@@ -59,8 +60,8 @@ async function sendBetaAccessConfirmationEmail(params: {
     html: `
       <div style="font-family: Arial, sans-serif; color: #1a1a1a; line-height: 1.6;">
         <p>Hola,</p>
-        <p>Ya guardamos tu pedido para acceder a la beta de <strong>PROMY</strong> en <strong>${platformLabel}</strong>.</p>
-        ${params.city ? `<p><strong>Ciudad registrada:</strong> ${params.city}</p>` : ""}
+        <p>Ya guardamos tu pedido para acceder a la beta de <strong>PROMY</strong> en <strong>${escapeHtmlText(platformLabel)}</strong>.</p>
+        ${params.city ? `<p><strong>Ciudad registrada:</strong> ${escapeHtmlText(params.city)}</p>` : ""}
         <p>Cuando abramos nuevos cupos para tu plataforma te vamos a avisar por este medio.</p>
         <p>Si no hiciste esta solicitud, puedes ignorar este mensaje.</p>
         <p>Equipo PROMY</p>

@@ -6,6 +6,8 @@ import prisma from "../../config/prisma";
 import { env } from "../../config/env";
 import { logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
+import { escapeHtmlAttribute, escapeHtmlText } from "../../shared/security/html";
+import { newPasswordSchema } from "../../shared/security/passwordPolicy";
 import { ServiceError, cleanText } from "../../shared/utils/service";
 import { buildAuthActionPreview, buildPublicAppUrl, normalizeEmail } from "../auth/auth.service";
 import {
@@ -13,7 +15,6 @@ import {
   registerPushTokenForUser,
 } from "../push/push.service";
 
-const PASSWORD_MIN_LENGTH = 8;
 const EMAIL_CHANGE_TTL_HOURS = 24;
 const genderValues = ["WOMAN", "MAN", "NON_BINARY", "PREFER_NOT_TO_SAY", "OTHER"] as const;
 
@@ -88,20 +89,22 @@ async function sendPasswordChangedSecurityEmail(params: {
   const timestamp = formatSecurityTimestamp(params.changedAt);
   const ipLine = cleanText(params.ipAddress) || "IP no disponible";
   const deviceLine = buildSessionDeviceLabel(params.userAgent);
+  const htmlSupportEmail = escapeHtmlText(supportEmail);
+  const supportHref = escapeHtmlAttribute(`mailto:${supportEmail}`);
 
   await sendTransactionalEmail({
     to: params.email,
     subject: "Se cambió tu contraseña de PROMY",
     text: `${greeting}, alguien cambió la contraseña de tu cuenta el ${timestamp} desde ${ipLine} (${deviceLine}). Si no fuiste vos, escribinos a ${supportEmail}.`,
     html: `
-      <p>${greeting},</p>
+      <p>${escapeHtmlText(greeting)},</p>
       <p>Se cambió la contraseña de tu cuenta de PROMY.</p>
       <ul>
-        <li><strong>Fecha:</strong> ${timestamp}</li>
-        <li><strong>IP:</strong> ${ipLine}</li>
-        <li><strong>Dispositivo:</strong> ${deviceLine}</li>
+        <li><strong>Fecha:</strong> ${escapeHtmlText(timestamp)}</li>
+        <li><strong>IP:</strong> ${escapeHtmlText(ipLine)}</li>
+        <li><strong>Dispositivo:</strong> ${escapeHtmlText(deviceLine)}</li>
       </ul>
-      <p>Si no fuiste vos, escribinos cuanto antes a <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+      <p>Si no fuiste vos, escribinos cuanto antes a <a href="${supportHref}">${htmlSupportEmail}</a>.</p>
     `,
   });
 }
@@ -122,19 +125,20 @@ async function sendEmailChangeVerificationEmail(params: {
 
   const preview = buildAuthActionPreview("/confirm-email-change", params.token);
   const greeting = cleanText(params.fullName) ?? "Hola";
+  const htmlLink = escapeHtmlAttribute(link);
 
   await sendTransactionalEmail({
     to: params.nextEmail,
     subject: "Confirma tu nuevo email en PROMY",
     text: `${greeting}, recibimos un pedido para cambiar el email de tu cuenta PROMY desde ${params.currentEmail} a ${params.nextEmail}. Confirma el nuevo email aqui: ${link}`,
     html: `
-      <p>${greeting},</p>
+      <p>${escapeHtmlText(greeting)},</p>
       <p>Recibimos un pedido para cambiar el email de tu cuenta PROMY.</p>
       <ul>
-        <li><strong>Email actual:</strong> ${params.currentEmail}</li>
-        <li><strong>Nuevo email:</strong> ${params.nextEmail}</li>
+        <li><strong>Email actual:</strong> ${escapeHtmlText(params.currentEmail)}</li>
+        <li><strong>Nuevo email:</strong> ${escapeHtmlText(params.nextEmail)}</li>
       </ul>
-      <p><a href="${link}">Confirmar nuevo email</a></p>
+      <p><a href="${htmlLink}">Confirmar nuevo email</a></p>
       <p>Si no fuiste vos, puedes ignorar este mensaje y tu cuenta seguira usando el email actual.</p>
     `,
   });
@@ -152,6 +156,8 @@ async function sendEmailChangedSecurityNotice(params: {
   const timestamp = formatSecurityTimestamp(params.changedAt);
   const supportEmail = buildSecurityContactEmail();
   const recipients = new Set([params.previousEmail, params.nextEmail]);
+  const htmlSupportEmail = escapeHtmlText(supportEmail);
+  const supportHref = escapeHtmlAttribute(`mailto:${supportEmail}`);
 
   await Promise.all(
     [...recipients].map((recipient) =>
@@ -160,13 +166,13 @@ async function sendEmailChangedSecurityNotice(params: {
         subject: "Tu email de PROMY fue actualizado",
         text: `${greeting}, el email de tu cuenta PROMY se actualizo el ${timestamp}. Nuevo email: ${params.nextEmail}. Si no fuiste vos, escribinos a ${supportEmail}.`,
         html: `
-          <p>${greeting},</p>
-          <p>El email de tu cuenta PROMY se actualizo el ${timestamp}.</p>
+          <p>${escapeHtmlText(greeting)},</p>
+          <p>El email de tu cuenta PROMY se actualizo el ${escapeHtmlText(timestamp)}.</p>
           <ul>
-            <li><strong>Email anterior:</strong> ${params.previousEmail}</li>
-            <li><strong>Nuevo email:</strong> ${params.nextEmail}</li>
+            <li><strong>Email anterior:</strong> ${escapeHtmlText(params.previousEmail)}</li>
+            <li><strong>Nuevo email:</strong> ${escapeHtmlText(params.nextEmail)}</li>
           </ul>
-          <p>Si no fuiste vos, escribinos cuanto antes a <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+          <p>Si no fuiste vos, escribinos cuanto antes a <a href="${supportHref}">${htmlSupportEmail}</a>.</p>
         `,
       }),
     ),
@@ -198,16 +204,6 @@ export const unregisterPushTokenSchema = z.object({
   token: z.string().trim().min(20, "Token push invalido"),
 });
 
-const passwordSchema = z
-  .string()
-  .min(
-    PASSWORD_MIN_LENGTH,
-    `La contrasena debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`,
-  )
-  .regex(/[A-Z]/, "La contrasena debe incluir al menos una mayuscula")
-  .regex(/[a-z]/, "La contrasena debe incluir al menos una minuscula")
-  .regex(/\d/, "La contrasena debe incluir al menos un numero");
-
 export const updateCurrentUserSchema = z.object({
   fullName: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120),
   phone: z.string().trim().min(6, "Telefono invalido").max(40).optional().or(z.literal("")),
@@ -227,7 +223,7 @@ export const confirmCurrentUserEmailChangeSchema = z.object({
 
 export const changeCurrentUserPasswordSchema = z.object({
   currentPassword: z.string().min(8, "Ingresa tu contrasena actual"),
-  nextPassword: passwordSchema,
+  nextPassword: newPasswordSchema,
 });
 
 export type ActiveSessionSummary = {
@@ -644,6 +640,7 @@ export async function changeCurrentUserPassword(params: {
   ipAddress?: string | null;
   userAgent?: string | null;
 }) {
+  const nextPassword = newPasswordSchema.parse(params.nextPassword);
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
     select: {
@@ -665,13 +662,13 @@ export async function changeCurrentUserPassword(params: {
     });
   }
 
-  if (params.currentPassword === params.nextPassword) {
+  if (params.currentPassword === nextPassword) {
     throw new ServiceError("Elige una contrasena nueva distinta a la actual.", 409, {
       code: "PASSWORD_NOT_CHANGED",
     });
   }
 
-  const nextPasswordHash = await bcrypt.hash(params.nextPassword, 10);
+  const nextPasswordHash = await bcrypt.hash(nextPassword, 10);
   const changedAt = new Date();
 
   await prisma.$transaction(async (tx) => {
