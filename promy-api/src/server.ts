@@ -8,6 +8,10 @@ import {
 } from "./shared/utils/promotionExpiration";
 import { logError, logInfo, logWarn } from "./shared/logging/logger";
 import { captureApiException, initApiSentry } from "./shared/observability/sentry";
+import { flushApiSentry } from "./shared/observability/sentry";
+import { closeAllRealtimeClients } from "./modules/realtime/realtime.service";
+import { sharedTtlCache } from "./shared/cache/ttlCache";
+import { createShutdownController } from "./shared/server/shutdown";
 
 initApiSentry();
 
@@ -23,15 +27,21 @@ const bootstrap = async () => {
       });
     });
 
-    const shutdown = async (signal: string) => {
-      logWarn(undefined, "Senal de apagado recibida", { signal });
+    const runShutdown = createShutdownController({
+      server,
+      timeoutMs: 10_000,
+      stopBackgroundWork: stopPromotionExpirationLoop,
+      closeRealtime: closeAllRealtimeClients,
+      closeCache: () => sharedTtlCache.close(),
+      disconnectDatabase: () => prisma.$disconnect(),
+      flushTelemetry: flushApiSentry,
+      exit: (code) => process.exit(code),
+      onForced: () => logWarn(undefined, "Shutdown deadline exceeded; forcing connections closed"),
+    });
 
-      stopPromotionExpirationLoop();
-      server.close(async () => {
-        await prisma.$disconnect();
-        logInfo(undefined, "Servidor detenido correctamente");
-        process.exit(0);
-      });
+    const shutdown = async (signal: string, exitCode = 0) => {
+      logWarn(undefined, "Senal de apagado recibida", { signal });
+      await runShutdown(exitCode);
     };
 
     process.on("SIGINT", () => {
@@ -45,11 +55,13 @@ const bootstrap = async () => {
     process.on("uncaughtException", (error) => {
       captureApiException(error, undefined, { kind: "uncaughtException" });
       logError(undefined, error, "Uncaught exception");
+      void shutdown("uncaughtException", 1);
     });
 
     process.on("unhandledRejection", (reason) => {
       captureApiException(reason, undefined, { kind: "unhandledRejection" });
       logError(undefined, reason instanceof Error ? reason : new Error(String(reason)), "Unhandled rejection");
+      void shutdown("unhandledRejection", 1);
     });
   } catch (error) {
     captureApiException(error, undefined, { kind: "bootstrap" });

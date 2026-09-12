@@ -203,6 +203,16 @@ export class TtlCache {
 
     this.memory.clear();
   }
+
+  async close() {
+    this.memory.clear();
+    const connecting = this.redisConnectingPromise;
+    if (connecting) await connecting.catch(() => null);
+    if (this.redisClient?.isOpen) {
+      await this.redisClient.quit();
+    }
+    this.redisClient = null;
+  }
 }
 
 export const sharedTtlCache = new TtlCache();

@@ -81,6 +81,23 @@ export function unregisterRealtimeClient(clientId: string) {
   clients.delete(clientId);
 }
 
+export function closeAllRealtimeClients() {
+  for (const client of clients.values()) {
+    try {
+      const socket = client.response.socket;
+      client.response.end();
+      socket?.end();
+    } catch {
+      // The transport is already gone; removing it is enough.
+    }
+  }
+  clients.clear();
+}
+
+export function getRealtimeClientCount() {
+  return clients.size;
+}
+
 export function publishRealtimeEvent(input: Omit<RealtimeEvent, "id" | "createdAt">) {
   const event: RealtimeEvent = {
     id: makeEventId(),

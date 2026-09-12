@@ -95,3 +95,8 @@ export function captureApiException(
 export function isApiSentryEnabled() {
   return sentryEnabled;
 }
+
+export async function flushApiSentry(timeoutMs: number) {
+  if (!sentryEnabled || !sentryInitialized) return true;
+  return Sentry.flush(timeoutMs);
+}

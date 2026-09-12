@@ -2,6 +2,7 @@ import { Router } from "express";
 import prisma from "../config/prisma";
 import { env } from "../config/env";
 import { logError } from "../shared/logging/logger";
+import { isServerShuttingDown } from "../shared/server/runtimeState";
 
 const router = Router();
 
@@ -33,6 +34,9 @@ function collectCriticalConfig() {
 }
 
 router.get("/", async (req, res) => {
+  if (isServerShuttingDown()) {
+    return res.status(503).json({ ok: false, message: "Server is shutting down", requestId: req.requestId });
+  }
   const config = collectCriticalConfig();
 
   try {
