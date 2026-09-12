@@ -32,6 +32,17 @@ function validateTestDatabaseUrl(rawUrl) {
   return { databaseName, url: rawUrl };
 }
 
+async function assertCurrentTestDatabase(prisma, context) {
+  const expected = validateTestDatabaseUrl(process.env.TEST_DATABASE_URL);
+  const identity = await prisma.$queryRaw`SELECT DATABASE() AS databaseName`;
+  assert(
+    identity[0]?.databaseName === expected.databaseName,
+    `${context}: base conectada '${identity[0]?.databaseName || "desconocida"}' no coincide con TEST_DATABASE_URL`,
+  );
+  return expected;
+}
+
 module.exports = {
+  assertCurrentTestDatabase,
   validateTestDatabaseUrl,
 };

@@ -10,6 +10,7 @@ const {
   loginMobile,
   loginWeb,
 } = require("./qa-http-client");
+const { assertCurrentTestDatabase } = require("./qa-database-guard");
 
 const PASSWORD = "DomainIntegrity123!";
 const DEMO_PASSWORD = "demo1234";
@@ -73,11 +74,7 @@ async function expectValidationRejected(ownerUserId, redemption, expectedCode) {
 }
 
 async function main() {
-  const identity = await prisma.$queryRaw`SELECT DATABASE() AS databaseName`;
-  assert(
-    identity[0]?.databaseName === "promy_integration_test",
-    `Base insegura para domain integrity: ${identity[0]?.databaseName || "desconocida"}`,
-  );
+  const database = await assertCurrentTestDatabase(prisma, "Domain integrity");
 
   const [city, category] = await Promise.all([
     prisma.city.findFirst({ where: { isActive: true } }),
@@ -369,7 +366,7 @@ async function main() {
   console.log(
     JSON.stringify({
       smoke: "domain-integrity",
-      database: identity[0].databaseName,
+      database: database.databaseName,
       red001: concurrencyResults,
       red002: ["expired", "rejected", "hidden", "happy-path"],
       com001: "self-pause-preserved-admin-reactivation-blocked",

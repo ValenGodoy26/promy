@@ -4,6 +4,7 @@ const path = require("path");
 const prisma = require("../dist/config/prisma").default;
 const { createCommerceWithLocation } = require("../prisma/commerce.spatial");
 const { assert, createWebClient, loginWeb } = require("./qa-http-client");
+const { assertCurrentTestDatabase } = require("./qa-database-guard");
 
 const PASSWORD = "PrivacySmoke123!";
 const stamp = `${Date.now()}-${process.pid}`;
@@ -55,11 +56,7 @@ async function createOwnerWithCommerce(suffix, passwordHash, cityId, categoryId)
 }
 
 async function main() {
-  const identity = await prisma.$queryRaw`SELECT DATABASE() AS databaseName`;
-  assert(
-    identity[0]?.databaseName === "promy_integration_test",
-    `Base insegura para privacy smoke: ${identity[0]?.databaseName || "desconocida"}`,
-  );
+  const database = await assertCurrentTestDatabase(prisma, "Privacy smoke");
   const [city, category] = await Promise.all([
     prisma.city.findFirst({ where: { isActive: true } }),
     prisma.category.findFirst({ where: { isActive: true } }),
@@ -156,7 +153,7 @@ async function main() {
 
   console.log(JSON.stringify({
     smoke: "privacy",
-    database: identity[0].databaseName,
+    database: database.databaseName,
     priv001: {
       ownListing: "no-email-no-phone",
       dashboard: "no-email-no-phone",

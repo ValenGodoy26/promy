@@ -2,6 +2,7 @@ const prisma = require("../dist/config/prisma").default;
 const { signAccessToken } = require("../dist/shared/utils/jwt");
 const { isPromotionScheduleActiveNow } = require("../dist/shared/utils/promotionStatus");
 const { assert, createMobileClient } = require("./qa-http-client");
+const { assertCurrentTestDatabase } = require("./qa-database-guard");
 
 const marker = `BlockFive${Date.now()}`;
 const catalogMarker = `${marker}Catalog`;
@@ -15,11 +16,7 @@ function statusCounts(responses) {
 }
 
 async function main() {
-  const identity = await prisma.$queryRaw`SELECT DATABASE() AS databaseName`;
-  assert(
-    identity[0]?.databaseName === "promy_integration_test",
-    `Base insegura para API correctness: ${identity[0]?.databaseName}`,
-  );
+  const database = await assertCurrentTestDatabase(prisma, "API correctness");
 
   const request = (suffix) => createMobileClient({ forwardedIp: `127.70.0.${suffix}` });
 
@@ -195,7 +192,7 @@ async function main() {
 
     console.log(JSON.stringify({
       smoke: "api-correctness",
-      database: identity[0].databaseName,
+      database: database.databaseName,
       api001: {
         malformedJson: 400,
         oversizedJson: 413,

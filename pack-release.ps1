@@ -1,5 +1,7 @@
 param(
   [string]$ReleaseName = "",
+  [string]$OutputRoot = "",
+  [string]$CommitSha = "",
   [switch]$DryRun,
   [switch]$KeepLegacyArchives
 )
@@ -9,11 +11,26 @@ $ErrorActionPreference = "Stop"
 $workspaceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
-if ([string]::IsNullOrWhiteSpace($ReleaseName)) {
-  $ReleaseName = "promy-release-$timestamp"
+if ([string]::IsNullOrWhiteSpace($CommitSha)) {
+  $CommitSha = (& git -C $workspaceRoot rev-parse HEAD).Trim()
 }
 
-$releaseRoot = Join-Path $workspaceRoot "release"
+if ($CommitSha -notmatch '^[0-9a-f]{40}$') {
+  throw "Commit SHA invalido: $CommitSha"
+}
+
+if ([string]::IsNullOrWhiteSpace($ReleaseName)) {
+  $ReleaseName = "promy-release-$($CommitSha.Substring(0, 12))"
+}
+if ($ReleaseName -notmatch '^[A-Za-z0-9._-]+$') {
+  throw "ReleaseName contiene caracteres no permitidos: $ReleaseName"
+}
+
+$releaseRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+  Join-Path $workspaceRoot "release"
+} else {
+  [System.IO.Path]::GetFullPath($OutputRoot)
+}
 $bundleRoot = Join-Path $releaseRoot $ReleaseName
 
 $projects = @(
@@ -36,11 +53,16 @@ $excludedDirectories = @(
   "dist",
   ".qa",
   ".expo",
+  ".cache",
+  "coverage",
+  "audit",
+  ".codex",
+  ".agents",
   "release"
 )
 
 $excludedFilePatterns = @(
-  ".env.*",
+  ".env*",
   "*.log",
   "*.tsbuildinfo"
 )
@@ -63,6 +85,10 @@ function Test-ShouldExcludeFile {
 
   if ($excludedExactFiles -contains $Name) {
     return $true
+  }
+
+  if ($Name -eq ".env.example") {
+    return $false
   }
 
   foreach ($pattern in $excludedFilePatterns) {
@@ -227,22 +253,33 @@ if ($DryRun) {
   }
   Write-Output "[pack] excluiria carpetas: $($excludedDirectories -join ', ')"
   Write-Output "[pack] excluiria archivos: $($excludedExactFiles -join ', '), patrones $($excludedFilePatterns -join ', ')"
-  if (-not $KeepLegacyArchives) {
-    Write-Output "[pack] limpiaria archives legado: $($legacyArchivePaths -join ', ')"
-  }
+  Write-Output "[pack] archives historicos no se modifican: $($legacyArchivePaths -join ', ')"
   return
+}
+
+$currentHead = (& git -C $workspaceRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $currentHead -ne $CommitSha) {
+  throw "CommitSha debe coincidir exactamente con HEAD ($currentHead)"
+}
+
+$dirtyProjectPaths = @(
+  & git -C $workspaceRoot status --porcelain --untracked-files=all -- @($projects | ForEach-Object { $_.Name })
+)
+if ($LASTEXITCODE -ne 0) {
+  throw "No se pudo verificar el estado Git de los proyectos"
+}
+if ($dirtyProjectPaths.Count -gt 0) {
+  throw "Los proyectos contienen cambios no asociados al commit $CommitSha`n$($dirtyProjectPaths -join [Environment]::NewLine)"
 }
 
 New-Item -ItemType Directory -Path $bundleRoot -Force | Out-Null
 
-if (-not $KeepLegacyArchives) {
-  Remove-LegacyArchives -ArchivePaths $legacyArchivePaths
-}
+# Historical archives are inventory only; packaging never deletes them automatically.
 
 $notes = @(
   "Release: $ReleaseName",
-  "Generado: $(Get-Date -Format s)",
-  "Workspace: $workspaceRoot",
+  "Commit: $CommitSha",
+  "Generado UTC: $([DateTime]::UtcNow.ToString('o'))",
   "Excluidos (carpetas): $($excludedDirectories -join ', ')",
   "Excluidos (archivos): $($excludedExactFiles -join ', ')",
   "Excluidos (patrones): $($excludedFilePatterns -join ', ')"
@@ -270,5 +307,31 @@ foreach ($project in $projects) {
 
   Write-Output "[pack] generado $zipPath"
 }
+
+$artifactFiles = Get-ChildItem -LiteralPath $bundleRoot -File -Filter "*.zip" | Sort-Object Name
+$manifest = [ordered]@{
+  schemaVersion = 1
+  releaseName = $ReleaseName
+  commitSha = $CommitSha
+  builtAtUtc = [DateTime]::UtcNow.ToString('o')
+  nodeVersion = (& node --version).Trim()
+  npmVersion = (& npm --version).Trim()
+  projects = @($projects | ForEach-Object { $_.Name })
+  artifacts = @($artifactFiles | ForEach-Object {
+    [ordered]@{
+      file = $_.Name
+      bytes = $_.Length
+      sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+  })
+  exclusions = [ordered]@{
+    directories = $excludedDirectories
+    exactFiles = $excludedExactFiles
+    filePatterns = $excludedFilePatterns
+  }
+}
+$manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $bundleRoot "release-manifest.json") -Encoding utf8
+$manifest.artifacts | ForEach-Object { "$($_.sha256)  $($_.file)" } |
+  Set-Content -LiteralPath (Join-Path $bundleRoot "SHA256SUMS.txt") -Encoding ascii
 
 Write-Output "[pack] release lista en $bundleRoot"

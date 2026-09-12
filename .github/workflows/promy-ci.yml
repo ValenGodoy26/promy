@@ -47,6 +47,8 @@ jobs:
         run: npm test
       - name: Validate Prisma schema
         run: npx prisma validate
+      - name: Verify operational gates
+        run: node ../tools/verify-operational-gates.mjs ..
 
   api-integration:
     name: API Integration
@@ -161,6 +163,7 @@ jobs:
         working-directory: promy-mobile
     env:
       EXPO_PUBLIC_API_URL: http://127.0.0.1:4000/api
+      EXPO_PUBLIC_API_URLS: https://staging-inline-check.invalid/api
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -178,9 +181,39 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Verify safe network fallback policy
+        run: node scripts/verify-network-policy.cjs
       - name: Check Expo dependency alignment
         run: npx expo install --check
       - name: Expo Doctor
         run: npx --yes expo-doctor@1.20.4
       - name: Export Android bundle
         run: npx expo export --platform android
+      - name: Verify inlined API configuration
+        run: node scripts/verify-bundle-config.mjs dist
+
+  release-artifact:
+    name: Release Artifact
+    needs: [api, api-integration, web, landing, mobile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Package source by commit
+        shell: pwsh
+        run: ./pack-release.ps1 -OutputRoot "${{ runner.temp }}/promy-release" -ReleaseName "promy-release-${{ github.sha }}" -CommitSha "${{ github.sha }}"
+      - name: Verify manifest, checksums and exclusions
+        shell: pwsh
+        run: ./tools/verify-release.ps1 -BundlePath "${{ runner.temp }}/promy-release/promy-release-${{ github.sha }}" -ExpectedCommit "${{ github.sha }}"
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: promy-release-${{ github.sha }}
+          path: ${{ runner.temp }}/promy-release/promy-release-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14

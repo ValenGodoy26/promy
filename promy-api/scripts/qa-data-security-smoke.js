@@ -16,6 +16,7 @@ const {
 } = require("../dist/shared/services/email.service");
 const { buildSafeUploadFilename } = require("../dist/shared/services/uploads.service");
 const { assert } = require("./qa-http-client");
+const { assertCurrentTestDatabase } = require("./qa-database-guard");
 
 const stamp = `${Date.now()}-${process.pid}`;
 const email = `security-data-${stamp}@promy.test`;
@@ -32,8 +33,7 @@ function assertEscapedEmail(emailMessage, rawValue, escapedFragment, context) {
 }
 
 async function main() {
-  const identity = await prisma.$queryRaw`SELECT DATABASE() AS databaseName`;
-  assert(identity[0]?.databaseName === "promy_integration_test", "Smoke de seguridad fuera de la DB autorizada");
+  const database = await assertCurrentTestDatabase(prisma, "Data security smoke");
   assert(process.env.AUTH_EMAIL_PROVIDER === "test", "El smoke requiere el provider de email de test");
 
   try {
@@ -99,7 +99,7 @@ async function main() {
 
     console.log(JSON.stringify({
       smoke: "data-security",
-      database: identity[0].databaseName,
+      database: database.databaseName,
       sec002: {
         provider: "test",
         authTemplates: authEmails.length,
