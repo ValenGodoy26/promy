@@ -334,7 +334,6 @@ async function ensureDemoData({ concordia }) {
   console.log(`[seed] admin: ${admin.email}`);
   console.log(`[seed] cliente: ${client.email}`);
   console.log(`[seed] comercio: ${commerceUser.email}`);
-  console.log("[seed] password demo: demo1234");
 }
 
 async function runDemoSeed() {

@@ -444,9 +444,7 @@ async function runLocalRealSeed() {
   }
 
   console.log("[seed] local real listo");
-  console.log("[seed] admin: admin@promy.com / Admin1234");
-  console.log("[seed] cliente: cliente.local@promy.com / Cliente1234");
-  console.log("[seed] comercios: password comun Comercio1234");
+  console.log("[seed] usuarios locales creados; las credenciales no se imprimen");
 }
 
 runLocalRealSeed()
