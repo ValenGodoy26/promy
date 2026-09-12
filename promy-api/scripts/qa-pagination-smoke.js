@@ -67,7 +67,7 @@ async function assertPaginationContract(client, path, token, itemKey, pageBased 
     if (pageBased) {
       assert(typeof response.data.total === "number", `${path}: total must be numeric`);
     } else if (response.data.hasMore) {
-      assert(typeof response.data.nextCursor === "string" && response.data.nextCursor, `${path}: hasMore requires nextCursor`);
+      assert(Number.isInteger(response.data.nextCursor) && response.data.nextCursor > 0, `${path}: hasMore requires a positive numeric nextCursor`);
     }
   }
 
