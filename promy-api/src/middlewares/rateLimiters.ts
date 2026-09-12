@@ -5,12 +5,62 @@ const buildMessage = (message: string) => ({
   message,
 });
 
-export const authLimiter = rateLimit({
+export const betaAccessLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 18,
   standardHeaders: true,
   legacyHeaders: false,
   message: buildMessage("Demasiados intentos. Proba nuevamente en unos minutos."),
+});
+
+export const registrationLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de registros desde este origen. Espera unos minutos antes de volver a intentar.",
+  ),
+});
+
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de renovaciones de sesion. Espera unos minutos antes de volver a intentar.",
+  ),
+});
+
+export const verificationLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de verificaciones. Espera unos minutos antes de volver a intentar.",
+  ),
+});
+
+export const logoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de cierres de sesion. Espera unos minutos antes de volver a intentar.",
+  ),
+});
+
+export const passwordResetLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de recuperaciones. Espera unos minutos antes de volver a intentar.",
+  ),
 });
 
 export const loginLimiter = rateLimit({

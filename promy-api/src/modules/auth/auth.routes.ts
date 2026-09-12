@@ -13,22 +13,26 @@ import {
   verifyEmail,
 } from "./auth.controller";
 import {
-  authLimiter,
   forgotPasswordLimiter,
   loginLimiter,
+  logoutLimiter,
+  passwordResetLimiter,
+  refreshLimiter,
+  registrationLimiter,
+  verificationLimiter,
 } from "../../middlewares/rateLimiters";
 
 const router = Router();
 
-router.post("/register", authLimiter, register);
-router.post("/register-commerce", authLimiter, registerCommerce);
+router.post("/register", registrationLimiter, register);
+router.post("/register-commerce", registrationLimiter, registerCommerce);
 router.post("/login", loginLimiter, login);
-router.post("/refresh", authLimiter, refresh);
-router.post("/logout", authLimiter, logout);
-router.post("/request-email-verification", authLimiter, resendEmailVerification);
-router.post("/verify-email", authLimiter, verifyEmail);
+router.post("/refresh", refreshLimiter, refresh);
+router.post("/logout", logoutLimiter, logout);
+router.post("/request-email-verification", verificationLimiter, resendEmailVerification);
+router.post("/verify-email", verificationLimiter, verifyEmail);
 router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
-router.post("/reset-password", authLimiter, resetPassword);
+router.post("/reset-password", passwordResetLimiter, resetPassword);
 router.get("/me", requireAuth, getMe);
 
 export default router;

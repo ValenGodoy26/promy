@@ -12,6 +12,7 @@ import { newPasswordSchema, PASSWORD_MIN_LENGTH } from "../../shared/security/pa
 import { getRefreshExpiresAt, signAccessToken, signRefreshToken, verifyRefreshToken } from "../../shared/utils/jwt";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { cleanText, ServiceError } from "../../shared/utils/service";
+import { optionalCommercePhoneSchema } from "../../shared/validation/phone";
 import { createAppNotification } from "../notifications/notifications.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
@@ -31,7 +32,7 @@ export const registerCommerceSchema = z.object({
   fullName: z.string().trim().min(3, "El nombre del responsable debe tener al menos 3 caracteres").max(120),
   email: z.string().trim().email("Email invalido").max(191),
   password: newPasswordSchema,
-  phone: z.string().trim().min(6, "Telefono invalido").max(40).optional(),
+  phone: optionalCommercePhoneSchema,
   commerceName: z.string().trim().min(3, "El nombre del comercio debe tener al menos 3 caracteres").max(120),
   shortDescription: z
     .string()

@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "../../config/prisma";
 import { invalidatePublicCatalogCache } from "../../shared/cache/publicCatalogCache";
 import { parsePromotionTimeToMinutes } from "../../shared/utils/promotionStatus";
+import { nullableOptionalCommercePhoneSchema } from "../../shared/validation/phone";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
 function cleanText(value?: string | null) {
@@ -206,7 +207,7 @@ export const updateCommerceSchema = z
     shortDescription: nullableOptionalTextField(2, "La descripcion corta"),
     description: nullableOptionalTextField(2, "La descripcion"),
     address: optionalTextField(2, "La direccion"),
-    phone: nullableOptionalTextField(2, "El telefono"),
+    phone: nullableOptionalCommercePhoneSchema,
     instagram: nullableOptionalTextField(2, "El Instagram"),
     logoUrl: nullableOptionalUrlField,
     coverUrl: nullableOptionalUrlField,

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { createBetaRequest } from "./beta.controller";
-import { authLimiter } from "../../middlewares/rateLimiters";
+import { betaAccessLimiter } from "../../middlewares/rateLimiters";
 
 const router = Router();
 
-router.post("/access-requests", authLimiter, createBetaRequest);
+router.post("/access-requests", betaAccessLimiter, createBetaRequest);
 
 export default router;
