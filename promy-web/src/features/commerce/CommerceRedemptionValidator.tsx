@@ -18,6 +18,8 @@ type CommerceRedemptionValidatorProps = {
   onPasteAndValidate: () => void;
   onOpenScanner: () => void;
   onCloseScanner: () => void;
+  onRetryScanner: () => void;
+  onUseManualCode: () => void;
 };
 
 export function CommerceRedemptionValidator({
@@ -37,6 +39,8 @@ export function CommerceRedemptionValidator({
   onPasteAndValidate,
   onOpenScanner,
   onCloseScanner,
+  onRetryScanner,
+  onUseManualCode,
 }: CommerceRedemptionValidatorProps) {
   return (
     <>
@@ -136,6 +140,14 @@ export function CommerceRedemptionValidator({
             <div className="modal-footer">
               <button className="btn btn-ghost" type="button" onClick={onCloseScanner}>
                 Cerrar
+              </button>
+              {scannerError ? (
+                <button className="btn btn-secondary" type="button" onClick={onRetryScanner}>
+                  Reintentar camara
+                </button>
+              ) : null}
+              <button className="btn btn-primary" type="button" onClick={onUseManualCode}>
+                Ingresar codigo manualmente
               </button>
             </div>
           </div>

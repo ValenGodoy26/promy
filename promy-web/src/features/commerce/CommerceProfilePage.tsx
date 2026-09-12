@@ -25,6 +25,7 @@ import {
   SelectField,
   StatusBadge,
 } from "./CommerceShared";
+import { validateCommerceProfileForm } from "./commerceRules";
 
 function downloadSvg(svgId: string, filename: string) {
   const svg = document.getElementById(svgId);
@@ -74,6 +75,9 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<keyof CommerceProfileFormState, string>>
+  >({});
   const canOperate = commerce?.status === "APPROVED";
 
   const clientAppPath = useMemo(() => {
@@ -159,6 +163,14 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const nextErrors = validateCommerceProfileForm(form);
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setFeedback(null);
+      setError("Revisa los campos marcados antes de guardar.");
+      return;
+    }
+
     try {
       setSaving(true);
       setFeedback(null);
@@ -168,6 +180,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
       setCommerce(response.commerce);
       setFeedback(response.message || "Comercio actualizado correctamente.");
       setError(null);
+      setFormErrors({});
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "No pudimos guardar.");
     } finally {
@@ -436,17 +449,20 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
                 label="Nombre"
                 value={form.name || ""}
                 onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                error={formErrors.name}
               />
               <Field
                 label="Telefono"
                 value={form.phone || ""}
                 onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
+                error={formErrors.phone}
               />
               <Field
                 label="Direccion"
                 value={form.address || ""}
                 onChange={(value) => setForm((current) => ({ ...current, address: value }))}
                 className="field-wide"
+                error={formErrors.address}
               />
               <SelectField
                 label="Ciudad"
@@ -459,6 +475,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
                     label: `${city.name}, ${city.province}`,
                   })),
                 ]}
+                error={formErrors.cityId}
               />
               <SelectField
                 label="Categoria"
@@ -471,6 +488,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
                     label: category.name,
                   })),
                 ]}
+                error={formErrors.categoryId}
               />
               <Field
                 label="Instagram"
@@ -511,6 +529,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
                 onChange={(value) => setForm((current) => ({ ...current, latitude: value }))}
                 type="number"
                 inputMode="decimal"
+                error={formErrors.latitude}
               />
               <Field
                 label="Longitud"
@@ -518,6 +537,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
                 onChange={(value) => setForm((current) => ({ ...current, longitude: value }))}
                 type="number"
                 inputMode="decimal"
+                error={formErrors.longitude}
               />
 
               <div className="form-footer field-wide">

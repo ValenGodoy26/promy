@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner",
-    "test": "node tests/csv.test.mjs",
+    "test": "node --test tests/csv.test.mjs tests/commerce-workflows.test.mjs tests/camera.test.mjs",
     "typecheck": "tsc -b --pretty false",
     "build": "tsc -b && vite build --configLoader runner",
     "preview": "vite preview"

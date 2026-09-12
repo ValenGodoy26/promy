@@ -5,6 +5,7 @@ import { fetchCategories, fetchCities, registerCommerceRequest } from "../../lib
 import type { PublicCategory, PublicCity } from "../../types/api";
 import { PromyMark } from "../../components/Logo";
 import { IconArrowRight, IconCheck, IconStore } from "../../components/Icons";
+import { getCommercePhoneError } from "../commerce/commerceRules";
 
 type StepKey = "access" | "owner" | "commerce" | "details";
 
@@ -130,6 +131,8 @@ export default function CommerceRegisterPage() {
       if (!form.fullName.trim()) next.fullName = "Decinos cómo te llamás.";
       else if (form.fullName.trim().length < 2)
         next.fullName = "Nombre demasiado corto.";
+      const phoneError = getCommercePhoneError(form.phone);
+      if (phoneError) next.phone = phoneError;
     }
     if (step === "commerce") {
       if (!form.commerceName.trim())
@@ -470,10 +473,14 @@ function StepOwner({ form, errors, update }: StepProps) {
         />
       </Field>
 
-      <Field label="Teléfono (opcional)" hint="Para que podamos contactarte si hace falta.">
+      <Field
+        label="Teléfono (opcional)"
+        hint="Para que podamos contactarte si hace falta."
+        error={errors.phone}
+      >
         <input
           type="tel"
-          className="register-input"
+          className={`register-input ${errors.phone ? "is-error" : ""}`}
           placeholder="+54 9 ..."
           value={form.phone}
           onChange={(e) => update("phone", e.target.value)}

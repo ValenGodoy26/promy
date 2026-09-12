@@ -17,18 +17,9 @@ import {
   summarizePromotionSchedules,
   weekdayOptions,
 } from "./CommerceShared";
+import { formatBusinessDate } from "./commerceRules";
 
 // ─── helpers locales ──────────────────────────────────────────────────────────
-
-function formatPromoDate(value?: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "short",
-  }).format(date);
-}
 
 /**
  * Genera el resumen de vigencia y horario de una promo.
@@ -40,7 +31,7 @@ function getPromotionScheduleSummary(promotion: CommerceManagedPromotion) {
   const scheduleSummary = summarizePromotionSchedules(promotion.schedules);
 
   if (scheduleSummary && promotion.startDate && promotion.endDate) {
-    return `${formatPromoDate(promotion.startDate)} al ${formatPromoDate(promotion.endDate)} · ${scheduleSummary}`;
+    return `${formatBusinessDate(promotion.startDate)} al ${formatBusinessDate(promotion.endDate)} · ${scheduleSummary}`;
   }
 
   if (scheduleSummary) {
@@ -50,11 +41,11 @@ function getPromotionScheduleSummary(promotion: CommerceManagedPromotion) {
   // Fallback: modelo legacy con rango de fechas y horas fijas.
   const dateRange =
     promotion.startDate && promotion.endDate
-      ? `${formatPromoDate(promotion.startDate)} al ${formatPromoDate(promotion.endDate)}`
+      ? `${formatBusinessDate(promotion.startDate)} al ${formatBusinessDate(promotion.endDate)}`
       : promotion.startDate
-      ? `Desde ${formatPromoDate(promotion.startDate)}`
+      ? `Desde ${formatBusinessDate(promotion.startDate)}`
       : promotion.endDate
-      ? `Hasta ${formatPromoDate(promotion.endDate)}`
+      ? `Hasta ${formatBusinessDate(promotion.endDate)}`
       : null;
 
   const timeRange =

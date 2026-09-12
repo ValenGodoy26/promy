@@ -8,6 +8,11 @@ import { LoadingBlock, normalizeValidationCode, PageHeader } from "./CommerceSha
 import { CommerceLastValidatedCard } from "./CommerceLastValidatedCard";
 import { CommerceRedemptionsHistoryTable } from "./CommerceRedemptionsHistoryTable";
 import { CommerceRedemptionValidator } from "./CommerceRedemptionValidator";
+import {
+  getCameraStartupErrorMessage,
+  stopMediaStream,
+  withCameraStartupTimeout,
+} from "./camera";
 
 export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: number }) {
   const { withSession } = useAuth();
@@ -23,8 +28,10 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
   const [scannerStarting, setScannerStarting] = useState(false);
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
+  const [scannerAttempt, setScannerAttempt] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   // Referencia al objeto de control de @zxing/browser — permite detener el scanner limpiamente.
   const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
@@ -146,6 +153,8 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
     scanningActiveRef.current = false;
     zxingControlsRef.current?.stop();
     zxingControlsRef.current = null;
+    stopMediaStream(mediaStreamRef.current);
+    mediaStreamRef.current = null;
     setScannerActive(false);
   };
 
@@ -183,17 +192,36 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
         if (cancelled) return;
 
         const codeReader = new BrowserMultiFormatReader();
-
-        // decodeFromConstraints funciona en Chrome, Firefox, Safari (iOS y desktop)
-        // y cualquier navegador con soporte de MediaDevices.
-        // facingMode: environment apunta a la camara trasera en celulares.
-        const controls = await codeReader.decodeFromConstraints(
-          {
-            video: {
-              facingMode: { ideal: "environment" },
-            },
-            audio: false,
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: "environment" },
           },
+          audio: false,
+        };
+        let cameraRequestExpired = false;
+        const streamPromise = navigator.mediaDevices.getUserMedia(constraints);
+        void streamPromise
+          .then((stream) => {
+            if (cancelled || cameraRequestExpired) stopMediaStream(stream);
+          })
+          .catch(() => undefined);
+
+        let stream: MediaStream;
+        try {
+          stream = await withCameraStartupTimeout(streamPromise);
+        } catch (cameraError) {
+          cameraRequestExpired = true;
+          throw cameraError;
+        }
+
+        if (cancelled) {
+          stopMediaStream(stream);
+          return;
+        }
+        mediaStreamRef.current = stream;
+
+        const controls = await withCameraStartupTimeout(codeReader.decodeFromStream(
+          stream,
           videoRef.current!,
           (result, _error) => {
             // El callback se llama en cada frame. Solo procesamos si hay resultado
@@ -226,7 +254,7 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
                 setValidating(false);
               });
           },
-        );
+        ));
 
         if (cancelled) {
           controls.stop();
@@ -237,24 +265,8 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
         setScannerActive(true);
       } catch (scannerStartError) {
         if (cancelled) return;
-
-        // Mensajes claros según el tipo de error de cámara.
-        let message = "No pudimos acceder a la camara para escanear el codigo.";
-
-        if (scannerStartError instanceof Error) {
-          const name = scannerStartError.name;
-          if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-            message = "Permiso de camara denegado. Permite el acceso en la configuracion del navegador y volvé a intentarlo.";
-          } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-            message = "No encontramos ninguna camara disponible en este dispositivo.";
-          } else if (name === "NotReadableError" || name === "TrackStartError") {
-            message = "La camara esta siendo usada por otra aplicacion. Cerrala y volvé a intentarlo.";
-          } else if (name === "OverconstrainedError") {
-            message = "La camara disponible no cumple los requisitos minimos para escanear. Intenta desde otro dispositivo.";
-          }
-        }
-
-        setScannerError(message);
+        stopScanner();
+        setScannerError(getCameraStartupErrorMessage(scannerStartError));
       } finally {
         if (!cancelled) {
           setScannerStarting(false);
@@ -270,7 +282,7 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
       setScannerStarting(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scannerOpen]);
+  }, [scannerOpen, scannerAttempt]);
 
   return (
     <>
@@ -303,6 +315,15 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
           onPasteAndValidate={() => void handlePasteAndValidate()}
           onOpenScanner={() => setScannerOpen(true)}
           onCloseScanner={() => setScannerOpen(false)}
+          onRetryScanner={() => {
+            stopScanner();
+            setScannerError(null);
+            setScannerAttempt((current) => current + 1);
+          }}
+          onUseManualCode={() => {
+            setScannerOpen(false);
+            window.setTimeout(() => focusValidationInput(), 30);
+          }}
         />
 
         {error ? (

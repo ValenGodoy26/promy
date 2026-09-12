@@ -978,6 +978,18 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 0 3px var(--yellow-soft);
 }
 
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.field-input.is-error,
+.field-textarea.is-error,
+.field-select.is-error {
+  border-color: var(--danger);
+}
+
 .field-textarea {
   resize: vertical;
   min-height: 88px;

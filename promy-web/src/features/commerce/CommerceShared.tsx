@@ -15,6 +15,7 @@ import type {
   ValidationMethod,
   Weekday,
 } from "../../types/api";
+import { getOwnerEditablePromotionStatus, serializeBusinessDate } from "./commerceRules";
 
 export const weekdayOptions: Array<{ value: Weekday; label: string; shortLabel: string }> = [
   { value: "MONDAY", label: "Lunes", shortLabel: "Lun" },
@@ -324,6 +325,7 @@ export function Field({
   type = "text",
   inputMode,
   className,
+  error,
 }: {
   label: string;
   value: string;
@@ -332,26 +334,28 @@ export function Field({
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   className?: string;
+  error?: string;
 }) {
   return (
     <div className={`field ${className || ""}`}>
       <label className="field-label">{label}</label>
       {multiline ? (
         <textarea
-          className="field-textarea"
+          className={`field-textarea ${error ? "is-error" : ""}`}
           rows={4}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
         <input
-          className="field-input"
+          className={`field-input ${error ? "is-error" : ""}`}
           type={type}
           inputMode={inputMode}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
+      {error ? <span className="field-error">{error}</span> : null}
     </div>
   );
 }
@@ -362,18 +366,20 @@ export function SelectField({
   onChange,
   options,
   className,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
   className?: string;
+  error?: string;
 }) {
   return (
     <div className={`field ${className || ""}`}>
       <label className="field-label">{label}</label>
       <select
-        className="field-select"
+        className={`field-select ${error ? "is-error" : ""}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -383,6 +389,7 @@ export function SelectField({
           </option>
         ))}
       </select>
+      {error ? <span className="field-error">{error}</span> : null}
     </div>
   );
 }
@@ -755,18 +762,14 @@ export function buildPromotionPayload(
     maxRedemptions: Number.isInteger(maxRedemptions as number)
       ? (maxRedemptions as number)
       : null,
-    startDate: form.startDate
-      ? new Date(`${form.startDate}T00:00:00.000Z`).toISOString()
-      : emptyValue,
-    endDate: form.endDate
-      ? new Date(`${form.endDate}T00:00:00.000Z`).toISOString()
-      : emptyValue,
+    startDate: serializeBusinessDate(form.startDate) || emptyValue,
+    endDate: serializeBusinessDate(form.endDate) || emptyValue,
     startTime: form.startTime.trim() || emptyValue,
     endTime: form.endTime.trim() || emptyValue,
     schedules: normalizeScheduleRows(form.schedules),
     imageUrl: form.imageUrl.trim() || emptyValue,
     promotionType: form.promotionType,
-    status: form.status,
+    status: options.isEdit ? getOwnerEditablePromotionStatus(form.status) : form.status,
   };
 }
 

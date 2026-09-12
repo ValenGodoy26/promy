@@ -27,6 +27,7 @@ import {
   validatePromotionForm,
   weekdayOptions,
 } from "./CommerceShared";
+import { getOwnerEditablePromotionStatus } from "./commerceRules";
 
 const promotionTypes: Array<{ value: PromotionType; label: string }> = [
   { value: "PERCENTAGE", label: "Descuento" },
@@ -114,7 +115,7 @@ export function CommercePromotionEditorPage({
           })) || [],
           promotionType: found.promotionType,
           validationMethod: found.validationMethod,
-          status: found.status || "DRAFT",
+          status: getOwnerEditablePromotionStatus(found.status || "DRAFT"),
         });
         setCurrentPromotionStatus(found.status || "DRAFT");
         setCurrentModerationNote(found.moderationNote || null);
