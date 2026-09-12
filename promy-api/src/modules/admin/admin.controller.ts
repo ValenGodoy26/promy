@@ -125,7 +125,7 @@ const adminCommercesQuerySchema = z.object({
     .optional(),
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(250).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const adminPromotionsQuerySchema = z.object({
@@ -136,7 +136,7 @@ const adminPromotionsQuerySchema = z.object({
   hasRedemptions: booleanish,
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(250).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const adminCategoriesQuerySchema = z.object({
