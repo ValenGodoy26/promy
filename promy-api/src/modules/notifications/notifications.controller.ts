@@ -6,6 +6,7 @@ import {
   getUserNotifications,
   markAllNotificationsAsReadForUser,
   markNotificationAsReadForUser,
+  notificationListQuerySchema,
   registerNotificationPushToken,
   registerPushTokenSchema,
   unregisterNotificationPushToken,
@@ -23,11 +24,15 @@ export const getMyNotifications = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const result = await getUserNotifications(userId);
+    const parsed = notificationListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Paginacion invalida" });
+    const result = await getUserNotifications(userId, parsed.data);
 
     return res.status(200).json({
       ok: true,
       unreadCount: result.unreadCount,
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
       notifications: result.notifications,
     });
   } catch (error) {

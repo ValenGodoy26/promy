@@ -1,4 +1,5 @@
 import { env, isDevelopment, isTest } from "../../config/env";
+import { ExternalRequestTimeoutError, withRequestDeadline } from "../http/deadline";
 import { ServiceError } from "../utils/service";
 
 type SendEmailInput = {
@@ -43,24 +44,39 @@ function ensureConfiguredForProvider() {
 async function sendWithResend(input: SendEmailInput) {
   ensureConfiguredForProvider();
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.AUTH_EMAIL_FROM,
-      to: [input.to],
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      ...(env.AUTH_EMAIL_REPLY_TO ? { reply_to: env.AUTH_EMAIL_REPLY_TO } : {}),
-    }),
-  });
+  let response: Response;
+  let detail = "";
+  try {
+    ({ response, detail } = await withRequestDeadline(10_000, async (signal) => {
+      const nextResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: env.AUTH_EMAIL_FROM,
+          to: [input.to],
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
+          ...(env.AUTH_EMAIL_REPLY_TO ? { reply_to: env.AUTH_EMAIL_REPLY_TO } : {}),
+        }),
+        signal,
+      });
+      return { response: nextResponse, detail: await nextResponse.text().catch(() => "") };
+    }));
+  } catch (error) {
+    if (error instanceof ExternalRequestTimeoutError) {
+      throw new ServiceError("El proveedor de email no respondio a tiempo.", 504, {
+        code: "EMAIL_PROVIDER_TIMEOUT",
+        provider: "resend",
+      });
+    }
+    throw error;
+  }
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
     throw new ServiceError("No se pudo enviar el email transaccional.", 502, {
       code: "EMAIL_PROVIDER_ERROR",
       provider: "resend",

@@ -71,11 +71,14 @@ export function AdminCommercesPage({
   const [saving, setSaving] = useState(false);
   const [modalState, setModalState] = useState<ModerationModalState>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogItem[]>([]);
-  const [visibleCount, setVisibleCount] = useState(ADMIN_TABLE_PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
   const [commerceDraft, setCommerceDraft] = useState<AdminCommerceDraft | null>(null);
   const [showHideCommerceConfirm, setShowHideCommerceConfirm] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     void withSession((s) =>
       fetchAdminCommercesFiltered(s, {
@@ -83,12 +86,22 @@ export function AdminCommercesPage({
         mapReady: readinessFilter === "all" ? undefined : readinessFilter === "map-ready",
         profileComplete: readinessFilter === "incomplete" ? false : undefined,
         search: deferredSearch || undefined,
-        limit: 120,
+        page,
+        limit: ADMIN_TABLE_PAGE_SIZE,
       }),
     )
       .then((response) => {
-        setCommerces(response.commerces);
+        if (cancelled) return;
+        setCommerces((current) => {
+          if (page === 1) return response.commerces;
+          const byId = new Map(current.map((item) => [item.id, item]));
+          response.commerces.forEach((item) => byId.set(item.id, item));
+          return Array.from(byId.values());
+        });
+        setHasMore(response.hasMore);
+        setTotal(response.total);
         setSelectedId((current) => {
+          if (page > 1) return current;
           if (current && response.commerces.some((item) => item.id === current)) {
             return current;
           }
@@ -98,16 +111,21 @@ export function AdminCommercesPage({
         setAuditError(null);
       })
       .catch((loadError) => {
+        if (cancelled) return;
         setError(loadError instanceof Error ? loadError.message : "No pudimos cargar comercios.");
       })
-      .finally(() => setLoading(false));
-  }, [deferredSearch, filter, readinessFilter, realtimeVersion, withSession]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deferredSearch, filter, page, readinessFilter, realtimeVersion, withSession]);
 
   const selected = useMemo(
     () => commerces.find((item) => item.id === selectedId) || commerces[0] || null,
     [commerces, selectedId],
   );
-  const visibleCommerces = useMemo(() => commerces.slice(0, visibleCount), [commerces, visibleCount]);
 
   useEffect(() => {
     if (!selected) {
@@ -133,7 +151,8 @@ export function AdminCommercesPage({
   }, [selected?.id]);
 
   useEffect(() => {
-    setVisibleCount(ADMIN_TABLE_PAGE_SIZE);
+    setPage(1);
+    setCommerces([]);
   }, [deferredSearch, filter, readinessFilter]);
 
   useEffect(() => {
@@ -324,7 +343,7 @@ export function AdminCommercesPage({
           search={search}
           onSearchChange={setSearch}
           placeholder="Buscar por comercio, owner, ciudad o categoria..."
-          countLabel={`${visibleCommerces.length} de ${commerces.length} cargados`}
+          countLabel={`${commerces.length} de ${total} cargados`}
         />
 
         <FilterChips
@@ -354,12 +373,12 @@ export function AdminCommercesPage({
         ) : (
           <div className="detail-layout">
             <AdminCommercesTable
-              commerces={visibleCommerces}
+              commerces={commerces}
               selectedId={selected?.id ?? null}
-              totalCount={commerces.length}
-              canLoadMore={commerces.length > visibleCommerces.length}
+              totalCount={total}
+              canLoadMore={hasMore}
               onSelect={setSelectedId}
-              onLoadMore={() => setVisibleCount((current) => current + ADMIN_TABLE_PAGE_SIZE)}
+              onLoadMore={() => setPage((current) => current + 1)}
             />
 
             {selected ? (

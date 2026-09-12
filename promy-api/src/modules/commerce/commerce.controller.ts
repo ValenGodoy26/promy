@@ -19,6 +19,7 @@ import {
 import {
   getCommerceRedemptionsByOwner,
   isRedemptionServiceError,
+  redemptionListQuerySchema,
   validateCommerceRedemptionByCode,
   validateRedemptionSchema,
 } from "../redemptions/redemptions.service";
@@ -334,8 +335,10 @@ export const getMyRedemptions = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ ok: false, message: "No autenticado" });
     }
 
-    const redemptions = await getCommerceRedemptionsByOwner(userId);
-    return res.status(200).json({ ok: true, redemptions });
+    const parsed = redemptionListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Paginacion invalida" });
+    const result = await getCommerceRedemptionsByOwner(userId, parsed.data);
+    return res.status(200).json({ ok: true, ...result });
   } catch (error: unknown) {
     if (isRedemptionServiceError(error)) {
       return res.status(error.statusCode).json({

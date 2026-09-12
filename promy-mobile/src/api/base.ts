@@ -18,8 +18,8 @@ function appendCandidate(targets: string[], next?: string | null) {
   }
 }
 
-function getEnvList(name: string) {
-  return (process.env[name]?.trim() || "")
+function parseEnvList(value?: string) {
+  return (value?.trim() || "")
     .split(",")
     .map((value: string) => value.trim())
     .filter(Boolean);
@@ -28,8 +28,8 @@ function getEnvList(name: string) {
 export function getApiBaseUrls() {
   const targets: string[] = [];
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
-  const fromEnvList = getEnvList("EXPO_PUBLIC_API_URLS");
-  const envHosts = getEnvList("EXPO_PUBLIC_API_HOSTS");
+  const fromEnvList = parseEnvList(process.env.EXPO_PUBLIC_API_URLS);
+  const envHosts = parseEnvList(process.env.EXPO_PUBLIC_API_HOSTS);
   const envHost = process.env.EXPO_PUBLIC_API_HOST?.trim();
 
   appendCandidate(targets, fromEnv);

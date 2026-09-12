@@ -69,16 +69,27 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${init.accessToken}`);
   }
 
-  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
-    ...init,
-    credentials: "include",
-    headers,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  });
-
-  const data = (await response.json().catch(() => null)) as
-    | { message?: string }
-    | null;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12_000);
+  let response: Response;
+  let data: { message?: string } | null;
+  try {
+    response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+      ...init,
+      credentials: "include",
+      headers,
+      body: init?.body ? JSON.stringify(init.body) : undefined,
+      signal: controller.signal,
+    });
+    data = (await response.json().catch(() => null)) as { message?: string } | null;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ApiError("La solicitud supero el tiempo de espera.", 0);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new ApiError(
@@ -287,10 +298,18 @@ export async function deleteCommercePromotion(session: AuthSession, promotionId:
 }
 
 export async function fetchCommerceRedemptions(session: AuthSession) {
-  return request<CommerceManagedRedemptionsResponse>("/commerce/redemptions", {
-    method: "GET",
-    accessToken: session.accessToken,
-  });
+  const redemptions: CommerceManagedRedemptionsResponse["redemptions"] = [];
+  let cursor: number | null = null;
+  do {
+    const suffix: string = cursor ? `?limit=100&cursor=${cursor}` : "?limit=100";
+    const page: CommerceManagedRedemptionsResponse = await request<CommerceManagedRedemptionsResponse>(`/commerce/redemptions${suffix}`, {
+      method: "GET",
+      accessToken: session.accessToken,
+    });
+    redemptions.push(...page.redemptions);
+    cursor = page.hasMore ? page.nextCursor ?? null : null;
+  } while (cursor);
+  return { ok: true, redemptions, hasMore: false, nextCursor: null };
 }
 
 export async function validateCommerceRedemption(
@@ -330,6 +349,7 @@ export async function fetchAdminCommercesFiltered(
     ownerStatus?: string;
     mapReady?: boolean;
     profileComplete?: boolean;
+    page?: number;
     limit?: number;
   },
 ) {
@@ -349,6 +369,7 @@ export async function fetchAdminCommercesFiltered(
     search.set("profileComplete", String(filters.profileComplete));
   }
   if (typeof filters?.limit === "number") search.set("limit", String(filters.limit));
+  if (typeof filters?.page === "number") search.set("page", String(filters.page));
 
   const suffix = search.toString() ? `?${search.toString()}` : "";
 
@@ -372,6 +393,7 @@ export async function fetchAdminAuditLogs(
       | "UPDATE_PROMOTION_CONTENT";
     search?: string;
     incidentOnly?: boolean;
+    page?: number;
     limit?: number;
   },
 ) {
@@ -408,6 +430,7 @@ export async function fetchAdminAuditLogs(
   if (typeof filters?.limit === "number") {
     search.set("limit", String(filters.limit));
   }
+  if (typeof filters?.page === "number") search.set("page", String(filters.page));
 
   const suffix = search.toString() ? `?${search.toString()}` : "";
 
@@ -541,6 +564,7 @@ export async function fetchAdminPromotionsFiltered(
     search?: string;
     commerceStatus?: string;
     hasRedemptions?: boolean;
+    page?: number;
     limit?: number;
   },
 ) {
@@ -553,6 +577,7 @@ export async function fetchAdminPromotionsFiltered(
     search.set("hasRedemptions", String(filters.hasRedemptions));
   }
   if (typeof filters?.limit === "number") search.set("limit", String(filters.limit));
+  if (typeof filters?.page === "number") search.set("page", String(filters.page));
 
   const suffix = search.toString() ? `?${search.toString()}` : "";
 
@@ -606,16 +631,27 @@ export async function uploadCommerceImage(session: AuthSession, file: File) {
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${resolveApiBaseUrl()}/uploads/commerce-image`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-    },
-    body: form,
-  });
-
-  const data = (await response.json().catch(() => null)) as { message?: string } | null;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30_000);
+  let response: Response;
+  let data: { message?: string } | null;
+  try {
+    response = await fetch(`${resolveApiBaseUrl()}/uploads/commerce-image`, {
+      method: "POST",
+      credentials: "include",
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      body: form,
+      signal: controller.signal,
+    });
+    data = (await response.json().catch(() => null)) as { message?: string } | null;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ApiError("La carga supero el tiempo de espera.", 0);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new ApiError(data?.message || "No pudimos subir la imagen.", response.status);

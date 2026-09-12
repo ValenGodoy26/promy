@@ -57,6 +57,18 @@ function requireEnvUrl(name: "VITE_PANEL_BASE_URL" | "VITE_API_BASE_URL") {
 const PANEL_BASE_URL = requireEnvUrl("VITE_PANEL_BASE_URL");
 const API_BASE_URL = requireEnvUrl("VITE_API_BASE_URL");
 
+async function fetchJsonWithDeadline<T>(url: string, init?: RequestInit, timeoutMs = 10_000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const data = (await response.json().catch(() => null)) as T | null;
+    return { response, data };
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 function buildPanelUrl(path: string) {
   return `${PANEL_BASE_URL}${path}`;
 }
@@ -672,8 +684,7 @@ function App() {
 
     const loadPublicStats = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/stats/public`);
-        const data = (await response.json().catch(() => null)) as
+        const { response, data } = await fetchJsonWithDeadline<
           | {
               stats?: {
                 approvedCommerces?: number;
@@ -681,7 +692,7 @@ function App() {
                 activeCities?: number;
               };
             }
-          | null;
+        >(`${API_BASE_URL}/stats/public`);
 
         if (!response.ok || !data?.stats || !isMounted) {
           return;
@@ -750,7 +761,8 @@ function App() {
       setBetaError(null);
       setBetaSuccess(null);
 
-      const response = await fetch(`${API_BASE_URL}/beta/access-requests`, {
+      const { response, data } = await fetchJsonWithDeadline<{ ok?: boolean; message?: string }>(
+        `${API_BASE_URL}/beta/access-requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -761,11 +773,8 @@ function App() {
           platform: betaPlatform === "iPhone" ? "IPHONE" : "ANDROID",
           source: "landing",
         }),
-      });
-
-      const data = (await response.json().catch(() => null)) as
-        | { ok?: boolean; message?: string }
-        | null;
+        },
+      );
 
       if (!response.ok || !data?.ok) {
         throw new Error(

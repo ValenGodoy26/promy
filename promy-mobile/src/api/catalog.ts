@@ -217,7 +217,15 @@ export async function searchCatalog(query: {
 }
 
 export async function fetchMyRedemptions(token: string) {
-  return apiRequest<RedemptionsResponse>("/redemptions/me", { token });
+  const redemptions: RedemptionsResponse["redemptions"] = [];
+  let cursor: number | null = null;
+  do {
+    const suffix: string = cursor ? `?limit=100&cursor=${cursor}` : "?limit=100";
+    const page: RedemptionsResponse = await apiRequest<RedemptionsResponse>(`/redemptions/me${suffix}`, { token });
+    redemptions.push(...page.redemptions);
+    cursor = page.hasMore ? page.nextCursor ?? null : null;
+  } while (cursor);
+  return { ok: true, redemptions, hasMore: false, nextCursor: null };
 }
 
 export async function createRedemption(token: string, body: CreateRedemptionInput) {

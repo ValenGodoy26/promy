@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useState } from "react";
 import { useAuth } from "../../auth";
 import { fetchAdminAuditLogs } from "../../lib/api";
 import type { AdminAuditLogItem } from "../../types/api";
@@ -36,9 +36,12 @@ export function AdminAuditPage({
   const [incidentOnly, setIncidentOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(ADMIN_AUDIT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     void withSession((s) =>
       fetchAdminAuditLogs(s, {
@@ -46,23 +49,37 @@ export function AdminAuditPage({
         action: actionFilter === "all" ? undefined : actionFilter,
         search: deferredSearch || undefined,
         incidentOnly,
-        limit: 60,
+        page,
+        limit: ADMIN_AUDIT_PAGE_SIZE,
       }),
     )
       .then((response) => {
-        setLogs(response.auditLogs);
+        if (cancelled) return;
+        setLogs((current) => {
+          if (page === 1) return response.auditLogs;
+          const byId = new Map(current.map((item) => [item.id, item]));
+          response.auditLogs.forEach((item) => byId.set(item.id, item));
+          return Array.from(byId.values());
+        });
+        setHasMore(response.hasMore);
+        setTotal(response.total);
         setError(null);
       })
       .catch((loadError) => {
+        if (cancelled) return;
         setError(loadError instanceof Error ? loadError.message : "No pudimos cargar auditoria.");
       })
-      .finally(() => setLoading(false));
-  }, [actionFilter, deferredSearch, incidentOnly, realtimeVersion, targetFilter, withSession]);
-
-  const visibleLogs = useMemo(() => logs.slice(0, visibleCount), [logs, visibleCount]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [actionFilter, deferredSearch, incidentOnly, page, realtimeVersion, targetFilter, withSession]);
 
   useEffect(() => {
-    setVisibleCount(ADMIN_AUDIT_PAGE_SIZE);
+    setPage(1);
+    setLogs([]);
   }, [actionFilter, deferredSearch, incidentOnly, targetFilter]);
 
   return (
@@ -93,7 +110,7 @@ export function AdminAuditPage({
           search={search}
           onSearchChange={setSearch}
           placeholder="Buscar por admin, comercio, promocion o nota..."
-          countLabel={`${visibleLogs.length} de ${logs.length} registros`}
+          countLabel={`${logs.length} de ${total} registros`}
         />
 
         <div className="chip-row" style={{ marginBottom: 16 }}>
@@ -142,16 +159,16 @@ export function AdminAuditPage({
           <AuditTimelineCard
             title="Bitacora operativa"
             subtitle="Busqueda por usuario, comercio, promo y eventos criticos"
-            logs={visibleLogs}
+            logs={logs}
             emptyMessage="No encontramos eventos con esos filtros."
           />
         )}
-        {logs.length > visibleLogs.length ? (
+        {hasMore ? (
           <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
             <button
               className="btn btn-ghost"
               type="button"
-              onClick={() => setVisibleCount((current) => current + ADMIN_AUDIT_PAGE_SIZE)}
+              onClick={() => setPage((current) => current + 1)}
             >
               Ver mas registros
             </button>

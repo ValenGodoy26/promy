@@ -64,7 +64,15 @@ export async function deleteCommercePromotion(promotionId: number) {
 }
 
 export async function fetchCommerceRedemptions() {
-  return apiRequest<CommerceManagedRedemptionsResponse>("/commerce/redemptions");
+  const redemptions: CommerceManagedRedemptionsResponse["redemptions"] = [];
+  let cursor: number | null = null;
+  do {
+    const suffix: string = cursor ? `?limit=100&cursor=${cursor}` : "?limit=100";
+    const page: CommerceManagedRedemptionsResponse = await apiRequest<CommerceManagedRedemptionsResponse>(`/commerce/redemptions${suffix}`);
+    redemptions.push(...page.redemptions);
+    cursor = page.hasMore ? page.nextCursor ?? null : null;
+  } while (cursor);
+  return { ok: true, redemptions, hasMore: false, nextCursor: null };
 }
 
 export async function validateCommerceRedemption(body: ValidateCommerceRedemptionInput) {

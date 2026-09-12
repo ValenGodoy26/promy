@@ -22,6 +22,11 @@ export const validateRedemptionSchema = z.object({
   validationCode: z.string().trim().min(4, "Codigo invalido"),
 });
 
+export const redemptionListQuerySchema = z.object({
+  cursor: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export class RedemptionServiceError extends Error {
   statusCode: number;
   details?: Record<string, unknown>;
@@ -465,30 +470,42 @@ export async function createRedemptionForUser(input: { userId: number; promotion
   };
 }
 
-export async function getUserRedemptions(userId: number) {
-  return prisma.redemption.findMany({
+export async function getUserRedemptions(
+  userId: number,
+  input: z.infer<typeof redemptionListQuerySchema>,
+) {
+  const rows = await prisma.redemption.findMany({
     where: {
       userId,
     },
     select: redemptionSelect,
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    take: input.limit + 1,
   });
+  const hasMore = rows.length > input.limit;
+  const redemptions = rows.slice(0, input.limit);
+  return { redemptions, hasMore, nextCursor: hasMore ? redemptions[redemptions.length - 1]?.id ?? null : null };
 }
 
-export async function getCommerceRedemptionsByOwner(ownerUserId: number) {
-  return prisma.redemption.findMany({
+export async function getCommerceRedemptionsByOwner(
+  ownerUserId: number,
+  input: z.infer<typeof redemptionListQuerySchema>,
+) {
+  const rows = await prisma.redemption.findMany({
     where: {
       commerce: {
         ownerUserId,
       },
     },
     select: commerceRedemptionSelect,
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    take: input.limit + 1,
   });
+  const hasMore = rows.length > input.limit;
+  const redemptions = rows.slice(0, input.limit);
+  return { redemptions, hasMore, nextCursor: hasMore ? redemptions[redemptions.length - 1]?.id ?? null : null };
 }
 
 export async function validateCommerceRedemptionByCode(input: {

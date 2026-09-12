@@ -43,17 +43,22 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const targets = API_BASE_URL_CANDIDATES.length ? API_BASE_URL_CANDIDATES : [API_BASE_URL];
+  const configuredTargets = API_BASE_URL_CANDIDATES.length
+    ? API_BASE_URL_CANDIDATES
+    : [API_BASE_URL];
+  const targets = (options.method || "GET") === "GET"
+    ? configuredTargets
+    : configuredTargets.slice(0, 1);
   let lastNetworkError: unknown = null;
   const shouldAttachAuth = options.auth !== false;
   const initialToken = options.token ?? (shouldAttachAuth ? authHandlers.getAccessToken() : null);
 
   for (const baseUrl of targets) {
     try {
-      let response = await performRequest(baseUrl, path, options, initialToken);
+      let result = await performRequest(baseUrl, path, options, initialToken);
 
       if (
-        response.status === 401 &&
+        result.response.status === 401 &&
         shouldAttachAuth &&
         !options.token &&
         !options.skipAuthRefresh
@@ -61,15 +66,14 @@ export async function apiRequest<T>(
         const refreshedAccessToken = await authHandlers.refreshAccessToken();
 
         if (refreshedAccessToken) {
-          response = await performRequest(baseUrl, path, options, refreshedAccessToken);
+          result = await performRequest(baseUrl, path, options, refreshedAccessToken);
         } else {
           await authHandlers.clearSession();
           throw new ApiError("Tu sesión expiró. Inicia sesión nuevamente.", 401);
         }
       }
 
-      const rawText = await response.text();
-      const data = rawText ? safeJsonParse(rawText) : null;
+      const { response, data } = result;
 
       if (!response.ok) {
         const message =
@@ -111,7 +115,7 @@ async function performRequest(
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    return await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       method: options.method || "GET",
       headers: {
         Accept: "application/json",
@@ -122,6 +126,8 @@ async function performRequest(
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
     });
+    const rawText = await response.text();
+    return { response, data: rawText ? safeJsonParse(rawText) : null };
   } finally {
     clearTimeout(timeoutId);
   }

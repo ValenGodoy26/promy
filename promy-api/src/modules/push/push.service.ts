@@ -1,5 +1,6 @@
 import prisma from "../../config/prisma";
 import { env } from "../../config/env";
+import { withRequestDeadline } from "../../shared/http/deadline";
 
 type PushPayload = {
   title: string;
@@ -104,25 +105,29 @@ export async function sendPushNotificationToUser(userId: number, payload: PushPa
     return;
   }
 
-  const response = await fetch(env.EXPO_PUSH_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${env.EXPO_ACCESS_TOKEN}`,
-    },
-    body: JSON.stringify(
-      validTokens.map((item) => ({
-        to: item.token,
-        sound: "default",
-        title: payload.title,
-        body: payload.body,
-        data: payload.data || undefined,
-      })),
-    ),
+  const { response, result } = await withRequestDeadline(10_000, async (signal) => {
+    const nextResponse = await fetch(env.EXPO_PUSH_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${env.EXPO_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(
+        validTokens.map((item) => ({
+          to: item.token,
+          sound: "default",
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || undefined,
+        })),
+      ),
+      signal,
+    });
+    return { response: nextResponse, result: await nextResponse.json().catch(() => null) };
   });
 
-  const result = (await response.json().catch(() => null)) as
+  const typedResult = result as
     | {
         data?: ExpoPushTicket[];
         errors?: Array<{ message?: string }>;
@@ -131,11 +136,11 @@ export async function sendPushNotificationToUser(userId: number, payload: PushPa
 
   if (!response.ok) {
     throw new Error(
-      result?.errors?.[0]?.message || "Expo Push API rechazo la notificacion.",
+      typedResult?.errors?.[0]?.message || "Expo Push API rechazo la notificacion.",
     );
   }
 
-  const tickets = result?.data || [];
+  const tickets = typedResult?.data || [];
 
   await Promise.all(
     validTokens.map(async (item, index) => {

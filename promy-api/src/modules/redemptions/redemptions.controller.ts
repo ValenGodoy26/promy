@@ -8,6 +8,7 @@ import {
   getCommerceRedemptionsByOwner,
   getUserRedemptions,
   isRedemptionServiceError,
+  redemptionListQuerySchema,
 } from "./redemptions.service";
 
 export const createRedemption = async (
@@ -69,11 +70,13 @@ export const getMyRedemptions = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const redemptions = await getUserRedemptions(userId);
+    const parsed = redemptionListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Paginacion invalida" });
+    const result = await getUserRedemptions(userId, parsed.data);
 
     return res.status(200).json({
       ok: true,
-      redemptions,
+      ...result,
     });
   } catch (error) {
     logControllerError(req, "Get my redemptions error", error);
@@ -96,11 +99,13 @@ export const getCommerceRedemptions = async (req: AuthRequest, res: Response) =>
       });
     }
 
-    const redemptions = await getCommerceRedemptionsByOwner(userId);
+    const parsed = redemptionListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Paginacion invalida" });
+    const result = await getCommerceRedemptionsByOwner(userId, parsed.data);
 
     return res.status(200).json({
       ok: true,
-      redemptions,
+      ...result,
     });
   } catch (error) {
     logControllerError(req, "Get commerce redemptions error", error);

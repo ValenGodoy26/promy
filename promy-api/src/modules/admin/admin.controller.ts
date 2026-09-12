@@ -94,6 +94,7 @@ const adminAuditQuerySchema = z.object({
     .optional(),
   search: z.string().trim().max(120).optional(),
   incidentOnly: booleanish,
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
@@ -123,6 +124,7 @@ const adminCommercesQuerySchema = z.object({
     ])
     .optional(),
   search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(250).optional(),
 });
 
@@ -133,6 +135,7 @@ const adminPromotionsQuerySchema = z.object({
   categoryId: z.coerce.number().int().positive().optional(),
   hasRedemptions: booleanish,
   search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(250).optional(),
 });
 
@@ -194,6 +197,9 @@ export const getAdminAuditLogs = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       ok: true,
       total: result.total,
+      page: result.page,
+      limit: result.limit,
+      hasMore: result.hasMore,
       auditLogs: result.auditLogs,
     });
   } catch (error: unknown) {
@@ -228,6 +234,9 @@ export const getAdminCommerces = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       ok: true,
       total: result.total,
+      page: result.page,
+      limit: result.limit,
+      hasMore: result.hasMore,
       commerces: result.commerces,
     });
   } catch (error: unknown) {
@@ -370,6 +379,9 @@ export const getAdminPromotions = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       ok: true,
       total: result.total,
+      page: result.page,
+      limit: result.limit,
+      hasMore: result.hasMore,
       promotions: result.promotions,
     });
   } catch (error: unknown) {

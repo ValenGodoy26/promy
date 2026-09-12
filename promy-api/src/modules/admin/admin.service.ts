@@ -57,6 +57,7 @@ export type AdminAuditQueryInput = {
     | "UPDATE_PROMOTION_CONTENT";
   search?: string;
   incidentOnly?: boolean;
+  page?: number;
   limit?: number;
 };
 
@@ -83,6 +84,7 @@ export type AdminCommercesQueryInput = {
     | "cityInactive"
     | "status";
   search?: string;
+  page?: number;
   limit?: number;
 };
 
@@ -93,6 +95,7 @@ export type AdminPromotionsQueryInput = {
   categoryId?: number;
   hasRedemptions?: boolean;
   search?: string;
+  page?: number;
   limit?: number;
 };
 
@@ -198,16 +201,6 @@ function parseMetadata(value: string | null) {
   } catch {
     return null;
   }
-}
-
-function isIncidentAuditLog(log: { note?: string | null; metadata?: Record<string, unknown> | null }) {
-  const nextStatus = String(log.metadata?.nextStatus || "");
-  return (
-    nextStatus === "REJECTED" ||
-    nextStatus === "PENDING_REVIEW" ||
-    nextStatus === "EXPIRED" ||
-    Boolean(log.note?.trim())
-  );
 }
 
 function getSearchValue(value?: string) {
@@ -917,55 +910,43 @@ export async function getAdminDashboardData() {
 
 export async function getAdminAuditLogsData(input: AdminAuditQueryInput) {
   const search = getSearchValue(input.search);
-  const take = input.incidentOnly ? 150 : input.limit || 40;
-
-  const auditLogs = await prisma.adminActionLog.findMany({
-    where: {
-      ...(input.targetType ? { targetType: input.targetType } : {}),
-      ...(input.targetId ? { targetId: input.targetId } : {}),
-      ...(input.commerceId ? { commerceId: input.commerceId } : {}),
-      ...(input.adminUserId ? { adminUserId: input.adminUserId } : {}),
-      ...(input.action ? { action: input.action } : {}),
-      ...(search
-        ? {
+  const page = input.page || 1;
+  const limit = input.limit || 40;
+  const where: Prisma.AdminActionLogWhereInput = {
+    ...(input.targetType ? { targetType: input.targetType } : {}),
+    ...(input.targetId ? { targetId: input.targetId } : {}),
+    ...(input.commerceId ? { commerceId: input.commerceId } : {}),
+    ...(input.adminUserId ? { adminUserId: input.adminUserId } : {}),
+    ...(input.action ? { action: input.action } : {}),
+    ...(input.incidentOnly
+      ? {
+          OR: [
+            { AND: [{ note: { not: null } }, { note: { not: "" } }] },
+            { metadata: { contains: '\"nextStatus\":\"REJECTED\"' } },
+            { metadata: { contains: '\"nextStatus\":\"PENDING_REVIEW\"' } },
+            { metadata: { contains: '\"nextStatus\":\"EXPIRED\"' } },
+          ],
+        }
+      : {}),
+    ...(search
+      ? {
+          AND: [{
             OR: [
-              {
-                note: {
-                  contains: search,
-                },
-              },
-              {
-                adminUser: {
-                  fullName: {
-                    contains: search,
-                  },
-                },
-              },
-              {
-                adminUser: {
-                  email: {
-                    contains: search,
-                  },
-                },
-              },
-              {
-                commerce: {
-                  name: {
-                    contains: search,
-                  },
-                },
-              },
-              {
-                promotion: {
-                  title: {
-                    contains: search,
-                  },
-                },
-              },
+              { note: { contains: search } },
+              { adminUser: { fullName: { contains: search } } },
+              { adminUser: { email: { contains: search } } },
+              { commerce: { name: { contains: search } } },
+              { promotion: { title: { contains: search } } },
             ],
-          }
-        : {}),
-    },
+          }],
+        }
+      : {}),
+  };
+
+  const [total, auditLogs] = await prisma.$transaction([
+    prisma.adminActionLog.count({ where }),
+    prisma.adminActionLog.findMany({
+    where,
     select: {
       id: true,
       action: true,
@@ -995,28 +976,30 @@ export async function getAdminAuditLogsData(input: AdminAuditQueryInput) {
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take,
-  });
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * limit,
+    take: limit,
+  }),
+  ]);
 
-  const parsedLogs = auditLogs
-    .map((item) => ({
-      ...item,
-      metadata: parseMetadata(item.metadata),
-    }))
-    .filter((item) => (input.incidentOnly ? isIncidentAuditLog(item) : true))
-    .slice(0, input.limit || 40);
+  const parsedLogs = auditLogs.map((item) => ({
+    ...item,
+    metadata: parseMetadata(item.metadata),
+  }));
 
   return {
-    total: parsedLogs.length,
+    total,
+    page,
+    limit,
+    hasMore: page * limit < total,
     auditLogs: parsedLogs,
   };
 }
 
 export async function getAdminCommercesData(input: AdminCommercesQueryInput) {
   const search = getSearchValue(input.search);
+  const page = input.page || 1;
+  const limit = input.limit || 50;
   const blockingFilters: Prisma.CommerceWhereInput[] = [];
 
   if (input.mapReady !== undefined) {
@@ -1087,8 +1070,7 @@ export async function getAdminCommercesData(input: AdminCommercesQueryInput) {
     blockingFilters.push(getMissingFieldWhere(input.missingField));
   }
 
-  const commerces = await prisma.commerce.findMany({
-    where: {
+  const where: Prisma.CommerceWhereInput = {
       ...(input.status ? { status: input.status } : {}),
       ...(input.cityId ? { cityId: input.cityId } : {}),
       ...(input.categoryId ? { categoryId: input.categoryId } : {}),
@@ -1117,7 +1099,10 @@ export async function getAdminCommercesData(input: AdminCommercesQueryInput) {
           }
         : {}),
       ...(blockingFilters.length ? { AND: blockingFilters } : {}),
-    },
+  };
+  const total = await prisma.commerce.count({ where });
+  const commerces = await prisma.commerce.findMany({
+    where,
     select: {
       id: true,
       name: true,
@@ -1182,12 +1167,17 @@ export async function getAdminCommercesData(input: AdminCommercesQueryInput) {
       { isFeatured: "desc" },
       { featuredRank: "asc" },
       { createdAt: "desc" },
+      { id: "desc" },
     ],
-    take: input.limit || 120,
+    skip: (page - 1) * limit,
+    take: limit,
   });
 
   return {
-    total: commerces.length,
+    total,
+    page,
+    limit,
+    hasMore: page * limit < total,
     commerces: commerces.map((commerce) => ({
       ...commerce,
       readiness: getCommerceReadiness(commerce),
@@ -1496,9 +1486,10 @@ export async function updateCommerceByAdmin(input: {
 
 export async function getAdminPromotionsData(input: AdminPromotionsQueryInput) {
   const search = getSearchValue(input.search);
+  const page = input.page || 1;
+  const limit = input.limit || 50;
 
-  const promotions = await prisma.promotion.findMany({
-    where: {
+  const where: Prisma.PromotionWhereInput = {
       ...(input.status ? { status: input.status } : {}),
       ...(input.commerceStatus
         ? {
@@ -1580,7 +1571,10 @@ export async function getAdminPromotionsData(input: AdminPromotionsQueryInput) {
             ],
           }
         : {}),
-    },
+  };
+  const total = await prisma.promotion.count({ where });
+  const promotions = await prisma.promotion.findMany({
+    where,
     select: {
       id: true,
       title: true,
@@ -1647,12 +1641,16 @@ export async function getAdminPromotionsData(input: AdminPromotionsQueryInput) {
         },
       },
     },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    take: input.limit || 120,
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * limit,
+    take: limit,
   });
 
   return {
-    total: promotions.length,
+    total,
+    page,
+    limit,
+    hasMore: page * limit < total,
     promotions,
   };
 }

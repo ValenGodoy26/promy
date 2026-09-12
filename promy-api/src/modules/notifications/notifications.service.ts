@@ -37,6 +37,11 @@ export const unregisterPushTokenSchema = z.object({
   token: z.string().trim().min(10, "Token invalido"),
 });
 
+export const notificationListQuerySchema = z.object({
+  cursor: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 function parseNotificationData(value: string | null) {
   if (!value) return null;
 
@@ -74,20 +79,29 @@ export async function createAppNotification(input: CreateNotificationInput) {
   return notification;
 }
 
-export async function getUserNotifications(userId: number) {
-  const notifications = await prisma.appNotification.findMany({
+export async function getUserNotifications(
+  userId: number,
+  input: z.infer<typeof notificationListQuerySchema>,
+) {
+  const [unreadCount, rows] = await prisma.$transaction([
+    prisma.appNotification.count({ where: { userId, readAt: null } }),
+    prisma.appNotification.findMany({
     where: {
       userId,
     },
     select: notificationSelect,
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 50,
-  });
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    take: input.limit + 1,
+  }),
+  ]);
+  const hasMore = rows.length > input.limit;
+  const notifications = rows.slice(0, input.limit);
 
   return {
-    unreadCount: notifications.filter((item) => !item.readAt).length,
+    unreadCount,
+    hasMore,
+    nextCursor: hasMore ? notifications[notifications.length - 1]?.id ?? null : null,
     notifications: notifications.map((item) => ({
       ...item,
       data: parseNotificationData(item.data),

@@ -365,6 +365,8 @@ export type CommerceManagedRedemption = {
 export type CommerceManagedRedemptionsResponse = {
   ok: boolean;
   redemptions: CommerceManagedRedemption[];
+  hasMore: boolean;
+  nextCursor?: number | null;
 };
 
 export type CommerceValidateRedemptionResponse = {
@@ -605,6 +607,9 @@ export type AdminCommerceItem = {
 export type AdminCommercesResponse = {
   ok: boolean;
   total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
   commerces: AdminCommerceItem[];
 };
 
@@ -659,6 +664,9 @@ export type AdminAuditLogItem = {
 export type AdminAuditLogsResponse = {
   ok: boolean;
   total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
   auditLogs: AdminAuditLogItem[];
 };
 
@@ -744,6 +752,9 @@ export type AdminPromotionItem = {
 export type AdminPromotionsResponse = {
   ok: boolean;
   total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
   promotions: AdminPromotionItem[];
 };
 

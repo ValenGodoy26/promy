@@ -375,6 +375,8 @@ export type CommerceManagedRedemption = {
 export type CommerceManagedRedemptionsResponse = {
   ok: boolean;
   redemptions: CommerceManagedRedemption[];
+  hasMore: boolean;
+  nextCursor?: number | null;
 };
 
 export type ValidateCommerceRedemptionInput = {
@@ -493,6 +495,8 @@ export type CommerceResponse = {
 export type RedemptionsResponse = {
   ok: boolean;
   redemptions: ApiRedemption[];
+  hasMore: boolean;
+  nextCursor?: number | null;
 };
 
 export type CreateRedemptionInput = {
@@ -509,6 +513,8 @@ export type NotificationsResponse = {
   ok: boolean;
   unreadCount: number;
   notifications: AppNotification[];
+  hasMore: boolean;
+  nextCursor?: number | null;
 };
 
 export type NotificationResponse = {

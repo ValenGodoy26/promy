@@ -130,22 +130,35 @@ export function AdminPromotionsPage({
   const [saving, setSaving] = useState(false);
   const [modalState, setModalState] = useState<ModerationModalState>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogItem[]>([]);
-  const [visibleCount, setVisibleCount] = useState(ADMIN_TABLE_PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
   const [promotionDraft, setPromotionDraft] = useState<AdminPromotionDraft | null>(null);
   const [showHidePromoConfirm, setShowHidePromoConfirm] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     void withSession((s) =>
       fetchAdminPromotionsFiltered(s, {
         status: filter === "all" ? undefined : filter.toUpperCase(),
         search: deferredSearch || undefined,
-        limit: 120,
+        page,
+        limit: ADMIN_TABLE_PAGE_SIZE,
       }),
     )
       .then((response) => {
-        setPromotions(response.promotions);
+        if (cancelled) return;
+        setPromotions((current) => {
+          if (page === 1) return response.promotions;
+          const byId = new Map(current.map((item) => [item.id, item]));
+          response.promotions.forEach((item) => byId.set(item.id, item));
+          return Array.from(byId.values());
+        });
+        setHasMore(response.hasMore);
+        setTotal(response.total);
         setSelectedId((current) => {
+          if (page > 1) return current;
           if (current && response.promotions.some((item) => item.id === current)) {
             return current;
           }
@@ -155,16 +168,21 @@ export function AdminPromotionsPage({
         setAuditError(null);
       })
       .catch((loadError) => {
+        if (cancelled) return;
         setError(loadError instanceof Error ? loadError.message : "No pudimos cargar promociones.");
       })
-      .finally(() => setLoading(false));
-  }, [deferredSearch, filter, realtimeVersion, withSession]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deferredSearch, filter, page, realtimeVersion, withSession]);
 
   const selected = useMemo(
     () => promotions.find((item) => item.id === selectedId) || promotions[0] || null,
     [promotions, selectedId],
   );
-  const visiblePromotions = useMemo(() => promotions.slice(0, visibleCount), [promotions, visibleCount]);
 
   useEffect(() => {
     if (!selected) {
@@ -187,7 +205,8 @@ export function AdminPromotionsPage({
   }, [selected?.id]);
 
   useEffect(() => {
-    setVisibleCount(ADMIN_TABLE_PAGE_SIZE);
+    setPage(1);
+    setPromotions([]);
   }, [deferredSearch, filter]);
 
   useEffect(() => {
@@ -370,7 +389,7 @@ export function AdminPromotionsPage({
           search={search}
           onSearchChange={setSearch}
           placeholder="Buscar por promo, comercio, owner o ciudad..."
-          countLabel={`${visiblePromotions.length} de ${promotions.length} cargados`}
+          countLabel={`${promotions.length} de ${total} cargados`}
         />
 
         <FilterChips
@@ -402,7 +421,7 @@ export function AdminPromotionsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {visiblePromotions.map((promotion) => (
+                  {promotions.map((promotion) => (
                     <tr
                       key={promotion.id}
                       className={selected?.id === promotion.id ? "is-selected" : ""}
@@ -438,7 +457,7 @@ export function AdminPromotionsPage({
                       </td>
                     </tr>
                   ))}
-                  {visiblePromotions.length === 0 ? (
+                  {promotions.length === 0 ? (
                     <tr>
                       <td colSpan={5}>
                         <div className="data-empty">Sin resultados para este filtro.</div>
@@ -447,12 +466,12 @@ export function AdminPromotionsPage({
                   ) : null}
                 </tbody>
               </table>
-              {promotions.length > visiblePromotions.length ? (
+              {hasMore ? (
                 <div style={{ padding: 16, display: "flex", justifyContent: "center" }}>
                   <button
                     className="btn btn-ghost"
                     type="button"
-                    onClick={() => setVisibleCount((current) => current + ADMIN_TABLE_PAGE_SIZE)}
+                    onClick={() => setPage((current) => current + 1)}
                   >
                     Ver mas promociones
                   </button>
