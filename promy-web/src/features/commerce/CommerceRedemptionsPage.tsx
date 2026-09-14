@@ -11,6 +11,7 @@ import { CommerceRedemptionValidator } from "./CommerceRedemptionValidator";
 import {
   getCameraStartupErrorMessage,
   stopMediaStream,
+  stopMediaStreamIfLate,
   withCameraStartupTimeout,
 } from "./camera";
 
@@ -200,11 +201,10 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
         };
         let cameraRequestExpired = false;
         const streamPromise = navigator.mediaDevices.getUserMedia(constraints);
-        void streamPromise
-          .then((stream) => {
-            if (cancelled || cameraRequestExpired) stopMediaStream(stream);
-          })
-          .catch(() => undefined);
+        void stopMediaStreamIfLate(
+          streamPromise,
+          () => cancelled || cameraRequestExpired,
+        );
 
         let stream: MediaStream;
         try {

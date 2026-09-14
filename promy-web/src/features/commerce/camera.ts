@@ -48,3 +48,15 @@ export function getCameraStartupErrorMessage(error: unknown) {
 export function stopMediaStream(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((track) => track.stop());
 }
+
+export async function stopMediaStreamIfLate(
+  streamPromise: Promise<MediaStream>,
+  shouldStop: () => boolean,
+) {
+  try {
+    const stream = await streamPromise;
+    if (shouldStop()) stopMediaStream(stream);
+  } catch {
+    // El rechazo principal se informa por el flujo que espera getUserMedia.
+  }
+}
