@@ -6,7 +6,7 @@ export function getCommercePhoneError(value: string) {
   const normalized = value.trim();
   if (!normalized) return null;
   if (!PHONE_ALLOWED_CHARACTERS.test(normalized)) {
-    return "Ingresa un telefono argentino valido, sin letras.";
+    return "Ingresá un teléfono argentino válido, sin letras.";
   }
 
   const compact = normalized.replace(/[\s()-]/g, "");
@@ -19,7 +19,7 @@ export function getCommercePhoneError(value: string) {
     ? digits.length >= 10 && digits.length <= 13
     : digits.length >= 8 && digits.length <= 11;
 
-  return validLength ? null : "El telefono es demasiado corto o demasiado largo.";
+  return validLength ? null : "El teléfono es demasiado corto o demasiado largo.";
 }
 
 export type CommerceProfileValidationInput = {
@@ -37,9 +37,9 @@ export function validateCommerceProfileForm(form: CommerceProfileValidationInput
   const phoneError = getCommercePhoneError(form.phone);
 
   if (form.name.trim().length < 2) errors.name = "El nombre debe tener al menos 2 caracteres.";
-  if (form.address.trim().length < 2) errors.address = "La direccion debe tener al menos 2 caracteres.";
+  if (form.address.trim().length < 2) errors.address = "La dirección debe tener al menos 2 caracteres.";
   if (!form.cityId.trim()) errors.cityId = "Selecciona una ciudad.";
-  if (!form.categoryId.trim()) errors.categoryId = "Selecciona una categoria.";
+  if (!form.categoryId.trim()) errors.categoryId = "Seleccioná una categoría.";
   if (phoneError) errors.phone = phoneError;
 
   const latitude = form.latitude.trim();

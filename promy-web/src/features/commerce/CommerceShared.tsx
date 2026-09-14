@@ -336,26 +336,36 @@ export function Field({
   className?: string;
   error?: string;
 }) {
+  const inputId = React.useId();
+  const errorId = `${inputId}-error`;
   return (
     <div className={`field ${className || ""}`}>
-      <label className="field-label">{label}</label>
+      <label className="field-label" htmlFor={inputId}>{label}</label>
       {multiline ? (
         <textarea
+          id={inputId}
+          name={inputId}
           className={`field-textarea ${error ? "is-error" : ""}`}
           rows={4}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
         />
       ) : (
         <input
+          id={inputId}
+          name={inputId}
           className={`field-input ${error ? "is-error" : ""}`}
           type={type}
           inputMode={inputMode}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
         />
       )}
-      {error ? <span className="field-error">{error}</span> : null}
+      {error ? <span id={errorId} className="field-error">{error}</span> : null}
     </div>
   );
 }
@@ -375,13 +385,19 @@ export function SelectField({
   className?: string;
   error?: string;
 }) {
+  const inputId = React.useId();
+  const errorId = `${inputId}-error`;
   return (
     <div className={`field ${className || ""}`}>
-      <label className="field-label">{label}</label>
+      <label className="field-label" htmlFor={inputId}>{label}</label>
       <select
+        id={inputId}
+        name={inputId}
         className={`field-select ${error ? "is-error" : ""}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -389,7 +405,7 @@ export function SelectField({
           </option>
         ))}
       </select>
-      {error ? <span className="field-error">{error}</span> : null}
+      {error ? <span id={errorId} className="field-error">{error}</span> : null}
     </div>
   );
 }

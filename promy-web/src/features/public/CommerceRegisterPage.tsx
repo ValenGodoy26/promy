@@ -206,7 +206,7 @@ export default function CommerceRegisterPage() {
             </div>
             <h1>¡Listo, tu comercio está en camino!</h1>
             <p>
-              Recibimos tu solicitud y nuestro equipo va a revisarla en las próximas horas.
+              Recibimos tu solicitud. Te vamos a avisar por email cuando finalice la revisión.
               Te avisamos por email cuando esté aprobada y puedas empezar a cargar promos.
             </p>
             {verificationPreviewLink ? (
@@ -255,7 +255,7 @@ export default function CommerceRegisterPage() {
             <div>
               <div className="register-aside-eyebrow">Bienvenido</div>
               <h1 className="register-aside-title">
-                Tu comercio en PROMY en <em>5 minutos</em>.
+                Prepará tu comercio para <em>PROMY</em>.
               </h1>
             </div>
           </div>
@@ -412,11 +412,14 @@ function StepAccess({ form, errors, update }: StepProps) {
   return (
     <div className="register-form-grid">
       <Field
+        fieldId="register-email"
         label="Email"
         hint="Usalo para iniciar sesión y recibir avisos."
         error={errors.email}
       >
         <input
+          id="register-email"
+          name="email"
           type="email"
           className={`register-input ${errors.email ? "is-error" : ""}`}
           placeholder="vos@tunegocio.com"
@@ -424,11 +427,15 @@ function StepAccess({ form, errors, update }: StepProps) {
           onChange={(e) => update("email", e.target.value)}
           autoComplete="email"
           required
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? "register-email-error" : "register-email-hint"}
         />
       </Field>
 
-      <Field label="Contraseña" hint={PASSWORD_REQUIREMENTS} error={errors.password}>
+      <Field fieldId="register-password" label="Contraseña" hint={PASSWORD_REQUIREMENTS} error={errors.password}>
         <input
+          id="register-password"
+          name="password"
           type="password"
           className={`register-input ${errors.password ? "is-error" : ""}`}
           placeholder="••••••••"
@@ -436,11 +443,15 @@ function StepAccess({ form, errors, update }: StepProps) {
           onChange={(e) => update("password", e.target.value)}
           autoComplete="new-password"
           required
+          aria-invalid={Boolean(errors.password)}
+          aria-describedby={errors.password ? "register-password-error" : "register-password-hint"}
         />
       </Field>
 
-      <Field label="Repetí la contraseña" error={errors.passwordRepeat}>
+      <Field fieldId="register-password-repeat" label="Repetí la contraseña" error={errors.passwordRepeat}>
         <input
+          id="register-password-repeat"
+          name="passwordRepeat"
           type="password"
           className={`register-input ${errors.passwordRepeat ? "is-error" : ""}`}
           placeholder="••••••••"
@@ -448,6 +459,8 @@ function StepAccess({ form, errors, update }: StepProps) {
           onChange={(e) => update("passwordRepeat", e.target.value)}
           autoComplete="new-password"
           required
+          aria-invalid={Boolean(errors.passwordRepeat)}
+          aria-describedby={errors.passwordRepeat ? "register-password-repeat-error" : undefined}
         />
       </Field>
     </div>
@@ -458,11 +471,14 @@ function StepOwner({ form, errors, update }: StepProps) {
   return (
     <div className="register-form-grid">
       <Field
+        fieldId="register-full-name"
         label="¿Cómo te llamás?"
         hint="Tu nombre y apellido, así te identificamos."
         error={errors.fullName}
       >
         <input
+          id="register-full-name"
+          name="fullName"
           type="text"
           className={`register-input ${errors.fullName ? "is-error" : ""}`}
           placeholder="Ana García"
@@ -470,21 +486,28 @@ function StepOwner({ form, errors, update }: StepProps) {
           onChange={(e) => update("fullName", e.target.value)}
           autoComplete="name"
           required
+          aria-invalid={Boolean(errors.fullName)}
+          aria-describedby={errors.fullName ? "register-full-name-error" : "register-full-name-hint"}
         />
       </Field>
 
       <Field
+        fieldId="register-phone"
         label="Teléfono (opcional)"
         hint="Para que podamos contactarte si hace falta."
         error={errors.phone}
       >
         <input
+          id="register-phone"
+          name="phone"
           type="tel"
           className={`register-input ${errors.phone ? "is-error" : ""}`}
           placeholder="+54 9 ..."
           value={form.phone}
           onChange={(e) => update("phone", e.target.value)}
           autoComplete="tel"
+          aria-invalid={Boolean(errors.phone)}
+          aria-describedby={errors.phone ? "register-phone-error" : "register-phone-hint"}
         />
       </Field>
     </div>
@@ -516,22 +539,29 @@ function StepCommerce({
   return (
     <div className="register-form-grid">
       <Field
+        fieldId="register-commerce-name"
         label="Nombre del comercio"
         hint="Como aparece en la fachada o en redes."
         error={errors.commerceName}
       >
         <input
+          id="register-commerce-name"
+          name="commerceName"
           type="text"
           className={`register-input ${errors.commerceName ? "is-error" : ""}`}
           placeholder="Café Matilda"
           value={form.commerceName}
           onChange={(e) => update("commerceName", e.target.value)}
           required
+          aria-invalid={Boolean(errors.commerceName)}
+          aria-describedby={errors.commerceName ? "register-commerce-name-error" : "register-commerce-name-hint"}
         />
       </Field>
 
-      <Field label="Dirección" error={errors.address}>
+      <Field fieldId="register-address" label="Dirección" error={errors.address}>
         <input
+          id="register-address"
+          name="address"
           type="text"
           className={`register-input ${errors.address ? "is-error" : ""}`}
           placeholder="Av. Siempre Viva 742"
@@ -539,17 +569,23 @@ function StepCommerce({
           onChange={(e) => update("address", e.target.value)}
           autoComplete="street-address"
           required
+          aria-invalid={Boolean(errors.address)}
+          aria-describedby={errors.address ? "register-address-error" : undefined}
         />
       </Field>
 
       <div className="register-form-row">
-        <Field label="Ciudad" error={errors.cityId}>
+        <Field fieldId="register-city" label="Ciudad" error={errors.cityId}>
           <select
+            id="register-city"
+            name="cityId"
             className={`register-input register-select ${errors.cityId ? "is-error" : ""}`}
             value={form.cityId}
             onChange={(e) => update("cityId", e.target.value)}
             disabled={catalogLoading}
             required
+            aria-invalid={Boolean(errors.cityId)}
+            aria-describedby={errors.cityId ? "register-city-error" : undefined}
           >
             <option value="">
               {catalogLoading ? "Cargando ciudades..." : "Elegí una ciudad"}
@@ -566,13 +602,17 @@ function StepCommerce({
           </select>
         </Field>
 
-        <Field label="Categoría" error={errors.categoryId}>
+        <Field fieldId="register-category" label="Categoría" error={errors.categoryId}>
           <select
+            id="register-category"
+            name="categoryId"
             className={`register-input register-select ${errors.categoryId ? "is-error" : ""}`}
             value={form.categoryId}
             onChange={(e) => update("categoryId", e.target.value)}
             disabled={catalogLoading}
             required
+            aria-invalid={Boolean(errors.categoryId)}
+            aria-describedby={errors.categoryId ? "register-category-error" : undefined}
           >
             <option value="">
               {catalogLoading ? "Cargando categorías..." : "Elegí una categoría"}
@@ -593,6 +633,7 @@ function StepDetails({ form, errors, update }: StepProps) {
   return (
     <div className="register-form-grid">
       <Field
+        fieldId="register-instagram"
         label="Instagram (opcional)"
         hint="Solo el usuario, sin la arroba."
         error={errors.instagram}
@@ -600,22 +641,29 @@ function StepDetails({ form, errors, update }: StepProps) {
         <div className="register-input-prefix">
           <span className="register-input-prefix-text">@</span>
           <input
+            id="register-instagram"
+            name="instagram"
             type="text"
             className={`register-input has-prefix ${errors.instagram ? "is-error" : ""}`}
             placeholder="tucomercio"
             value={form.instagram}
             onChange={(e) => update("instagram", e.target.value)}
             autoComplete="off"
+            aria-invalid={Boolean(errors.instagram)}
+            aria-describedby={errors.instagram ? "register-instagram-error" : "register-instagram-hint"}
           />
         </div>
       </Field>
 
       <Field
+        fieldId="register-description"
         label="Descripción corta (opcional)"
         hint={`${form.shortDescription.length}/160 — la usamos en el listado del mapa.`}
         error={errors.shortDescription}
       >
         <textarea
+          id="register-description"
+          name="shortDescription"
           className={`register-input register-textarea ${
             errors.shortDescription ? "is-error" : ""
           }`}
@@ -624,6 +672,8 @@ function StepDetails({ form, errors, update }: StepProps) {
           onChange={(e) => update("shortDescription", e.target.value)}
           maxLength={160}
           rows={3}
+          aria-invalid={Boolean(errors.shortDescription)}
+          aria-describedby={errors.shortDescription ? "register-description-error" : "register-description-hint"}
         />
       </Field>
 
@@ -640,24 +690,26 @@ function StepDetails({ form, errors, update }: StepProps) {
    ==================================================== */
 
 function Field({
+  fieldId,
   label,
   hint,
   error,
   children,
 }: {
+  fieldId: string;
   label: string;
   hint?: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="register-field">
+    <label className="register-field" htmlFor={fieldId}>
       <span className="register-field-label">{label}</span>
       {children}
       {error ? (
-        <span className="register-field-error">{error}</span>
+        <span id={`${fieldId}-error`} className="register-field-error" role="alert">{error}</span>
       ) : hint ? (
-        <span className="register-field-hint">{hint}</span>
+        <span id={`${fieldId}-hint`} className="register-field-hint">{hint}</span>
       ) : null}
     </label>
   );

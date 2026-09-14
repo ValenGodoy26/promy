@@ -109,7 +109,7 @@ export function AdminAuditPage({
         <Toolbar
           search={search}
           onSearchChange={setSearch}
-          placeholder="Buscar por admin, comercio, promocion o nota..."
+          placeholder="Buscar por admin, comercio, promoción o nota..."
           countLabel={`${logs.length} de ${total} registros`}
         />
 

@@ -42,6 +42,15 @@ export function CommerceRedemptionValidator({
   onRetryScanner,
   onUseManualCode,
 }: CommerceRedemptionValidatorProps) {
+  React.useEffect(() => {
+    if (!scannerOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseScanner();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCloseScanner, scannerOpen]);
+
   return (
     <>
       <section className="panel" style={{ marginBottom: 20 }}>
@@ -49,8 +58,7 @@ export function CommerceRedemptionValidator({
           <div className="panel-heading-stack">
             <h2>Validar canje en mostrador</h2>
             <p>
-              Ingresa, pega o escanea el codigo que te muestra el cliente para confirmar el uso de
-              la promo.
+              Ingresá, pegá o escaneá el código que te muestra el cliente para confirmar el canje.
             </p>
           </div>
         </div>
@@ -63,12 +71,15 @@ export function CommerceRedemptionValidator({
             <IconCheck size={12} /> {successCount} confirmados
           </span>
           <span className="summary-count">
-            <IconHash size={12} /> Compatible con lector y Enter automatico
+            <IconHash size={12} /> Compatible con lector y Enter automático
           </span>
         </div>
 
         <form className="redeem-validate-form" onSubmit={onSubmit}>
           <input
+            id="redemption-code"
+            name="redemptionCode"
+            aria-label="Código de canje"
             ref={inputRef}
             className="field-input redeem-validate-input redeem-validate-input-hero"
             value={validationCode}
@@ -79,7 +90,7 @@ export function CommerceRedemptionValidator({
             spellCheck={false}
           />
           <button className="btn btn-primary btn-xl" type="submit" disabled={validating}>
-            {validating ? "Validando..." : "Validar codigo"}
+            {validating ? "Validando..." : "Validar código"}
           </button>
           <button
             className="btn btn-ghost btn-lg"
@@ -95,18 +106,24 @@ export function CommerceRedemptionValidator({
             disabled={validating || readingClipboard}
             onClick={onOpenScanner}
           >
-            <IconEye size={14} /> Escanear con camara
+            <IconEye size={14} /> Escanear con cámara
           </button>
         </form>
       </section>
 
       {scannerOpen ? (
         <div className="modal-backdrop" onClick={onCloseScanner}>
-          <div className="modal scanner-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="modal scanner-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scanner-modal-title"
+          >
             <div className="panel-heading">
               <div className="panel-heading-stack">
-                <h2>Escanear codigo</h2>
-                <p>Apunta la camara al QR o codigo del cliente. Se valida automaticamente al detectarlo.</p>
+                <h2 id="scanner-modal-title">Escanear código</h2>
+                <p>Apuntá la cámara al QR o código del cliente. Se valida automáticamente al detectarlo.</p>
               </div>
             </div>
 
@@ -119,19 +136,19 @@ export function CommerceRedemptionValidator({
               </div>
 
               {scannerStarting ? (
-                <div className="alert alert-info" style={{ marginTop: 14 }}>
-                  <IconClock size={14} className="alert-icon" /> <span>Abriendo camara...</span>
+                <div className="alert alert-info" style={{ marginTop: 14 }} role="status" aria-live="polite">
+                  <IconClock size={14} className="alert-icon" /> <span>Abriendo cámara...</span>
                 </div>
               ) : null}
 
               {scannerActive ? (
                 <div className="scanner-help">
-                  Cuando PROMY detecte el codigo, lo valida y te devuelve el foco al mostrador.
+                  Cuando PROMY detecte el código, lo valida y te devuelve el foco al mostrador.
                 </div>
               ) : null}
 
               {scannerError ? (
-                <div className="alert alert-warning" style={{ marginTop: 14 }}>
+                <div className="alert alert-warning" style={{ marginTop: 14 }} role="alert">
                   <IconAlert size={14} className="alert-icon" /> <span>{scannerError}</span>
                 </div>
               ) : null}
@@ -143,11 +160,11 @@ export function CommerceRedemptionValidator({
               </button>
               {scannerError ? (
                 <button className="btn btn-secondary" type="button" onClick={onRetryScanner}>
-                  Reintentar camara
+                  Reintentar cámara
                 </button>
               ) : null}
               <button className="btn btn-primary" type="button" onClick={onUseManualCode}>
-                Ingresar codigo manualmente
+                Ingresar código manualmente
               </button>
             </div>
           </div>

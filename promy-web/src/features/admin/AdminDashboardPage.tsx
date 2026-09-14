@@ -187,7 +187,7 @@ export function AdminDashboardPage({
 
             <div className="dashboard-viz-grid">
               <MiniBarsCard
-                title="Top categorías por canjes"
+                title="Comercios con más canjes"
                 items={data.leaderboards.topCommerces.map((commerce) => ({
                   label: commerce.name,
                   value: commerce.redemptionsCount,
@@ -195,9 +195,9 @@ export function AdminDashboardPage({
                 emptyMessage="Todavía no hay canjes suficientes."
               />
               <MiniBarsCard
-                title="Comercios por ciudad"
+                title="Comercios recientes por ciudad"
                 items={cityCoverage}
-                emptyMessage="Sin comercios recientes."
+                emptyMessage="No hay comercios recientes en el período informado."
               />
               <MiniSignalCard
                 title="Loop de canjes"

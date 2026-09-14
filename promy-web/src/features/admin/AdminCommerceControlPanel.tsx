@@ -40,16 +40,20 @@ export function AdminCommerceControlPanel({
 
       <div className="form-grid">
         <div className="field field-wide">
-          <label className="field-label">Nombre publico</label>
+          <label className="field-label" htmlFor="admin-commerce-name">Nombre público</label>
           <input
+            id="admin-commerce-name"
+            name="name"
             className="field-input"
             value={draft.name}
             onChange={(event) => onDraftChange((current) => ({ ...current, name: event.target.value }))}
           />
         </div>
         <div className="field field-wide">
-          <label className="field-label">Descripcion corta</label>
+          <label className="field-label" htmlFor="admin-commerce-description">Descripción corta</label>
           <textarea
+            id="admin-commerce-description"
+            name="shortDescription"
             className="field-textarea"
             value={draft.shortDescription}
             onChange={(event) =>
@@ -58,16 +62,20 @@ export function AdminCommerceControlPanel({
           />
         </div>
         <div className="field field-wide">
-          <label className="field-label">Direccion</label>
+          <label className="field-label" htmlFor="admin-commerce-address">Dirección</label>
           <input
+            id="admin-commerce-address"
+            name="address"
             className="field-input"
             value={draft.address}
             onChange={(event) => onDraftChange((current) => ({ ...current, address: event.target.value }))}
           />
         </div>
         <div className="field">
-          <label className="field-label">Latitud</label>
+          <label className="field-label" htmlFor="admin-commerce-latitude">Latitud</label>
           <input
+            id="admin-commerce-latitude"
+            name="latitude"
             className="field-input"
             value={draft.latitude}
             onChange={(event) => onDraftChange((current) => ({ ...current, latitude: event.target.value }))}
@@ -75,8 +83,10 @@ export function AdminCommerceControlPanel({
           />
         </div>
         <div className="field">
-          <label className="field-label">Longitud</label>
+          <label className="field-label" htmlFor="admin-commerce-longitude">Longitud</label>
           <input
+            id="admin-commerce-longitude"
+            name="longitude"
             className="field-input"
             value={draft.longitude}
             onChange={(event) => onDraftChange((current) => ({ ...current, longitude: event.target.value }))}
@@ -84,40 +94,50 @@ export function AdminCommerceControlPanel({
           />
         </div>
         <div className="field">
-          <label className="field-label">Telefono</label>
+          <label className="field-label" htmlFor="admin-commerce-phone">Teléfono</label>
           <input
+            id="admin-commerce-phone"
+            name="phone"
             className="field-input"
             value={draft.phone}
             onChange={(event) => onDraftChange((current) => ({ ...current, phone: event.target.value }))}
           />
         </div>
         <div className="field">
-          <label className="field-label">Instagram</label>
+          <label className="field-label" htmlFor="admin-commerce-instagram">Instagram</label>
           <input
+            id="admin-commerce-instagram"
+            name="instagram"
             className="field-input"
             value={draft.instagram}
             onChange={(event) => onDraftChange((current) => ({ ...current, instagram: event.target.value }))}
           />
         </div>
         <div className="field field-wide">
-          <label className="field-label">Logo URL</label>
+          <label className="field-label" htmlFor="admin-commerce-logo">Logo URL</label>
           <input
+            id="admin-commerce-logo"
+            name="logoUrl"
             className="field-input"
             value={draft.logoUrl}
             onChange={(event) => onDraftChange((current) => ({ ...current, logoUrl: event.target.value }))}
           />
         </div>
         <div className="field field-wide">
-          <label className="field-label">Cover URL</label>
+          <label className="field-label" htmlFor="admin-commerce-cover">Cover URL</label>
           <input
+            id="admin-commerce-cover"
+            name="coverUrl"
             className="field-input"
             value={draft.coverUrl}
             onChange={(event) => onDraftChange((current) => ({ ...current, coverUrl: event.target.value }))}
           />
         </div>
         <div className="field">
-          <label className="field-label">Orden destacado</label>
+          <label className="field-label" htmlFor="admin-commerce-rank">Orden destacado</label>
           <input
+            id="admin-commerce-rank"
+            name="featuredRank"
             className="field-input"
             inputMode="numeric"
             value={draft.featuredRank}
@@ -127,8 +147,10 @@ export function AdminCommerceControlPanel({
           />
         </div>
         <div className="field field-wide">
-          <label className="field-label">Nota interna</label>
+          <label className="field-label" htmlFor="admin-commerce-note">Nota interna</label>
           <textarea
+            id="admin-commerce-note"
+            name="adminNote"
             className="field-textarea"
             value={draft.adminNote}
             onChange={(event) => onDraftChange((current) => ({ ...current, adminNote: event.target.value }))}
@@ -139,6 +161,7 @@ export function AdminCommerceControlPanel({
       <div className="admin-control-switches">
         <button
           type="button"
+          aria-pressed={draft.isFeatured}
           className={draft.isFeatured ? "chip is-active" : "chip"}
           onClick={() => onDraftChange((current) => ({ ...current, isFeatured: !current.isFeatured }))}
         >
@@ -146,6 +169,7 @@ export function AdminCommerceControlPanel({
         </button>
         <button
           type="button"
+          aria-pressed={draft.isHiddenByAdmin}
           className={draft.isHiddenByAdmin ? "chip is-active" : "chip"}
           onClick={() =>
             onDraftChange((current) => ({ ...current, isHiddenByAdmin: !current.isHiddenByAdmin }))

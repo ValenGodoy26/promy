@@ -71,7 +71,7 @@ export function AdminCommerceDetailPanel({
         <DetailRow label="Owner" value={`${selected.owner.fullName} · ${selected.owner.email}`} />
         <DetailRow
           label="Ubicacion"
-          value={`${selected.address || "Sin direccion"} · ${selected.city.name}`}
+          value={`${selected.address || "Sin dirección"} · ${selected.city.name}`}
         />
         <DetailRow label="Categoria" value={selected.category.name} />
         <DetailRow

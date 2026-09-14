@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import {
   ApiError,
@@ -54,4 +55,27 @@ test("admin readiness separates profile requirements from administrative status"
   assert.equal(getReadinessSummary(commerce("REJECTED", [], ["status"])).label, "Rechazado");
   assert.equal(getReadinessSummary(commerce("INACTIVE", [], ["status"])).label, "Inactivo");
   assert.deepEqual(getApprovalBlockingFields(commerce("PENDING", [], ["status"])), []);
+});
+
+test("admin redemption leaderboard names the commerce dataset it renders", () => {
+  const source = fs.readFileSync(
+    new URL("../src/features/admin/AdminDashboardPage.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /title="Comercios con más canjes"[\s\S]*topCommerces/u);
+  assert.doesNotMatch(source, /Top categorías por canjes/u);
+  assert.match(source, /Comercios recientes por ciudad/u);
+});
+
+test("form primitives expose labels, field errors and responsive table containment", () => {
+  const fields = fs.readFileSync(
+    new URL("../src/features/commerce/CommerceShared.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(fields, /htmlFor=\{inputId\}/u);
+  assert.match(fields, /aria-invalid=\{Boolean\(error\)\}/u);
+  assert.match(fields, /aria-describedby=\{error \? errorId/u);
+  assert.match(styles, /\.table-wrap \{ overflow-x: auto/u);
+  assert.match(styles, /max-height: calc\(100dvh - 20px\)/u);
 });

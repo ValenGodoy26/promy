@@ -104,7 +104,7 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
     const normalized = normalizeValidationCode(rawCode);
 
     if (!normalized) {
-      setError("Ingresa un codigo para validar.");
+      setError("Ingresá un código para validar.");
       return false;
     }
 
@@ -139,12 +139,12 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
       setError(null);
       const clipboardText = await navigator.clipboard.readText();
       if (!normalizeValidationCode(clipboardText)) {
-        setError("No encontramos un codigo valido en el portapapeles.");
+        setError("No encontramos un código válido en el portapapeles.");
         return;
       }
       await executeValidation(clipboardText);
     } catch (clipboardError) {
-      setError(clipboardError instanceof Error ? clipboardError.message : "No pudimos leer o validar el codigo.");
+      setError(clipboardError instanceof Error ? clipboardError.message : "No pudimos leer o validar el código.");
     } finally {
       setReadingClipboard(false);
     }
@@ -177,7 +177,7 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
 
     const startScanner = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setScannerError("Este navegador no permite abrir la camara desde el panel.");
+        setScannerError("Este navegador no permite abrir la cámara desde el panel.");
         return;
       }
 

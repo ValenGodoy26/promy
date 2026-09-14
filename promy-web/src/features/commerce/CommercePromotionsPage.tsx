@@ -161,7 +161,7 @@ export function CommercePromotionsPage({
             <IconClock size={14} className="alert-icon" />
             <span>
               {pendingReviewCount === 1
-                ? "Tenes 1 promocion en revision. Todavia no se muestra en la app, el mapa ni la busqueda hasta que el equipo la apruebe."
+                ? "Tenés 1 promoción en revisión. Todavía no se muestra en la app, el mapa ni la búsqueda hasta que el equipo la apruebe."
                 : `Tenes ${pendingReviewCount} promociones en revision. Todavia no se muestran en la app, el mapa ni la busqueda hasta que el equipo las apruebe.`}
             </span>
           </div>

@@ -269,7 +269,7 @@ export function AdminPromotionsPage({
         ),
       );
       setModalState(null);
-      setFeedback(response.message || "Estado de la promocion actualizado.");
+      setFeedback(response.message || "Estado de la promoción actualizado.");
 
       const auditResponse = await withSession((s) =>
         fetchAdminAuditLogs(s, {
@@ -284,7 +284,7 @@ export function AdminPromotionsPage({
       setError(null);
     } catch (loadError) {
       setError(
-        loadError instanceof Error ? loadError.message : "No pudimos actualizar la promocion.",
+        loadError instanceof Error ? loadError.message : "No pudimos actualizar la promoción.",
       );
     } finally {
       setSaving(false);
@@ -316,7 +316,7 @@ export function AdminPromotionsPage({
       : 0;
 
     if (!promotionDraft.title.trim() || !promotionDraft.description.trim()) {
-      setError("La promocion necesita titulo y descripcion visibles.");
+      setError("La promoción necesita título y descripción visibles.");
       return;
     }
 
@@ -354,7 +354,7 @@ export function AdminPromotionsPage({
       setFeedback("Promocion actualizada desde control admin.");
       setError(null);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "No pudimos guardar la promocion.");
+      setError(loadError instanceof Error ? loadError.message : "No pudimos guardar la promoción.");
     } finally {
       setSaving(false);
     }
@@ -398,7 +398,7 @@ export function AdminPromotionsPage({
           options={[
             { id: "all", label: "Todas" },
             { id: "draft", label: "Borrador" },
-            { id: "pending_review", label: "En revision" },
+            { id: "pending_review", label: "En revisión" },
             { id: "approved_visible", label: "Visibles" },
             { id: "rejected", label: "Rechazadas" },
             { id: "expired", label: "Expiradas" },
@@ -612,8 +612,10 @@ export function AdminPromotionsPage({
 
                           <div className="form-grid">
                             <div className="field field-wide">
-                              <label className="field-label">Titulo</label>
+                              <label className="field-label" htmlFor="admin-promotion-title">Título</label>
                               <input
+                                id="admin-promotion-title"
+                                name="title"
                                 className="field-input"
                                 value={promotionDraft.title}
                                 onChange={(event) =>
@@ -624,8 +626,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field field-wide">
-                              <label className="field-label">Descripcion</label>
+                              <label className="field-label" htmlFor="admin-promotion-description">Descripción</label>
                               <textarea
+                                id="admin-promotion-description"
+                                name="description"
                                 className="field-textarea"
                                 value={promotionDraft.description}
                                 onChange={(event) =>
@@ -638,8 +642,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field field-wide">
-                              <label className="field-label">Condiciones</label>
+                              <label className="field-label" htmlFor="admin-promotion-conditions">Condiciones</label>
                               <textarea
+                                id="admin-promotion-conditions"
+                                name="conditions"
                                 className="field-textarea"
                                 value={promotionDraft.conditions}
                                 onChange={(event) =>
@@ -652,8 +658,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field field-wide">
-                              <label className="field-label">Imagen URL</label>
+                              <label className="field-label" htmlFor="admin-promotion-image">Imagen URL</label>
                               <input
+                                id="admin-promotion-image"
+                                name="imageUrl"
                                 className="field-input"
                                 value={promotionDraft.imageUrl}
                                 onChange={(event) =>
@@ -666,8 +674,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field">
-                              <label className="field-label">Descuento</label>
+                              <label className="field-label" htmlFor="admin-promotion-discount">Descuento</label>
                               <input
+                                id="admin-promotion-discount"
+                                name="discountValue"
                                 className="field-input"
                                 value={promotionDraft.discountValue}
                                 onChange={(event) =>
@@ -680,8 +690,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field">
-                              <label className="field-label">Orden destacado</label>
+                              <label className="field-label" htmlFor="admin-promotion-rank">Orden destacado</label>
                               <input
+                                id="admin-promotion-rank"
+                                name="featuredRank"
                                 className="field-input"
                                 inputMode="numeric"
                                 value={promotionDraft.featuredRank}
@@ -695,8 +707,10 @@ export function AdminPromotionsPage({
                               />
                             </div>
                             <div className="field field-wide">
-                              <label className="field-label">Nota interna</label>
+                              <label className="field-label" htmlFor="admin-promotion-note">Nota interna</label>
                               <textarea
+                                id="admin-promotion-note"
+                                name="adminNote"
                                 className="field-textarea"
                                 value={promotionDraft.adminNote}
                                 onChange={(event) =>
@@ -713,6 +727,7 @@ export function AdminPromotionsPage({
                           <div className="admin-control-switches">
                             <button
                               type="button"
+                              aria-pressed={promotionDraft.isFeatured}
                               className={promotionDraft.isFeatured ? "chip is-active" : "chip"}
                               onClick={() =>
                                 setPromotionDraft((current) =>
@@ -724,6 +739,7 @@ export function AdminPromotionsPage({
                             </button>
                             <button
                               type="button"
+                              aria-pressed={promotionDraft.isHiddenByAdmin}
                               className={promotionDraft.isHiddenByAdmin ? "chip is-active" : "chip"}
                               onClick={() =>
                                 setPromotionDraft((current) =>
@@ -743,7 +759,7 @@ export function AdminPromotionsPage({
                             disabled={saving}
                             onClick={savePromotionControl}
                           >
-                            {saving ? "Guardando..." : "Guardar control de promocion"}
+                            {saving ? "Guardando..." : "Guardar control de promoción"}
                           </button>
                         </section>
                       ) : null}

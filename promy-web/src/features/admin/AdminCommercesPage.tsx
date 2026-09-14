@@ -342,7 +342,7 @@ export function AdminCommercesPage({
         <Toolbar
           search={search}
           onSearchChange={setSearch}
-          placeholder="Buscar por comercio, owner, ciudad o categoria..."
+          placeholder="Buscar por comercio, responsable, ciudad o categoría..."
           countLabel={`${commerces.length} de ${total} cargados`}
         />
 

@@ -243,13 +243,13 @@ export function CommercePromotionEditorPage({
           <section className="panel">
             <div className="panel-heading">
               <div className="panel-heading-stack">
-                <h2>Configuracion de la promo</h2>
-                <p>Defini beneficio, estado, horarios y vigencia.</p>
+                <h2>Configuración de la promoción</h2>
+                <p>Definí el contenido, estado, horarios y vigencia.</p>
               </div>
             </div>
 
             {validation.length ? (
-              <div className="alert alert-danger">
+              <div className="alert alert-danger" role="alert">
                 <IconAlert size={14} className="alert-icon" />
                 <div>
                   {validation.map((message) => (
@@ -259,12 +259,12 @@ export function CommercePromotionEditorPage({
               </div>
             ) : null}
             {error ? (
-              <div className="alert alert-danger">
+              <div className="alert alert-danger" role="alert">
                 <IconAlert size={14} className="alert-icon" /> <span>{error}</span>
               </div>
             ) : null}
             {feedback ? (
-              <div className="alert alert-success">
+              <div className="alert alert-success" role="status" aria-live="polite">
                 <IconCheck size={14} className="alert-icon" /> <span>{feedback}</span>
               </div>
             ) : null}
@@ -281,7 +281,7 @@ export function CommercePromotionEditorPage({
 
             <form className="form-grid" onSubmit={handleSubmit}>
               <Field
-                label="Titulo"
+                label="Título"
                 value={form.title}
                 onChange={(value) => setForm((current) => ({ ...current, title: value }))}
               />
@@ -294,7 +294,7 @@ export function CommercePromotionEditorPage({
                 options={promotionTypes}
               />
               <SelectField
-                label="Validacion"
+                label="Validación"
                 value={form.validationMethod}
                 onChange={(value) =>
                   setForm((current) => ({ ...current, validationMethod: value as ValidationMethod }))
@@ -302,7 +302,7 @@ export function CommercePromotionEditorPage({
                 options={validationMethods}
               />
               <Field
-                label="Descripcion"
+                label="Descripción"
                 multiline
                 value={form.description}
                 onChange={(value) => setForm((current) => ({ ...current, description: value }))}
@@ -322,7 +322,7 @@ export function CommercePromotionEditorPage({
                 onChange={(value) => setForm((current) => ({ ...current, discountValue: value }))}
               />
               <Field
-                label="Cupo maximo de canjes"
+                label="Cupo máximo de canjes"
                 value={form.maxRedemptions}
                 inputMode="numeric"
                 onChange={(value) => setForm((current) => ({ ...current, maxRedemptions: value }))}
@@ -340,7 +340,7 @@ export function CommercePromotionEditorPage({
                 }
                 options={[
                   { value: "DRAFT", label: "Borrador" },
-                  { value: "PENDING_REVIEW", label: "Enviar a revision" },
+                  { value: "PENDING_REVIEW", label: "Enviar a revisión" },
                 ]}
               />
               <Field
@@ -368,13 +368,13 @@ export function CommercePromotionEditorPage({
                 onChange={(value) => setForm((current) => ({ ...current, endTime: value }))}
               />
               <div className="field field-wide">
-                <label className="field-label">Ventanas por dia (opcional)</label>
+                <div className="field-label">Ventanas por día (opcional)</div>
                 <div className="field-help" style={{ marginBottom: 8 }}>
-                  Si agregas franjas por dia, PROMY usara esas ventanas como regla principal de disponibilidad.
+                  Si agregás franjas por día, PROMY usará esas ventanas como regla principal de disponibilidad.
                 </div>
                 {form.schedules.length ? (
                   <div className="field-help" style={{ marginBottom: 10 }}>
-                    Resumen: {summarizePromotionSchedules(form.schedules) || "Sin franjas completas todavia."}
+                    Resumen: {summarizePromotionSchedules(form.schedules) || "Sin franjas completas todavía."}
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -398,9 +398,10 @@ export function CommercePromotionEditorPage({
                   {form.schedules.map((schedule, index) => (
                     <div
                       key={`${schedule.weekday}-${index}`}
-                      style={{ display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1fr 1fr auto" }}
+                      className="schedule-row"
                     >
                       <select
+                        aria-label={`Día de la franja ${index + 1}`}
                         className="field-select"
                         value={schedule.weekday}
                         onChange={(event) =>
@@ -421,6 +422,7 @@ export function CommercePromotionEditorPage({
                         ))}
                       </select>
                       <input
+                        aria-label={`Hora de inicio de la franja ${index + 1}`}
                         className="field-input"
                         type="time"
                         value={schedule.startTime}
@@ -434,6 +436,7 @@ export function CommercePromotionEditorPage({
                         }
                       />
                       <input
+                        aria-label={`Hora de fin de la franja ${index + 1}`}
                         className="field-input"
                         type="time"
                         value={schedule.endTime}
@@ -487,8 +490,10 @@ export function CommercePromotionEditorPage({
               />
 
               <div className="field field-wide">
-                <label className="field-label">Subir imagen al servidor</label>
+                <label className="field-label" htmlFor="promotion-image-upload">Subir imagen al servidor</label>
                 <input
+                  id="promotion-image-upload"
+                  name="promotionImage"
                   type="file"
                   accept="image/*"
                   className="file-input"
@@ -498,7 +503,7 @@ export function CommercePromotionEditorPage({
                 <span className="field-help">
                   {uploading
                     ? "Subiendo imagen..."
-                    : "Tambien podes subir una imagen directamente (JPG / PNG)."}
+                    : "También podés subir una imagen directamente (JPG / PNG)."}
                 </span>
               </div>
 
@@ -521,7 +526,7 @@ export function CommercePromotionEditorPage({
                     <IconTrash size={13} /> Eliminar
                   </button>
                 ) : (
-                  <span className="meta">Podes editar despues de crear.</span>
+                  <span className="meta">Podés editar después de crear.</span>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -537,7 +542,7 @@ export function CommercePromotionEditorPage({
                     type="submit"
                     disabled={saving || !canOperate}
                   >
-                    {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear promocion"}
+                    {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear promoción"}
                   </button>
                 </div>
               </div>
@@ -558,12 +563,12 @@ export function CommercePromotionEditorPage({
             role="dialog"
             aria-modal="true"
           >
-            <div className="page-kicker">Accion sensible</div>
-            <h2>Eliminar promocion</h2>
+            <div className="page-kicker">Acción sensible</div>
+            <h2>Eliminar promoción</h2>
             <p className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-              Vas a borrar esta promocion de forma permanente si todavia no tiene canjes asociados.
-              Si necesitas frenarla sin perder historial, conviene dejarla en borrador o volver a
-              revision.
+              Vas a borrar esta promoción de forma permanente si todavía no tiene canjes asociados.
+              Si necesitás frenarla sin perder historial, conviene dejarla en borrador o volver a
+              revisión.
             </p>
 
             <div className="modal-footer">

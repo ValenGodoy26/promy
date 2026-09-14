@@ -8513,3 +8513,46 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   display: flex !important;
   flex-direction: column !important;
 }
+
+/* Block 11: final responsive overrides live last because this stylesheet retains legacy layers. */
+.table-wrap { overflow-x: auto; overscroll-behavior-inline: contain; }
+.data-table { min-width: 720px; }
+.schedule-row { display: grid; gap: 10px; grid-template-columns: 1.3fr 1fr 1fr auto; }
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .app-shell { grid-template-columns: 56px minmax(0, 1fr); }
+  .sidebar-head { padding: 14px 8px; }
+  .sidebar-nav { padding-inline: 6px; }
+  .sidebar-link { justify-content: center; padding-inline: 8px; }
+  .main-header { padding: 22px 12px 0; }
+  .main-content { padding: 22px 12px 40px; }
+  .page-title-row { align-items: flex-start; flex-direction: column; gap: 12px; padding-bottom: 18px; }
+  .page-title { font-size: clamp(28px, 10vw, 34px); overflow-wrap: anywhere; }
+  .page-meta { flex-wrap: wrap; gap: 8px; }
+  .stats-grid, .admin-stats-grid { grid-template-columns: 1fr; gap: 12px; }
+  .panel, .detail-card, .audit-card, .promo-card { padding: 16px; }
+  .panel-heading, .commerce-strip, .commerce-strip-main, .commerce-strip-meta,
+  .detail-actions, .form-footer, .toolbar, .toolbar-start, .toolbar-end,
+  .promo-card-head, .promo-card-actions { align-items: stretch; flex-direction: column; }
+  .toolbar-start, .search-input-wrap { min-width: 0; max-width: none; width: 100%; }
+  .toolbar-end, .toolbar-end > *, .form-footer > *, .form-footer .btn,
+  .promo-card-actions .btn, .detail-actions .btn { width: 100%; }
+  .promo-grid { grid-template-columns: minmax(0, 1fr); }
+  .detail-row { flex-direction: column; gap: 5px; }
+  .detail-row-value { max-width: none; text-align: left; overflow-wrap: anywhere; }
+  .schedule-row { grid-template-columns: 1fr; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-sm); }
+  .redeem-validate-form { grid-template-columns: 1fr; }
+  .redeem-validate-form .btn { width: 100%; white-space: normal; }
+  .modal-backdrop { align-items: start; padding: 10px; overflow-y: auto; }
+  .modal { max-height: calc(100dvh - 20px); overflow-y: auto; padding: 18px; }
+  .modal-footer { flex-direction: column-reverse; }
+  .modal-footer .btn { width: 100%; white-space: normal; }
+  .scanner-frame { min-height: 180px; }
+  .subnav { margin-inline: 0; }
+  .btn { white-space: normal; text-align: center; }
+}

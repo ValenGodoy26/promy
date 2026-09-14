@@ -494,8 +494,10 @@ function LoginPage() {
 
           <form className="auth-form-body" onSubmit={handleSubmit}>
             <div>
-              <label className="auth-field-label">Email</label>
+              <label className="auth-field-label" htmlFor="login-email">Email</label>
               <input
+                id="login-email"
+                name="email"
                 className="auth-field-input"
                 type="email"
                 value={email}
@@ -506,8 +508,10 @@ function LoginPage() {
             </div>
 
             <div>
-              <label className="auth-field-label">Contraseña</label>
+              <label className="auth-field-label" htmlFor="login-password">Contraseña</label>
               <input
+                id="login-password"
+                name="password"
                 className="auth-field-input"
                 type="password"
                 value={password}
@@ -541,7 +545,7 @@ function LoginPage() {
             </div>
 
             {authNotice && !error ? (
-              <div className="auth-alert">
+              <div className="auth-alert" role="status" aria-live="polite">
                 <IconAlert size={14} />
                 <span>{authNotice}</span>
               </div>
@@ -559,7 +563,7 @@ function LoginPage() {
             ) : null}
 
             {error ? (
-              <div className="auth-alert auth-alert-danger">
+              <div className="auth-alert auth-alert-danger" role="alert">
                 <IconAlert size={14} />
                 <span>{error}</span>
               </div>

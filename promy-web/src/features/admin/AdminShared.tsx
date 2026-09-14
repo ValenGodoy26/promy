@@ -64,6 +64,7 @@ export function Toolbar({
         <div className="search-input-wrap">
           <IconSearch size={14} className="search-input-icon" />
           <input
+            aria-label={placeholder}
             type="search"
             className="search-input"
             placeholder={placeholder}
@@ -135,6 +136,15 @@ export function ModerationModal({
     }
   }, [defaultNote, open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [loading, onClose, open]);
+
   if (!open) return null;
 
   const handleSubmit = () => {
@@ -154,26 +164,32 @@ export function ModerationModal({
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="moderation-modal-title"
       >
         <div className="page-kicker">Moderación</div>
-        <h2>{title}</h2>
+        <h2 id="moderation-modal-title">{title}</h2>
         <p className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>
           {description}
         </p>
 
         <div className="modal-body">
           <div className="field">
-            <label className="field-label">Observación interna</label>
+            <label className="field-label" htmlFor="moderation-note">Observación interna</label>
             <textarea
+              id="moderation-note"
+              name="moderationNote"
+              autoFocus
               className="field-textarea"
               placeholder="Dejá una nota para el equipo o para futuras revisiones..."
               value={note}
               onChange={(event) => setNote(event.target.value)}
+              aria-invalid={Boolean(validation)}
+              aria-describedby={validation ? "moderation-note-error" : undefined}
             />
           </div>
         </div>
 
-        {validation ? <Alert tone="danger" message={validation} style={{ marginTop: 12 }} /> : null}
+        {validation ? <div id="moderation-note-error"><Alert tone="danger" message={validation} style={{ marginTop: 12 }} /></div> : null}
 
         <div className="modal-footer">
           <button className="btn btn-ghost" type="button" disabled={loading} onClick={onClose}>
@@ -478,7 +494,12 @@ export function Alert({
 }) {
   const Icon = tone === "success" ? IconCheck : IconAlert;
   return (
-    <div className={`alert alert-${tone}`} style={style}>
+    <div
+      className={`alert alert-${tone}`}
+      style={style}
+      role={tone === "danger" ? "alert" : "status"}
+      aria-live={tone === "danger" ? "assertive" : "polite"}
+    >
       <Icon size={14} className="alert-icon" />
       <span>{message}</span>
     </div>

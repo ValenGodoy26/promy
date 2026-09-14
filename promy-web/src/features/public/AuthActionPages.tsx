@@ -114,7 +114,11 @@ function AuthAlert({
   children: ReactNode;
 }) {
   return (
-    <div className={`auth-alert ${tone === "danger" ? "auth-alert-danger" : "auth-alert-success"}`}>
+    <div
+      className={`auth-alert ${tone === "danger" ? "auth-alert-danger" : "auth-alert-success"}`}
+      role={tone === "danger" ? "alert" : "status"}
+      aria-live={tone === "danger" ? "assertive" : "polite"}
+    >
       <IconAlert size={14} />
       <span>{children}</span>
     </div>
@@ -179,8 +183,10 @@ function VerifyResendForm({
     <>
       <form className="auth-form-body" onSubmit={handleSubmit}>
         <div>
-          <label className="auth-field-label">Email</label>
+          <label className="auth-field-label" htmlFor="verify-email-address">Email</label>
           <input
+            id="verify-email-address"
+            name="email"
             className="auth-field-input"
             type="email"
             value={email}
@@ -339,8 +345,10 @@ export function ForgotPasswordPage() {
     >
       <form className="auth-form-body" onSubmit={handleSubmit}>
         <div>
-          <label className="auth-field-label">Email</label>
+          <label className="auth-field-label" htmlFor="recovery-email">Email</label>
           <input
+            id="recovery-email"
+            name="email"
             className="auth-field-input"
             type="email"
             value={email}
@@ -521,21 +529,26 @@ export function ResetPasswordPage() {
       ) : (
         <form className="auth-form-body" onSubmit={handleSubmit}>
           <div>
-            <label className="auth-field-label">Nueva contraseña</label>
-            <p className="auth-field-hint">{PASSWORD_REQUIREMENTS}</p>
+            <label className="auth-field-label" htmlFor="reset-password">Nueva contraseña</label>
+            <p className="auth-field-hint" id="reset-password-hint">{PASSWORD_REQUIREMENTS}</p>
             <input
+              id="reset-password"
+              name="password"
               className="auth-field-input"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
               autoComplete="new-password"
+              aria-describedby="reset-password-hint"
             />
           </div>
 
           <div>
-            <label className="auth-field-label">Repetí la contraseña</label>
+            <label className="auth-field-label" htmlFor="reset-password-repeat">Repetí la contraseña</label>
             <input
+              id="reset-password-repeat"
+              name="passwordRepeat"
               className="auth-field-input"
               type="password"
               value={passwordRepeat}

@@ -56,7 +56,7 @@ export function AdminCategoriesPage({
         setError(null);
       })
       .catch((loadError) => {
-        setError(loadError instanceof Error ? loadError.message : "No pudimos cargar categorias.");
+        setError(loadError instanceof Error ? loadError.message : "No pudimos cargar categorías.");
       })
       .finally(() => setLoading(false));
   }, [activeFilter, deferredSearch, realtimeVersion, withSession]);
@@ -83,7 +83,7 @@ export function AdminCategoriesPage({
 
   const handleSubmit = async () => {
     if (draft.name.trim().length < 2) {
-      setError("La categoria necesita un nombre claro.");
+      setError("La categoría necesita un nombre claro.");
       return;
     }
 
@@ -121,7 +121,7 @@ export function AdminCategoriesPage({
       setFeedback(response.message || "Categoria guardada.");
       setError(null);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "No pudimos guardar la categoria.");
+      setError(loadError instanceof Error ? loadError.message : "No pudimos guardar la categoría.");
     } finally {
       setSaving(false);
     }
@@ -184,7 +184,7 @@ export function AdminCategoriesPage({
         </div>
 
         {loading ? (
-          <LoadingBlock title="Cargando categorias" text="Trayendo rubros y metricas de cobertura." />
+          <LoadingBlock title="Cargando categorías" text="Trayendo rubros y métricas de cobertura." />
         ) : (
           <div className="detail-layout">
             <div className="table-wrap">
@@ -241,12 +241,12 @@ export function AdminCategoriesPage({
             <aside className="detail-card">
               <div className="page-kicker">{mode === "edit" ? "Edicion" : "Alta"}</div>
               <h2 className="detail-title">
-                {mode === "edit" && selected ? selected.name : "Nueva categoria"}
+                {mode === "edit" && selected ? selected.name : "Nueva categoría"}
               </h2>
               <p className="detail-desc">
                 {mode === "edit" && selected
                   ? `${selected.mapReadyCommerceCount} comercios ya estan listos para mapa dentro de este rubro.`
-                  : "Crea una categoria cuidando el nombre canonico que va a ordenar el catalogo."}
+                  : "Creá una categoría cuidando el nombre canónico que va a ordenar el catálogo."}
               </p>
 
               {selected && mode === "edit" ? (
@@ -268,8 +268,10 @@ export function AdminCategoriesPage({
 
               <div className="form-grid">
                 <div className="field">
-                  <label className="field-label">Nombre</label>
+                  <label className="field-label" htmlFor="admin-category-name">Nombre</label>
                   <input
+                    id="admin-category-name"
+                    name="name"
                     className="field-input"
                     value={draft.name}
                     onChange={(event) =>
@@ -279,8 +281,10 @@ export function AdminCategoriesPage({
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">Icono</label>
+                  <label className="field-label" htmlFor="admin-category-icon">Ícono</label>
                   <input
+                    id="admin-category-icon"
+                    name="icon"
                     className="field-input"
                     value={draft.icon}
                     onChange={(event) =>
@@ -294,6 +298,7 @@ export function AdminCategoriesPage({
               <div className="stacked-badges" style={{ marginTop: 14, marginBottom: 16 }}>
                 <button
                   type="button"
+                  aria-pressed={draft.isActive}
                   className={draft.isActive ? "chip is-active" : "chip"}
                   onClick={() => setDraft((current) => ({ ...current, isActive: true }))}
                 >
@@ -301,6 +306,7 @@ export function AdminCategoriesPage({
                 </button>
                 <button
                   type="button"
+                  aria-pressed={!draft.isActive}
                   className={!draft.isActive ? "chip is-active" : "chip"}
                   onClick={() => setDraft((current) => ({ ...current, isActive: false }))}
                 >
@@ -335,7 +341,7 @@ export function AdminCategoriesPage({
                   disabled={saving}
                   onClick={handleSubmit}
                 >
-                  {saving ? "Guardando..." : mode === "edit" ? "Actualizar categoria" : "Crear categoria"}
+                  {saving ? "Guardando..." : mode === "edit" ? "Actualizar categoría" : "Crear categoría"}
                 </button>
               </div>
             </aside>

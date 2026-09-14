@@ -20,7 +20,7 @@ test("camera failures have actionable messages", () => {
     const error = new Error(name);
     error.name = name;
     const message = getCameraStartupErrorMessage(error);
-    assert.equal(message.includes("camara"), true);
+    assert.equal(message.includes("cámara"), true);
     assert.equal(message.includes("undefined"), false);
   }
 
@@ -52,8 +52,9 @@ test("camera recovery keeps retry and manual-code actions wired", async () => {
     readFile(new URL("../src/features/commerce/CommerceRedemptionsPage.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(validatorSource, /onClick=\{onRetryScanner\}[\s\S]*Reintentar camara/);
-  assert.match(validatorSource, /onClick=\{onUseManualCode\}[\s\S]*Ingresar codigo manualmente/);
+  assert.match(validatorSource, /onClick=\{onRetryScanner\}[\s\S]*Reintentar cámara/u);
+  assert.match(validatorSource, /onClick=\{onUseManualCode\}[\s\S]*Ingresar código manualmente/u);
   assert.match(pageSource, /setScannerAttempt\(\(current\) => current \+ 1\)/);
   assert.match(pageSource, /setScannerOpen\(false\);[\s\S]*focusValidationInput\(\)/);
+  assert.match(validatorSource, /event\.key === "Escape"/);
 });
