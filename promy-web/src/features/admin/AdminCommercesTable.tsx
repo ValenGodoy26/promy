@@ -1,6 +1,7 @@
 import React from "react";
 import type { AdminCommerceItem } from "../../types/api";
 import { MiniBadge, StatusBadge } from "./AdminShared";
+import { getReadinessSummary } from "./commerceReadiness";
 
 type AdminCommercesTableProps = {
   commerces: AdminCommerceItem[];
@@ -32,8 +33,9 @@ export function AdminCommercesTable({
           </tr>
         </thead>
         <tbody>
-          {commerces.map((commerce) => (
-            <tr
+          {commerces.map((commerce) => {
+            const readiness = getReadinessSummary(commerce);
+            return <tr
               key={commerce.id}
               className={selectedId === commerce.id ? "is-selected" : ""}
               onClick={() => onSelect(commerce.id)}
@@ -49,9 +51,7 @@ export function AdminCommercesTable({
               <td>
                 <div className="cell-primary">{commerce.category.name}</div>
                 <span className="cell-sub">
-                  {commerce.readiness.isMapReady
-                    ? "Mapa listo"
-                    : `${commerce.readiness.blockingFields.length} bloqueos`}
+                  {readiness.label}
                 </span>
               </td>
               <td>
@@ -63,13 +63,13 @@ export function AdminCommercesTable({
                 <div className="stacked-badges">
                   <StatusBadge status={commerce.status} />
                   <MiniBadge
-                    tone={commerce.readiness.isMapReady ? "success" : "warning"}
-                    label={commerce.readiness.isMapReady ? "Mapa OK" : "Revisar datos"}
+                    tone={readiness.tone}
+                    label={readiness.label}
                   />
                 </div>
               </td>
-            </tr>
-          ))}
+            </tr>;
+          })}
           {commerces.length === 0 ? (
             <tr>
               <td colSpan={5}>

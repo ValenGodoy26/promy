@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { fetchAdminAuditLogs, fetchAdminDashboard } from "../../lib/api";
 import type { AdminAuditLogItem, AdminDashboardResponse } from "../../types/api";
+import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import { IconActivity, IconAlert, IconShield } from "../../components/Icons";
 import {
   Alert,
@@ -31,20 +32,21 @@ export function AdminDashboardPage({
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void Promise.all([
+  const loadDashboard = useCallback(async () => {
+    const [dashboardResponse, auditResponse] = await Promise.all([
       withSession((s) => fetchAdminDashboard(s)),
       withSession((s) => fetchAdminAuditLogs(s, { limit: 8 })),
-    ])
-      .then(([dashboardResponse, auditResponse]) => {
-        setData(dashboardResponse.dashboard);
-        setAuditLogs(auditResponse.auditLogs);
-        setError(null);
-      })
-      .catch((loadError) => {
-        setError(loadError instanceof Error ? loadError.message : "No pudimos cargar admin.");
-      });
-  }, [realtimeVersion, withSession]);
+    ]);
+    setData(dashboardResponse.dashboard);
+    setAuditLogs(auditResponse.auditLogs);
+    setError(null);
+  }, [withSession]);
+
+  useEffect(() => {
+    void loadDashboard().catch((loadError) => {
+      setError(getUserFacingErrorMessage(loadError, "load"));
+    });
+  }, [loadDashboard, realtimeVersion]);
 
   const dateLabel = formatShortDate(new Date().toISOString());
   const reviewedCommerces = data
@@ -75,7 +77,14 @@ export function AdminDashboardPage({
           <LoadingBlock title="Cargando dashboard" text="Trayendo métricas globales." />
         ) : null}
 
-        {error ? <Alert tone="danger" message={error} /> : null}
+        {error ? (
+          <>
+            <Alert tone="danger" message={error} />
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadDashboard().catch((loadError) => setError(getUserFacingErrorMessage(loadError, "load")))}>
+              Reintentar
+            </button>
+          </>
+        ) : null}
 
         {data ? (
           <>

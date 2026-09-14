@@ -9,6 +9,7 @@ import {
   formatMissingFields,
   getStatusLabel,
 } from "./AdminShared";
+import { getApprovalBlockingFields, getReadinessSummary } from "./commerceReadiness";
 
 type AdminCommerceDetailPanelProps = {
   selected: AdminCommerceItem;
@@ -27,6 +28,9 @@ export function AdminCommerceDetailPanel({
   onModerate,
   controlPanel,
 }: AdminCommerceDetailPanelProps) {
+  const readiness = getReadinessSummary(selected);
+  const approvalBlockingFields = getApprovalBlockingFields(selected);
+
   return (
     <aside className="detail-card">
       <div className="page-kicker">Detalle del comercio</div>
@@ -37,8 +41,8 @@ export function AdminCommerceDetailPanel({
 
       <div className="stacked-badges" style={{ marginBottom: 14 }}>
         <MiniBadge
-          tone={selected.readiness.isMapReady ? "success" : "warning"}
-          label={selected.readiness.isMapReady ? "Listo para mapa" : "Pendiente para mapa"}
+          tone={readiness.tone}
+          label={readiness.label}
         />
         <MiniBadge
           tone={selected.readiness.isProfileComplete ? "success" : "neutral"}
@@ -86,7 +90,9 @@ export function AdminCommerceDetailPanel({
           value={
             selected.readiness.isMapReady
               ? "Visible para cercania y marcadores"
-              : formatMissingFields(selected.readiness.blockingFields)
+              : approvalBlockingFields.length
+                ? formatMissingFields(approvalBlockingFields)
+                : "Disponible cuando el estado administrativo lo habilite"
           }
         />
         <DetailRow
@@ -95,6 +101,16 @@ export function AdminCommerceDetailPanel({
             selected.readiness.isProfileComplete
               ? "Sin faltantes operativos"
               : formatMissingFields(selected.readiness.missingFields)
+          }
+        />
+        <DetailRow
+          label="Aprobacion"
+          value={
+            approvalBlockingFields.length
+              ? `Bloqueada por: ${formatMissingFields(approvalBlockingFields)}`
+              : selected.status === "PENDING"
+                ? "Lista para decision administrativa"
+                : getStatusLabel(selected.status)
           }
         />
       </div>

@@ -7,6 +7,12 @@ import {
   refreshRequest,
 } from "./lib/api";
 import { createRefreshCoordinator } from "./lib/refreshCoordinator";
+import {
+  getRefreshFailureAction,
+  getUserFacingErrorMessage,
+  SESSION_EXPIRED_MESSAGE,
+  shouldAttemptSessionRestore,
+} from "./lib/httpErrors";
 import type { AuthSession, AuthUser } from "./types/api";
 
 type AuthContextValue = {
@@ -14,6 +20,7 @@ type AuthContextValue = {
   booting: boolean;
   loggingOut: boolean;
   authNotice: string | null;
+  canRetrySession: boolean;
   clearAuthNotice: () => void;
   login: (email: string, password: string) => Promise<AuthSession>;
   logout: () => Promise<void>;
@@ -21,7 +28,6 @@ type AuthContextValue = {
   withSession: <T>(executor: (session: AuthSession) => Promise<T>) => Promise<T>;
 };
 
-const SESSION_EXPIRED_NOTICE = "Tu sesión expiró. Volvé a iniciar sesión.";
 const EMAIL_UNVERIFIED_NOTICE =
   "Tu email todavia no esta verificado. Revisa el enlace de verificacion antes de operar el comercio.";
 const REFRESH_SESSION_HINT_KEY = "promy_has_refresh_session";
@@ -49,14 +55,6 @@ function setRefreshSessionHint(enabled: boolean) {
   }
 }
 
-function shouldRestoreSessionOnCurrentPath() {
-  return (
-    window.location.pathname.startsWith("/admin") ||
-    window.location.pathname.startsWith("/commerce") ||
-    window.location.pathname === "/app"
-  );
-}
-
 function buildWebSession(input: { accessToken: string; user: AuthUser }): AuthSession {
   return {
     accessToken: input.accessToken,
@@ -70,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [booting, setBooting] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [canRetrySession, setCanRetrySession] = useState(false);
 
   const applySession = useCallback((nextSession: AuthSession | null) => {
     setSession(nextSession);
@@ -84,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshCoordinator.invalidate();
       applySession(null);
       setRefreshSessionHint(false);
+      setCanRetrySession(false);
       setAuthNotice(notice ?? null);
     },
     [applySession],
@@ -100,19 +100,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       applySession(nextSession);
       setRefreshSessionHint(true);
+      setCanRetrySession(false);
+      setAuthNotice(refreshed.user.emailVerifiedAt ? null : EMAIL_UNVERIFIED_NOTICE);
       return nextSession;
-    } catch {
-      if (refreshCoordinator.isCurrent(attempt.generation)) {
-        invalidateSession(SESSION_EXPIRED_NOTICE);
+    } catch (error) {
+      if (!refreshCoordinator.isCurrent(attempt.generation)) return null;
+      if (getRefreshFailureAction(error) === "expire") {
+        invalidateSession(SESSION_EXPIRED_MESSAGE);
+        return null;
       }
-      return null;
+      setCanRetrySession(true);
+      setAuthNotice(getUserFacingErrorMessage(error, "load"));
+      throw error;
     }
   }, [applySession, invalidateSession]);
 
   useEffect(() => {
     let active = true;
     const restore = async () => {
-      if (!shouldRestoreSessionOnCurrentPath() || !hasRefreshSessionHint()) {
+      if (!shouldAttemptSessionRestore(window.location.pathname, hasRefreshSessionHint())) {
         applySession(null);
         setBooting(false);
         return;
@@ -128,15 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         applySession(nextSession);
         setRefreshSessionHint(true);
+        setCanRetrySession(false);
         if (!refreshed.user.emailVerifiedAt) {
           setAuthNotice(EMAIL_UNVERIFIED_NOTICE);
         }
       } catch (error) {
         if (!active || !refreshCoordinator.isCurrent(attempt.generation)) return;
-        if (!(error instanceof ApiError && (error.status === 400 || error.status === 401))) {
+        if (getRefreshFailureAction(error) === "expire") {
+          setRefreshSessionHint(false);
+          setCanRetrySession(false);
+          setAuthNotice(SESSION_EXPIRED_MESSAGE);
+        } else {
           console.warn("No pudimos restaurar la sesion web desde refresh.", error);
+          setCanRetrySession(true);
+          setAuthNotice(getUserFacingErrorMessage(error, "load"));
         }
-        setRefreshSessionHint(false);
         applySession(null);
       } finally {
         if (active) setBooting(false);
@@ -160,6 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     applySession(nextSession);
     setRefreshSessionHint(true);
+    setCanRetrySession(false);
     if (!response.user.emailVerifiedAt) {
       setAuthNotice(EMAIL_UNVERIFIED_NOTICE);
     }
@@ -187,9 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!currentSession) {
       const refreshed = await refreshSession();
       if (!refreshed) {
-        invalidateSession(SESSION_EXPIRED_NOTICE);
         navigate("/login", { replace: true });
-        throw new ApiError(SESSION_EXPIRED_NOTICE, 401);
+        throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
       }
       return executor(refreshed);
     }
@@ -200,9 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error instanceof ApiError && error.status === 401) {
         const refreshed = await refreshSession();
         if (!refreshed) {
-          invalidateSession(SESSION_EXPIRED_NOTICE);
           navigate("/login", { replace: true });
-          throw new ApiError(SESSION_EXPIRED_NOTICE, 401);
+          throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
         }
         return executor(refreshed);
       }
@@ -216,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       booting,
       loggingOut,
       authNotice,
+      canRetrySession,
       clearAuthNotice,
       login,
       logout,
@@ -223,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       withSession,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [authNotice, booting, clearAuthNotice, loggingOut, session],
+    [authNotice, booting, canRetrySession, clearAuthNotice, loggingOut, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

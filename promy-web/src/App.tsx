@@ -22,6 +22,7 @@ import {
   IconTag,
 } from "./components/Icons";
 import type { UserRole } from "./types/api";
+import { getUserFacingErrorMessage } from "./lib/httpErrors";
 
 const AdminPanel = lazy(() => import("./features/admin/AdminPanel"));
 const CommercePanel = lazy(() => import("./features/commerce/CommercePanel"));
@@ -379,7 +380,15 @@ function LegalBlock({ title, children }: { title: string; children: React.ReactN
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, login, booting, authNotice, clearAuthNotice } = useAuth();
+  const {
+    session,
+    login,
+    refreshSession,
+    booting,
+    authNotice,
+    canRetrySession,
+    clearAuthNotice,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -401,7 +410,20 @@ function LoginPage() {
       const target = (location.state as { from?: string } | null)?.from;
       navigate(target || "/app", { replace: true });
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : "No pudimos iniciar sesión.");
+      setError(getUserFacingErrorMessage(loginError, "login"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetrySession = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const restored = await refreshSession();
+      if (restored) navigate("/app", { replace: true });
+    } catch {
+      // AuthProvider keeps the actionable connectivity notice visible.
     } finally {
       setLoading(false);
     }
@@ -523,6 +545,17 @@ function LoginPage() {
                 <IconAlert size={14} />
                 <span>{authNotice}</span>
               </div>
+            ) : null}
+
+            {canRetrySession && !error ? (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                disabled={loading}
+                onClick={() => void handleRetrySession()}
+              >
+                {loading ? "Reconectando..." : "Reintentar conexión"}
+              </button>
             ) : null}
 
             {error ? (

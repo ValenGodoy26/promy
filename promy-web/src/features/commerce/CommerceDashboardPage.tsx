@@ -5,6 +5,7 @@ import { fetchCommerceDashboard } from "../../lib/api";
 import type { CommerceDashboardResponse, CommerceManagedProfile } from "../../types/api";
 import { buildClientAppRoute, buildCommerceDeepLink } from "../../lib/clientLinks";
 import { useLiveRefresh } from "../../lib/live";
+import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import { IconActivity, IconAlert } from "../../components/Icons";
 import {
   CommerceOnboardingPanel,
@@ -44,9 +45,7 @@ export function CommerceDashboardPage({
   useEffect(() => {
     void loadDashboard().catch((loadDashboardError) =>
       setLoadError(
-        loadDashboardError instanceof Error
-          ? loadDashboardError.message
-          : "No pudimos cargar el panel.",
+        getUserFacingErrorMessage(loadDashboardError, "load"),
       ),
     );
   }, [loadDashboard, realtimeVersion]);
@@ -55,9 +54,7 @@ export function CommerceDashboardPage({
     () =>
       loadDashboard().catch((loadDashboardError) =>
         setLoadError(
-          loadDashboardError instanceof Error
-            ? loadDashboardError.message
-            : "No pudimos refrescar el panel.",
+          getUserFacingErrorMessage(loadDashboardError, "load"),
         ),
       ),
     { intervalMs: 30000 },
@@ -122,9 +119,14 @@ export function CommerceDashboardPage({
         ) : null}
 
         {loadError ? (
-          <div className="alert alert-danger">
-            <IconAlert size={14} className="alert-icon" /> <span>{loadError}</span>
-          </div>
+          <>
+            <div className="alert alert-danger">
+              <IconAlert size={14} className="alert-icon" /> <span>{loadError}</span>
+            </div>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadDashboard().catch((loadDashboardError) => setLoadError(getUserFacingErrorMessage(loadDashboardError, "load")))}>
+              Reintentar
+            </button>
+          </>
         ) : null}
 
         {!data && !loadError ? (

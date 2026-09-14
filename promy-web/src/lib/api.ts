@@ -35,6 +35,9 @@ import type {
   UpdateMyCommerceInput,
   PublicStatsResponse,
 } from "../types/api";
+import { ApiError, NETWORK_UNAVAILABLE_MESSAGE, REQUEST_TIMEOUT_MESSAGE } from "./httpErrors";
+
+export { ApiError } from "./httpErrors";
 
 export function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -46,15 +49,6 @@ export function resolveApiBaseUrl() {
   }
 
   return configured.replace(/\/$/, "");
-}
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
 }
 
 async function request<T>(
@@ -84,9 +78,9 @@ async function request<T>(
     data = (await response.json().catch(() => null)) as { message?: string } | null;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new ApiError("La solicitud supero el tiempo de espera.", 0);
+      throw new ApiError(REQUEST_TIMEOUT_MESSAGE, 0, "timeout");
     }
-    throw error;
+    throw new ApiError(NETWORK_UNAVAILABLE_MESSAGE, 0, "network");
   } finally {
     window.clearTimeout(timeout);
   }
