@@ -43,7 +43,7 @@ const workflow = read(".github/workflows/promy-ci.yml");
 for (const gate of [
   "npm run test:integration",
   "npm test",
-  "CSV security tests",
+  "Web tests",
   "Verify safe network fallback policy",
   "Verify inlined API configuration",
   "Verify manifest, checksums and exclusions",
