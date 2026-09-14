@@ -38,7 +38,7 @@ type Category = {
   iconStyle?: CSSProperties;
 };
 
-type Testimonial = {
+type LaunchNote = {
   quote: string;
   author: string;
   location: string;
@@ -84,7 +84,7 @@ function buildPanelUrl(path: string) {
 const steps: Step[] = [
   {
     number: "PASO 01",
-    title: "Descargas la app",
+    title: "Descargás la app",
     description: "Pensada para iPhone y Android. El acceso cliente se gestiona de forma privada mientras sumamos comercios reales.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F0F10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -96,8 +96,8 @@ const steps: Step[] = [
   },
   {
     number: "PASO 02",
-    title: "Exploras cerca tuyo",
-    description: "Mapa, lista y categorias. Filtras por rubro, distancia u horario.",
+    title: "Explorás cerca tuyo",
+    description: "Mapa, lista y categorías. Filtrás por rubro, distancia u horario.",
     delay: "delay-1",
     iconClassName: "step-icon soft",
     icon: (
@@ -109,8 +109,8 @@ const steps: Step[] = [
   },
   {
     number: "PASO 03",
-    title: "Eliges la que te gusta",
-    description: "Guardas favoritas, compartes con amigos y te avisamos cuando caducan.",
+    title: "Elegís la que te gusta",
+    description: "Guardás favoritas, compartís con amigos y te avisamos cuando caducan.",
     delay: "delay-2",
     iconClassName: "step-icon dark",
     icon: (
@@ -121,8 +121,8 @@ const steps: Step[] = [
   },
   {
     number: "PASO 04",
-    title: "Mostras y listo",
-    description: "Muestras la promo en el local. El comercio la valida en segundos.",
+    title: "Mostrás y listo",
+    description: "Mostrás la promoción en el local. El comercio la valida en segundos.",
     delay: "delay-3",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F0F10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -139,10 +139,10 @@ const steps: Step[] = [
 
 const categories: Category[] = [
   {
-    label: "CAFETERIAS",
-    title: "Cafe y desayunos",
+    label: "CAFETERÍAS",
+    title: "Café y desayunos",
     sample: "2x1 en desayuno",
-    description: "Cafe, medialunas, meriendas y beneficios para todos los dias.",
+    description: "Café, medialunas, meriendas y beneficios para todos los días.",
     iconStyle: { background: "var(--yellow-soft)" },
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F0F10" strokeWidth="2">
@@ -174,7 +174,7 @@ const categories: Category[] = [
     label: "GASTRO",
     title: "Restaurantes",
     sample: "Hasta 30% OFF",
-    description: "Restaurantes y locales gastronomicos con beneficios activos.",
+    description: "Restaurantes y locales gastronómicos con beneficios activos.",
     delay: "delay-2",
     iconStyle: { background: "#FFD1D1" },
     icon: (
@@ -189,7 +189,7 @@ const categories: Category[] = [
     ),
   },
   {
-    label: "HELADERIAS",
+    label: "HELADERÍAS",
     title: "Helados",
     sample: "2do 50%",
     description: "Heladerias y antojos cerca tuyo para aprovechar en el momento.",
@@ -222,7 +222,7 @@ const categories: Category[] = [
     ),
   },
   {
-    label: "ESTETICA",
+    label: "ESTÉTICA",
     title: "Belleza y spa",
     sample: "Combo spa",
     description: "Belleza, unas, estetica y cuidado personal con promos locales.",
@@ -237,7 +237,7 @@ const categories: Category[] = [
     ),
   },
   {
-    label: "PELUQUERIAS",
+    label: "PELUQUERÍAS",
     title: "Corte y color",
     sample: "Corte promo",
     description: "Peluquerias y barberias con descuentos o beneficios por turno.",
@@ -268,26 +268,26 @@ const categories: Category[] = [
   },
 ];
 
-const testimonials: Testimonial[] = [
+const launchNotes: LaunchNote[] = [
   {
-    quote: '"Me interesa que PROMY arranque con comercios reales de la ciudad y con promociones que se puedan usar sin vueltas."',
-    author: "Usuario local",
-    location: "CONCORDIA Â· ENTRE RÃOS",
-    avatar: "M",
+    quote: "Estamos preparando PROMY para su primera etapa interna en Concordia.",
+    author: "Etapa actual",
+    location: "CONCORDIA · PRE-PILOTO",
+    avatar: "1",
   },
   {
-    quote: '"Para los negocios estÃ¡ bueno porque pueden cargar una oferta simple y medir si la gente la usa."',
-    author: "Comercio invitado",
-    location: "CONCORDIA Â· LANZAMIENTO",
-    avatar: "A",
+    quote: "Los comercios podrán cargar promociones y validar cada canje desde su panel.",
+    author: "Para comercios",
+    location: "FLUJO EN VALIDACIÓN",
+    avatar: "2",
     avatarStyle: { background: "var(--red)", color: "#fff" },
     delay: "delay-1",
   },
   {
-    quote: '"La idea es simple: promociones reales, cerca tuyo y sin vueltas raras. Eso es lo que estamos validando."',
-    author: "Equipo PROMY",
-    location: "CONCORDIA Â· ACCESO PRIVADO",
-    avatar: "J",
+    quote: "El acceso para usuarios se habilitará de forma gradual cuando el piloto esté listo.",
+    author: "Para usuarios",
+    location: "ACCESO PRIVADO",
+    avatar: "3",
     avatarStyle: { background: "var(--ink)", color: "var(--yellow)" },
     delay: "delay-2",
   },
@@ -295,44 +295,44 @@ const testimonials: Testimonial[] = [
 
 const faqs: Faq[] = [
   {
-    question: "Â¿QuÃ© es PROMY?",
+    question: "¿Qué es PROMY?",
     answer:
-      "PROMY es una app mobile que te muestra promociones, descuentos y beneficios reales de comercios locales cerca de donde estÃ¡s. Funciona con geolocalizaciÃ³n y hoy opera con acceso privado en Concordia.",
+      "PROMY es una app móvil que te muestra promociones de comercios locales cerca de donde estás. Funciona con geolocalización y hoy está en una etapa interna con acceso privado en Concordia.",
   },
   {
-    question: "Â¿CÃ³mo uso una promo?",
+    question: "¿Cómo uso una promoción?",
     answer:
-      'ElegÃ­s la promo, presionÃ¡s "Usar", vas al comercio y le mostrÃ¡s la pantalla de canje. El comercio la valida al instante y listo.',
+      'Elegís la promoción, presionás "Canjear", vas al comercio y mostrás el código o QR. El comercio valida el canje desde su panel.',
   },
   {
-    question: "Â¿Tiene costo?",
+    question: "¿Tiene costo?",
     answer:
-      "Hoy la app no tiene costo para el usuario. Si eso cambia mÃ¡s adelante, lo vamos a comunicar de forma clara.",
+      "Durante la etapa interna no tiene costo para el usuario. Cualquier cambio futuro se comunicará de forma clara.",
   },
   {
-    question: "Â¿Funciona en mi ciudad?",
+    question: "¿Funciona en mi ciudad?",
     answer:
-      "PROMY arranca en Concordia, Entre Rios. La idea es validar primero con comercios y usuarios locales antes de crecer a otras ciudades.",
+      "PROMY se está preparando para comenzar en Concordia, Entre Ríos. Primero vamos a validar el piloto local antes de evaluar otras ciudades.",
   },
   {
-    question: "Como se validan los beneficios?",
+    question: "¿Cómo se validan las promociones?",
     answer:
-      "Cada promo tiene un canje unico que se valida en el momento con el comercio. No se puede reutilizar y caduca junto con la promocion.",
+      "Cada promoción genera un canje único que el comercio valida con un código o QR. No se puede reutilizar y respeta la vigencia de la promoción.",
   },
   {
-    question: "Como me sumo como comercio?",
+    question: "¿Cómo me sumo como comercio?",
     answer:
-      "Toca \"Soy comercio\" para registrarte en el panel web. Te pedimos los datos basicos del local, revisamos la informacion y te habilitamos la cuenta para cargar promos reales.",
+      "Tocá \"Soy comercio\" para registrarte. Te pedimos los datos básicos del local y, después de la revisión administrativa, vas a poder cargar promociones.",
   },
   {
-    question: "Cuanto cuesta para mi comercio?",
+    question: "¿Cuánto cuesta para mi comercio?",
     answer:
-      "En la etapa de lanzamiento en Concordia, sumarte no tiene costo. Si mas adelante hay planes pagos, lo vamos a comunicar de forma clara y sin letra chica.",
+      "Las condiciones comerciales del piloto todavía no están publicadas. Antes de habilitarlo vamos a comunicarlas de forma clara.",
   },
   {
-    question: "Puedo usarla en iPhone y Android?",
+    question: "¿Puedo usarla en iPhone y Android?",
     answer:
-      "Si. La app esta pensada para iPhone y Android. Durante el lanzamiento vamos a avisar por nuestros canales cuando este disponible para descargar.",
+      "La app está preparada para iPhone y Android, pero todavía no está publicada para acceso general. Vamos a avisar cuando se habiliten nuevas pruebas.",
   },
 ];
 
@@ -726,7 +726,7 @@ function App() {
     };
   }, [loadPublicStats, publicStats.status]);
 
-  // Subtle parallax on hero stickers â€” respects prefers-reduced-motion
+  // Subtle parallax on hero stickers — respects prefers-reduced-motion
   useEffect(() => {
     if (typeof window === "undefined") return;
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -820,11 +820,11 @@ function App() {
             <span className="nav-logo-mark">
               <PromyMark simple />
             </span>
-            <span>promy</span>
+            <span>PROMY</span>
           </a>
 
           <div className="nav-links">
-            <a href="#how">Como funciona</a>
+            <a href="#how">Cómo funciona</a>
             <a href="#beneficios">Beneficios</a>
             <a href="#app">La app</a>
             <a href="#promos">Promos</a>
@@ -859,8 +859,8 @@ function App() {
               </h1>
 
               <p className="hero-sub reveal delay-2">
-                PROMY te muestra promociones y beneficios reales de comercios de Concordia.
-                Sin cupones raros, sin vueltas. Solo abrir la app, elegir y mostrar la promo.
+                PROMY te muestra promociones reales de comercios de Concordia. Sin cupones
+                raros ni vueltas: abrís la app, elegís y canjeás.
               </p>
 
               <div className="hero-ctas reveal delay-3">
@@ -870,7 +870,7 @@ function App() {
                 </a>
                 <a href="#how" className="btn-ghost">
                   <PlayIcon />
-                  Como funciona
+                  Cómo funciona
                 </a>
               </div>
 
@@ -879,7 +879,7 @@ function App() {
                 <StoreBadge platform="google" small="Acceso en" title="Android" />
               </div>
               <p className="subtle reveal delay-4" style={{ marginTop: 10 }}>
-                Elige plataforma, dejanos tu email y te avisamos cuando habilitemos nuevos accesos privados.
+                Elegí una plataforma, dejanos tu email y te avisamos cuando habilitemos nuevas pruebas.
               </p>
 
               <div className="availability reveal delay-4">
@@ -892,7 +892,7 @@ function App() {
               <PromyMark className="bigP floaty slow" />
 
               <DraggableSticker className="red s1">Promo hoy</DraggableSticker>
-              <DraggableSticker className="yellow s2">Cafe cerca</DraggableSticker>
+              <DraggableSticker className="yellow s2">Café cerca</DraggableSticker>
               <DraggableSticker className="ink s3">a 3 cuadras</DraggableSticker>
               <DraggableSticker className="cream tag s5">promos reales</DraggableSticker>
 
@@ -906,7 +906,7 @@ function App() {
         <div className="container">
           <div className="section-head reveal">
             <div>
-              <div className="eyebrow">01 Â· Como funciona</div>
+              <div className="eyebrow">01 · Cómo funciona</div>
               <h2>
                 <span className="h2-soft">Cuatro pasos.</span>
                 <br />
@@ -914,8 +914,8 @@ function App() {
               </h2>
             </div>
             <p>
-              Bajas la app, activas tu zona y listo. Las promos aparecen solas, con fecha,
-              distancia y un boton para canjearlas al toque.
+              Abrís la app, activás tu zona y explorás promociones con fecha, distancia y una
+              acción clara para canjearlas.
             </p>
           </div>
 
@@ -948,12 +948,12 @@ function App() {
             <div>
               <div className="eyebrow">02 · Beneficios</div>
               <h2>
-                Promos <span className="scribble-word">que</span> si vas a <span className="impact-word">usar.</span>
+                Promos <span className="scribble-word">que</span> sí vas a <span className="impact-word">usar.</span>
               </h2>
             </div>
             <p>
-              No coleccionas puntos imposibles ni cargas codigos larguisimos. En PROMY todo es
-              local, real y de hoy.
+              No coleccionás puntos imposibles ni cargás códigos larguísimos. En PROMY todo es
+              local, claro y vigente.
             </p>
           </div>
 
@@ -965,8 +965,8 @@ function App() {
                 <div>
                   <h4>Promociones locales, de verdad.</h4>
                   <p>
-                    Arrancamos en Concordia con comercios locales, promos cargadas por negocios
-                    reales y validacion simple en el local.
+                    Preparamos el piloto en Concordia con comercios locales, promociones moderadas
+                    y validación simple en el local.
                   </p>
                 </div>
               </div>
@@ -977,7 +977,7 @@ function App() {
                 <div className="b-big-number text-word">Local</div>
                 <div>
                   <h4>Comercios reales del barrio</h4>
-                  <p>Cafes, bares, gimnasios, peluquerÃ­as y servicios de Concordia.</p>
+                  <p>Cafés, bares, gimnasios, peluquerías y servicios de Concordia.</p>
                 </div>
               </div>
             </div>
@@ -986,9 +986,9 @@ function App() {
               <div className="bcard-column">
                 <ClockIcon />
                 <div>
-                  <h4>Todo el dia, todos los dias.</h4>
+                  <h4>Todo el día, todos los días.</h4>
                   <p>
-                    Promos simples, con vigencia clara y comercios que puedes visitar en la ciudad.
+                    Promociones simples, con vigencia clara y comercios que podés visitar en la ciudad.
                   </p>
                 </div>
               </div>
@@ -999,13 +999,13 @@ function App() {
                 <div className="mini-dot" />
                 <div className="eyebrow">En 3 cuadras</div>
               </div>
-              <h4>Descubri lugares nuevos</h4>
-              <p>Negocios de barrio que no conocias, recomendados por gente como vos.</p>
+              <h4>Descubrí lugares nuevos</h4>
+              <p>Negocios de barrio para descubrir desde un solo lugar.</p>
             </div>
 
             <div className="bcard b5 reveal delay-1">
-              <h4>Simple y rapida</h4>
-              <p>Tres toques desde abrir la app hasta canjear la promo. Sin captchas.</p>
+              <h4>Simple y rápida</h4>
+              <p>Tres toques desde abrir la app hasta canjear la promoción. Sin captchas.</p>
               <div className="bcard-pill">~3 taps</div>
             </div>
 
@@ -1019,8 +1019,8 @@ function App() {
                 <div>
                   <h4>Todas las promos en una sola app.</h4>
                   <p>
-                    No cambies entre apps ni pestanas. Cafes, bares, gimnasios, estetica: todo
-                    aca.
+                    No cambies entre apps ni pestañas. Cafés, bares, gimnasios, estética: todo
+                    acá.
                   </p>
                 </div>
               </div>
@@ -1054,8 +1054,8 @@ function App() {
               </h2>
             </div>
             <p>
-              Cuatro pantallas, cero complicacion. Disenada para que Concordia tenga promos
-              locales faciles de encontrar y usar.
+              Cuatro pantallas, cero complicación. Diseñada para que Concordia tenga promociones
+              locales fáciles de encontrar y usar.
             </p>
           </div>
 
@@ -1075,8 +1075,8 @@ function App() {
               </h2>
             </div>
             <p>
-              PROMY empieza por rubros cotidianos de Concordia: cafes, bares, peluquerias,
-              gimnasios, estetica, gastronomia y servicios.
+              PROMY empieza por rubros cotidianos de Concordia: cafés, bares, peluquerías,
+              gimnasios, estética, gastronomía y servicios.
             </p>
           </div>
 
@@ -1109,12 +1109,12 @@ function App() {
               <h2>
                 <span className="h2-soft">Primero Concordia.</span>
                 <br />
-                <span className="scribble-word">Despues</span> crecer.
+                <span className="scribble-word">Después</span> crecer.
               </h2>
             </div>
             <p>
-              Estamos preparando el lanzamiento con comercios reales de Concordia. Sin ciudades
-              inventadas, sin metricas infladas y sin testimonios de relleno.
+              Estamos preparando el piloto con comercios reales de Concordia. Las métricas
+              publicadas provienen de la plataforma y no usamos testimonios de relleno.
             </p>
           </div>
 
@@ -1158,19 +1158,19 @@ function App() {
           <CommerceLogoMarquee />
 
           <div className="tm-grid">
-            {testimonials.map((testimonial) => (
+            {launchNotes.map((note) => (
               <article
-                key={testimonial.author}
-                className={`tm reveal ${testimonial.delay ?? ""}`.trim()}
+                key={note.author}
+                className={`tm reveal ${note.delay ?? ""}`.trim()}
               >
-                <p>{testimonial.quote}</p>
+                <p>{note.quote}</p>
                 <div className="tm-who">
-                  <div className="tm-avatar" style={testimonial.avatarStyle}>
-                    {testimonial.avatar}
+                  <div className="tm-avatar" style={note.avatarStyle} aria-hidden="true">
+                    {note.avatar}
                   </div>
                   <div>
-                    <div className="tm-name">{testimonial.author}</div>
-                    <div className="tm-city">{testimonial.location}</div>
+                    <div className="tm-name">{note.author}</div>
+                    <div className="tm-city">{note.location}</div>
                   </div>
                 </div>
               </article>
@@ -1187,13 +1187,13 @@ function App() {
             <div>
               <div className="eyebrow light">Para comercios</div>
               <h3>
-                Tienes un comercio?
+                ¿Tenés un comercio?
                 <br />
                 Sumate a PROMY.
               </h3>
               <p>
-                Sumate al lanzamiento en Concordia. Carga tus promos desde el panel, recibe
-                canjes y muestra tu comercio dentro de la app.
+                Sumate a la preparación del piloto en Concordia. Cargá promociones desde el panel,
+                recibí canjes y mostrale tu comercio a la comunidad cuando el acceso esté habilitado.
               </p>
             </div>
 
@@ -1238,13 +1238,14 @@ function App() {
             </div>
 
             <h2 className="reveal delay-1">
-              Tu proxima promo
+              Tu próxima promoción
               <br />
-              <em>esta a unas cuadras.</em>
+              <em>está a unas cuadras.</em>
             </h2>
 
             <p className="final-sub reveal delay-2">
-              La app cliente funciona hoy con acceso privado mientras terminamos de sumar comercios y pulir la operacion local. Dejanos tu email y te avisamos cuando habilitemos tu acceso.
+              La app cliente está en etapa interna mientras terminamos de sumar comercios y pulir
+              la operación local. Dejanos tu email y te avisamos cuando habilitemos nuevas pruebas.
             </p>
 
             <form className="beta-form reveal delay-3" onSubmit={handleBetaRequestSubmit}>
@@ -1299,13 +1300,13 @@ function App() {
             {betaSuccess ? <p className="beta-form-status success">{betaSuccess}</p> : null}
             {betaError ? <p className="beta-form-status error">{betaError}</p> : null}
             <p className="subtle reveal delay-3" style={{ marginTop: 8 }}>
-              Al anotarte aceptas nuestras{" "}
+              Al anotarte aceptás nuestras{" "}
               <a href={buildPanelUrl("/terms")} className="faq-mail">
                 condiciones de uso
               </a>{" "}
               y la{" "}
               <a href={buildPanelUrl("/privacy")} className="faq-mail">
-                politica de privacidad
+                política de privacidad
               </a>
               .
             </p>
@@ -1327,7 +1328,7 @@ function App() {
                 frecuentes.
               </h2>
               <p className="subtle faq-copy">
-                Tienes una duda puntual sobre el acceso, los comercios o como funciona PROMY? Escribinos a{" "}
+                ¿Tenés una duda puntual sobre el acceso, los comercios o cómo funciona PROMY? Escribinos a{" "}
                 <a href="mailto:hola@promy.app" className="faq-mail">
                   hola@promy.app
                 </a>{" "}
@@ -1367,7 +1368,7 @@ function App() {
             <h2>Documentos claros, completos y siempre visibles.</h2>
             <p>
               Antes de abrir mas cupos dejamos publicados los documentos completos: que datos trata
-              PROMY, como se usan y cuales son las reglas para clientes, comercios y la plataforma.
+              PROMY, cómo se usan y cuáles son las reglas para clientes, comercios y la plataforma.
             </p>
           </div>
           <div className="legal-card-grid">
@@ -1392,12 +1393,12 @@ function App() {
             <article className="legal-card" id="terminos">
               <h3>Terminos y condiciones</h3>
               <p>
-                Ordenan como funciona PROMY para clientes y comercios: uso de la cuenta, reglas de
-                canje, moderacion, responsabilidad y baja de cuentas.
+                Ordenan cómo funciona PROMY para clientes y comercios: uso de la cuenta, reglas de
+                canje, moderación, responsabilidad y baja de cuentas.
               </p>
               <p>
-                Tambien aclaran que hace PROMY, que no hace, que responsabilidad asume cada parte y
-                como se resuelven cambios, reclamos o conflictos.
+                También aclaran qué hace PROMY, qué no hace, qué responsabilidad asume cada parte y
+                cómo se resuelven cambios, reclamos o conflictos.
               </p>
               <p>Version vigente: mayo 2026.</p>
               <a href={buildPanelUrl("/terms")} className="legal-card-link">
@@ -1416,7 +1417,7 @@ function App() {
                 <span className="nav-logo-mark">
                   <PromyMark simple />
                 </span>
-                <span>promy</span>
+                <span>PROMY</span>
               </div>
               <div className="foot-brand-tag">
                 Promos <em>reales,</em> cerca tuyo.
@@ -1426,10 +1427,10 @@ function App() {
             <div className="foot-col">
               <div className="foot-title">Producto</div>
               <ul>
-                <li><a href="#how">Como funciona</a></li>
+                <li><a href="#how">Cómo funciona</a></li>
                 <li><a href="#beneficios">Beneficios</a></li>
                 <li><a href="#app">La app</a></li>
-                <li><a href="#promos">Categorias</a></li>
+                <li><a href="#promos">Categorías</a></li>
                 <li><a href="#faq">FAQ</a></li>
               </ul>
             </div>
@@ -1445,13 +1446,11 @@ function App() {
             </div>
 
             <div className="foot-col">
-              <div className="foot-title">Promy</div>
+              <div className="foot-title">PROMY</div>
               <ul>
                 <li><a href="mailto:hola@promy.app?subject=Nosotros%20PROMY">Nosotros</a></li>
                 <li><a href="mailto:hola@promy.app?subject=Trabajar%20en%20PROMY">Trabaja con nosotros</a></li>
                 <li><a href="mailto:hola@promy.app?subject=Prensa%20PROMY">Prensa</a></li>
-                <li><a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram</a></li>
-                <li><a href="https://tiktok.com" target="_blank" rel="noreferrer">TikTok</a></li>
               </ul>
             </div>
           </div>
@@ -1459,7 +1458,7 @@ function App() {
           <div className="foot-bottom">
             <div>© 2026 PROMY. Hecho en Argentina.</div>
             <div className="foot-bottom-links">
-              <a href={buildPanelUrl("/terms")}>Terminos</a>
+              <a href={buildPanelUrl("/terms")}>Términos</a>
               <a href={buildPanelUrl("/privacy")}>Privacidad</a>
               <a href="mailto:hola@promy.app">hola@promy.app</a>
             </div>
@@ -1643,7 +1642,7 @@ function InteractivePromoMap() {
               key={promo.id}
               style={{ left: `${promo.x}%`, top: `${promo.y}%` }}
             >
-              {promo.tone === "yellow" ? "Hoy" : promo.tone === "ink" ? "â˜…" : "P"}
+              {promo.tone === "yellow" ? "Hoy" : promo.tone === "ink" ? "★" : "P"}
             </div>
           );
         })}
@@ -1660,7 +1659,7 @@ function InteractivePromoMap() {
                 <div className="eyebrow light">Vista de ejemplo</div>
         <h3>Promos cerca tuyo, de verdad.</h3>
         <p>
-          Mueve el puntito por la ciudad. Las promos se reordenan por cercania, como pasa dentro de PROMY.
+          Mové el punto por la ciudad. Las promociones se reordenan por cercanía, como pasa dentro de PROMY.
         </p>
 
         <div className="nearby-demo-list">
@@ -1686,7 +1685,7 @@ function KonamiBurst() {
       <PromyMark className="konami-logo" />
       <div>
         <strong>Promo secreta desbloqueada</strong>
-        <span>â†‘â†‘â†“â†“â†â†’â†â†’BA</span>
+        <span>↑↑↓↓←→←→BA</span>
       </div>
     </div>
   );
@@ -1754,14 +1753,14 @@ function HeroPhone() {
         </div>
 
         <MiniCommerceCard
-          icon="ðŸ¦"
-          title="Heladeria local"
-          meta="400M · beneficio activo"
+          icon="🍦"
+          title="Heladería local"
+          meta="400 m · promoción activa"
         />
         <MiniCommerceCard
-          icon="âœ‚"
-          title="Peluqueria local"
-          meta="600M · promo disponible"
+          icon="✂"
+          title="Peluquería local"
+          meta="600 m · promoción disponible"
         />
 
         <div className="hero-phone-nav">
@@ -1805,8 +1804,8 @@ function ShowcaseHome() {
       </div>
       <div className="showcase-list">
         <div className="showcase-label">RECOMENDADAS</div>
-        <MiniListRow title="CafeterÃ­a local" copy="Promo del dia" tone="yellow" />
-        <MiniListRow title="Gimnasio de la zona" copy="Beneficio activo" tone="pink" />
+        <MiniListRow title="Cafetería local" copy="Promoción del día" tone="yellow" />
+        <MiniListRow title="Gimnasio de la zona" copy="Promoción activa" tone="pink" />
       </div>
     </>
   );
@@ -1833,8 +1832,8 @@ function ShowcaseExplore() {
           <strong>Promo gastronomica</strong>
         </div>
         <div className="stacked-promo yellow">
-          <div>500M Â· MIE</div>
-          <strong>Beneficio en bar</strong>
+          <div>500 m · MIÉ</div>
+          <strong>Promoción en bar</strong>
         </div>
         <div className="stacked-promo white">
           <div>700M · HOY</div>
@@ -1870,7 +1869,7 @@ function ShowcaseMap() {
           <circle cx="115" cy="180" r="12" fill="#FFBF00" />
           <text x="115" y="183" textAnchor="middle" fill="#0F0F10" fontSize="9" fontWeight="700">Hoy</text>
           <circle cx="80" cy="240" r="11" fill="#0F0F10" />
-          <text x="80" y="243" textAnchor="middle" fill="#FFBF00" fontSize="8" fontWeight="700">â˜…</text>
+          <text x="80" y="243" textAnchor="middle" fill="#FFBF00" fontSize="8" fontWeight="700">★</text>
           <circle cx="130" cy="90" r="10" fill="#FF3131" />
           <circle cx="30" cy="200" r="9" fill="#FFBF00" />
         </g>
