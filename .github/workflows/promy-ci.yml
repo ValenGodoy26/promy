@@ -117,7 +117,7 @@ jobs:
           npm --version
       - name: Clean install
         run: npm ci
-      - name: CSV security tests
+      - name: Web tests
         run: npm test
       - name: Typecheck
         run: npm run typecheck
@@ -149,6 +149,8 @@ jobs:
           npm --version
       - name: Clean install
         run: npm ci
+      - name: Landing tests
+        run: npm test
       - name: Typecheck
         run: npm run typecheck
       - name: Build

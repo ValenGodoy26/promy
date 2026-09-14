@@ -1,4 +1,5 @@
 ﻿import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -8,6 +9,13 @@
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+
+import {
+  displayPublicStat,
+  INITIAL_PUBLIC_STATS,
+  parsePublicStats,
+  type PublicStatsState,
+} from "./publicStats";
 
 type DelayClass = "" | "delay-1" | "delay-2" | "delay-3";
 
@@ -633,11 +641,8 @@ function App() {
   const [betaSubmitting, setBetaSubmitting] = useState(false);
   const [betaSuccess, setBetaSuccess] = useState<string | null>(null);
   const [betaError, setBetaError] = useState<string | null>(null);
-  const [publicStats, setPublicStats] = useState({
-    approvedCommerces: 0,
-    activePromotions: 0,
-    activeCities: 1,
-  });
+  const [publicStats, setPublicStats] = useState<PublicStatsState>(INITIAL_PUBLIC_STATS);
+  const publicStatsMounted = useRef(true);
 
   usePointerEyes();
   const konamiActive = useKonamiEgg();
@@ -679,41 +684,47 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadPublicStats = async () => {
-      try {
-        const { response, data } = await fetchJsonWithDeadline<
-          | {
-              stats?: {
-                approvedCommerces?: number;
-                activePromotions?: number;
-                activeCities?: number;
-              };
-            }
-        >(`${API_BASE_URL}/stats/public`);
-
-        if (!response.ok || !data?.stats || !isMounted) {
-          return;
-        }
-
-        setPublicStats({
-          approvedCommerces: Number(data.stats.approvedCommerces || 0),
-          activePromotions: Number(data.stats.activePromotions || 0),
-          activeCities: Number(data.stats.activeCities || 1),
-        });
-      } catch {
-        // Dejamos el fallback editorial si la API no esta disponible.
+  const loadPublicStats = useCallback(async () => {
+    if (publicStatsMounted.current) {
+      setPublicStats((current) => current.status === "available" ? current : INITIAL_PUBLIC_STATS);
+    }
+    try {
+      const { response, data } = await fetchJsonWithDeadline<{ stats?: unknown }>(
+        `${API_BASE_URL}/stats/public`,
+      );
+      const parsed = response.ok ? parsePublicStats(data?.stats) : null;
+      if (publicStatsMounted.current) {
+        setPublicStats(
+          parsed
+            ? { status: "available", data: parsed }
+            : { status: "unavailable", data: null },
+        );
       }
-    };
-
-    void loadPublicStats();
-
-    return () => {
-      isMounted = false;
-    };
+    } catch {
+      if (publicStatsMounted.current) {
+        setPublicStats({ status: "unavailable", data: null });
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    publicStatsMounted.current = true;
+    void loadPublicStats();
+    return () => {
+      publicStatsMounted.current = false;
+    };
+  }, [loadPublicStats]);
+
+  useEffect(() => {
+    if (publicStats.status !== "unavailable") return;
+    const retry = () => void loadPublicStats();
+    window.addEventListener("online", retry);
+    const interval = window.setInterval(retry, 15_000);
+    return () => {
+      window.removeEventListener("online", retry);
+      window.clearInterval(interval);
+    };
+  }, [loadPublicStats, publicStats.status]);
 
   // Subtle parallax on hero stickers â€” respects prefers-reduced-motion
   useEffect(() => {
@@ -1110,22 +1121,39 @@ function App() {
           <div className="counters">
             <div className="counter reveal">
               <div className="live-badge"><span /> LOCAL</div>
-              <div className="big">{publicStats.activeCities}</div>
+              <div className="big">{displayPublicStat(publicStats, "activeCities")}</div>
               <div className="lbl">
-                {publicStats.activeCities === 1
+                {publicStats.status === "available" && publicStats.data.activeCities === 1
                   ? "Ciudad activa: Concordia"
-                  : "Ciudades activas en PROMY"}
+                  : publicStats.status === "available"
+                    ? "Ciudades activas en PROMY"
+                    : "Ciudades activas: no disponible"}
               </div>
             </div>
             <div className="counter reveal delay-1">
-              <div className="big">{publicStats.approvedCommerces}</div>
-              <div className="lbl">Comercios activos publicados en PROMY</div>
+              <div className="big">{displayPublicStat(publicStats, "approvedCommerces")}</div>
+              <div className="lbl">
+                {publicStats.status === "available"
+                  ? "Comercios activos publicados en PROMY"
+                  : "Comercios activos: no disponible"}
+              </div>
             </div>
             <div className="counter reveal delay-2">
-              <div className="big">{publicStats.activePromotions}</div>
-              <div className="lbl">Promociones vigentes visibles ahora mismo</div>
+              <div className="big">{displayPublicStat(publicStats, "activePromotions")}</div>
+              <div className="lbl">
+                {publicStats.status === "available"
+                  ? "Promociones vigentes visibles ahora mismo"
+                  : "Promociones vigentes: no disponible"}
+              </div>
             </div>
           </div>
+
+          {publicStats.status === "unavailable" ? (
+            <div className="stats-unavailable" role="status">
+              <span>No pudimos actualizar las métricas.</span>
+              <button type="button" onClick={() => void loadPublicStats()}>Reintentar</button>
+            </div>
+          ) : null}
 
           <CommerceLogoMarquee />
 

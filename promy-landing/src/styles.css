@@ -1759,6 +1759,27 @@ button {
   font-size: 15px;
 }
 
+.stats-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: -8px 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.stats-unavailable button {
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  padding: 7px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .live-badge {
   position: absolute;
   top: 18px;
