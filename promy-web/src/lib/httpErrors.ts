@@ -41,7 +41,7 @@ export function getUserFacingErrorMessage(
 }
 
 export function getRefreshFailureAction(error: unknown): "expire" | "preserve" {
-  return error instanceof ApiError && (error.status === 400 || error.status === 401)
+  return error instanceof ApiError && [400, 401, 403].includes(error.status)
     ? "expire"
     : "preserve";
 }

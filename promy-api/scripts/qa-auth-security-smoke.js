@@ -200,6 +200,8 @@ async function main() {
       `/realtime/events?streamToken=${encodeURIComponent(streamToken)}`,
     );
     assert(blockedSse.status === 403, "AUTH-002: ADMIN bloqueado pudo abrir SSE nuevo");
+    const blockedRefresh = await refreshWeb(winningTab);
+    assert(blockedRefresh.status === 403, "AUTH-002: refresh de ADMIN bloqueado no devolvio 403");
 
     await prisma.user.update({ where: { id: adminUser.id }, data: { status: "ACTIVE" } });
     const restoredAdmin = await loginBrowser.request("/admin/dashboard", {
@@ -225,6 +227,7 @@ async function main() {
       },
       auth002: {
         blockedAdminAccess: 403,
+        blockedAdminRefresh: 403,
         adminAccessAfterLogout: 401,
         clientAccessAfterLogout: clientAccessAfterLogoutStatus,
         policy: "privileged-session-immediate-client-access-until-expiry",

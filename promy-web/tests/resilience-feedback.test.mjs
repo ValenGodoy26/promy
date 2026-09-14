@@ -21,6 +21,7 @@ test("network, timeout, credentials and server errors have distinct safe feedbac
 test("only a real invalid refresh expires the session", () => {
   assert.equal(getRefreshFailureAction(new ApiError("Unauthorized", 401)), "expire");
   assert.equal(getRefreshFailureAction(new ApiError("Invalid refresh", 400)), "expire");
+  assert.equal(getRefreshFailureAction(new ApiError("Blocked user", 403)), "expire");
   assert.equal(getRefreshFailureAction(new ApiError("Offline", 0, "network")), "preserve");
   assert.equal(getRefreshFailureAction(new ApiError("Timeout", 0, "timeout")), "preserve");
   assert.equal(getRefreshFailureAction(new ApiError("Server", 500)), "preserve");
