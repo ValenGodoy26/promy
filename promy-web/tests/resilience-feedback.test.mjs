@@ -79,3 +79,13 @@ test("form primitives expose labels, field errors and responsive table containme
   assert.match(styles, /\.table-wrap \{ overflow-x: auto/u);
   assert.match(styles, /max-height: calc\(100dvh - 20px\)/u);
 });
+
+test("public privacy copy matches the implemented pre-pilot lifecycle", () => {
+  const legalSource = fs.readFileSync(new URL("../src/features/public/legalContent.ts", import.meta.url), "utf8");
+  const legalPage = fs.readFileSync(new URL("../src/features/public/LegalPage.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(legalSource, /(?:privacidad|soporte|moderacion)@promy\.app/u);
+  assert.match(legalSource, /Canjes SUCCESS:[\s\S]*sin relación con la cuenta eliminada/u);
+  assert.match(legalSource, /favoritos actuales se guardan localmente/u);
+  assert.match(legalSource, /canal oficial[\s\S]*antes del piloto/iu);
+  assert.match(legalPage, /document\.contactEmail \|\| "Canal oficial pendiente antes del piloto"/u);
+});

@@ -42,7 +42,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               </div>
               <div className="legal-meta-pill">
                 <span>Contacto</span>
-                <strong>{document.contactEmail}</strong>
+                <strong>{document.contactEmail || "Canal oficial pendiente antes del piloto"}</strong>
               </div>
             </div>
           </div>
@@ -75,7 +75,12 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               <div className="legal-aside-title">Contacto útil</div>
               <p>
                 Si necesitás hacer una consulta legal o pedir acceso, rectificación o baja de datos,
-                escribí a <strong>{document.contactEmail}</strong>.
+                {" "}
+                {document.contactEmail ? (
+                  <>escribí a <strong>{document.contactEmail}</strong>.</>
+                ) : (
+                  <>el canal oficial se publicará antes de habilitar usuarios externos.</>
+                )}
               </p>
             </div>
           </aside>

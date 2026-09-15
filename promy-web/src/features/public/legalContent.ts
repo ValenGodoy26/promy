@@ -19,7 +19,7 @@ export type LegalDocument = {
   lawLabel: string;
   updatedAt: string;
   version: string;
-  contactEmail: string;
+  contactEmail: string | null;
   summary: LegalSummaryCard[];
   sections: LegalSection[];
   footer: string;
@@ -33,12 +33,12 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
     intro:
       'PROMY ("PROMY", "la plataforma", "nosotros") trata datos personales para operar cuentas, mostrar promociones reales y validar canjes. Esta política explica qué datos recolectamos, para qué se usan, con quién se comparten, cuánto tiempo se conservan y qué derechos podés ejercer.',
     lawLabel: "Ley 25.326 · AAIP · República Argentina",
-    updatedAt: "6 de mayo de 2026",
-    version: "1.0",
-    contactEmail: "privacidad@promy.app",
+    updatedAt: "14 de septiembre de 2026",
+    version: "1.1-prepiloto",
+    contactEmail: null,
     summary: [
       { label: "Responsable", value: "PROMY · Concordia, Entre Ríos, Argentina" },
-      { label: "Contacto", value: "privacidad@promy.app" },
+      { label: "Contacto", value: "Canal oficial pendiente antes del piloto" },
       { label: "Derechos", value: "Acceso, rectificación, supresión y oposición" },
       { label: "Regla clave", value: "PROMY no vende tus datos personales" },
     ],
@@ -48,13 +48,13 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         number: "01",
         title: "Quién es responsable de tus datos",
         paragraphs: [
-          "El responsable del tratamiento de los datos personales es PROMY, con domicilio en Concordia, Entre Ríos, Argentina.",
-          "Si en el futuro PROMY adopta una forma societaria específica, esos datos identificatorios se actualizarán en esta misma página.",
+          "PROMY se encuentra en etapa pre-piloto. La identidad jurídica responsable, el domicilio legal y el canal oficial de privacidad deben publicarse antes de incorporar usuarios externos.",
+          "Esta versión describe el comportamiento técnico actual y no reemplaza la revisión jurídica pendiente.",
         ],
         bullets: [
-          "Nombre / razón social: PROMY",
-          "Domicilio: Concordia, Entre Ríos, Argentina",
-          "Contacto de privacidad: privacidad@promy.app",
+          "Producto: PROMY",
+          "Ciudad inicial prevista: Concordia, Entre Ríos, Argentina",
+          "Responsable legal y contacto de privacidad: pendientes de definición antes del piloto",
         ],
       },
       {
@@ -66,7 +66,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         ],
         bullets: [
           "Clientes: nombre completo, email, teléfono opcional, contraseña hasheada, fecha de nacimiento si se carga, ciudad declarada, tokens de notificaciones y sesión.",
-          "Uso de la app: ubicación GPS aproximada solo para ordenar resultados por cercanía, favoritos, historial de canjes, notificaciones y datos técnicos básicos del dispositivo.",
+          "Uso de la app: la ubicación GPS se usa para ordenar resultados por cercanía sin persistir un historial de ubicaciones; los favoritos actuales se guardan localmente en el dispositivo; el backend conserva historial de canjes, notificaciones y datos técnicos de sesión.",
           "Comercios: datos del responsable, nombre comercial, descripción, dirección, coordenadas, ciudad, categoría, Instagram opcional, imágenes, promociones y estadísticas de canjes.",
           "No recolectamos datos bancarios ni de tarjetas, no accedemos a contactos, fotos o micrófono y solo usamos la cámara cuando un comercio necesita escanear un QR.",
         ],
@@ -107,9 +107,9 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         title: "Cuánto tiempo guardamos tus datos",
         bullets: [
           "Cuenta activa: mientras tu cuenta siga operativa.",
-          "Cuenta dada de baja: eliminación de datos personales identificables dentro de los 30 días.",
-          "Registros de canjes: pueden conservarse en forma anónima para estadísticas y auditoría.",
-          "Logs técnicos y de seguridad: hasta 12 meses.",
+          "Cuenta CLIENT dada de baja desde la app: identidad, credenciales, sesiones, push tokens, notificaciones y canjes no consumados se eliminan en la operación de baja.",
+          "Canjes SUCCESS: se conserva el hecho comercial sin relación con la cuenta eliminada, para no alterar métricas e historial del comercio.",
+          "Logs técnicos, eventos de seguridad, solicitudes beta y backups: sus períodos y procedimientos definitivos requieren una decisión operativa y jurídica antes del piloto.",
           "Obligaciones legales: los plazos pueden extenderse si una norma lo exige.",
         ],
       },
@@ -139,7 +139,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
           "Oposición: podés oponerte a determinados usos, por ejemplo notificaciones.",
         ],
         paragraphs: [
-          "Para ejercer estos derechos, escribinos desde el email registrado a privacidad@promy.app. El plazo de respuesta previsto es de 10 días corridos.",
+          "El canal verificable para ejercer estos derechos y sus plazos operativos se publicarán antes del piloto. Mientras ese canal no exista, PROMY no debe abrir registro público.",
           "Si entendés que tu pedido no fue bien respondido, podés reclamar ante la Agencia de Acceso a la Información Pública (AAIP).",
         ],
       },
@@ -149,7 +149,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         title: "Menores de edad",
         paragraphs: [
           "PROMY no está dirigida a menores de 18 años y no recolecta conscientemente datos de menores.",
-          "Si detectás una cuenta creada por un menor, podés escribir a privacidad@promy.app para solicitar su eliminación.",
+          "El procedimiento oficial para reportar una cuenta de un menor debe quedar publicado antes del piloto.",
         ],
       },
       {
@@ -175,7 +175,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         number: "11",
         title: "Contacto",
         bullets: [
-          "Email: privacidad@promy.app",
+          "Canal oficial: pendiente de publicación antes del piloto",
           "Domicilio: Concordia, Entre Ríos, Argentina",
         ],
         paragraphs: [
@@ -195,12 +195,12 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
     lawLabel: "República Argentina · Defensa del consumidor · Concordia",
     updatedAt: "6 de mayo de 2026",
     version: "1.0",
-    contactEmail: "soporte@promy.app",
+    contactEmail: null,
     summary: [
       { label: "Rol de PROMY", value: "Intermediario tecnológico, no vendedor" },
       { label: "Edad mínima", value: "18 años o autorización válida" },
       { label: "Canjes", value: "Personales, únicos y sujetos a vigencia" },
-      { label: "Contacto", value: "soporte@promy.app · moderacion@promy.app" },
+      { label: "Contacto", value: "Canal oficial pendiente antes del piloto" },
     ],
     sections: [
       {
@@ -280,7 +280,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         bullets: [
           "No responde por calidad, precio, stock, atención o promesas comerciales del comercio.",
           "No responde por interrupciones causadas por proveedores externos o problemas técnicos del dispositivo del usuario.",
-          "La responsabilidad total de PROMY, en la máxima medida permitida por la ley, se limita al monto de promociones efectivamente canjeadas en los últimos 30 días o $10.000 ARS, lo que sea menor.",
+          "El alcance definitivo de responsabilidades y cualquier limitación aplicable requieren revisión jurídica antes del piloto.",
         ],
       },
       {
@@ -292,7 +292,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
           "PROMY puede moderar, eliminar promociones, suspender comercios o bloquear cuentas cuando detecte abuso, falsedad o incumplimientos.",
         ],
         bullets: [
-          "Canal de denuncias: moderacion@promy.app",
+          "Canal de denuncias: pendiente de publicación antes del piloto",
         ],
       },
       {
@@ -310,7 +310,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         number: "10",
         title: "Suspensión y baja de cuentas",
         paragraphs: [
-          "Podés solicitar la baja voluntaria de tu cuenta escribiendo a privacidad@promy.app desde el email registrado. PROMY procesará la solicitud dentro de los 30 días.",
+          "Las cuentas CLIENT pueden solicitar la baja desde la app. El canal asistido para comercios y administradores debe definirse antes del piloto.",
           "También podemos suspender o cerrar cuentas ante fraude, incumplimientos reiterados, reclamos fundados o requerimientos formales de autoridad.",
         ],
       },
@@ -337,10 +337,8 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         number: "13",
         title: "Contacto",
         bullets: [
-          "Soporte general: soporte@promy.app",
-          "Reclamos y moderación: moderacion@promy.app",
-          "Privacidad y datos personales: privacidad@promy.app",
-          "Domicilio: Concordia, Entre Ríos, Argentina",
+          "Soporte, moderación y privacidad: canales oficiales pendientes antes del piloto",
+          "Responsable y domicilio legal: pendientes de definición",
         ],
       },
       {
