@@ -101,7 +101,7 @@ async function main() {
     const polygon = `POLYGON((${minLng} ${minLat},${maxLng} ${minLat},${maxLng} ${maxLat},${minLng} ${maxLat},${minLng} ${minLat}))`;
     const distance = `ST_Distance_Sphere(location, POINT(${ORIGIN.longitude}, ${ORIGIN.latitude})) / 1000`;
     const originalSql = `SELECT id, ${distance} AS distanceKm FROM Commerce WHERE status='APPROVED' AND isHiddenByAdmin=false AND latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN ${minLat} AND ${maxLat} AND longitude BETWEEN ${minLng} AND ${maxLng} AND ${distance} <= ${RADIUS_KM} ORDER BY distanceKm ASC, id ASC LIMIT 50`;
-    const optimizedSql = `SELECT id, ${distance} AS distanceKm FROM Commerce FORCE INDEX (Commerce_location_spatial_idx) WHERE status='APPROVED' AND isHiddenByAdmin=false AND latitude IS NOT NULL AND longitude IS NOT NULL AND MBRContains(ST_GeomFromText('${polygon}'), location) AND latitude BETWEEN ${minLat} AND ${maxLat} AND longitude BETWEEN ${minLng} AND ${maxLng} AND ${distance} <= ${RADIUS_KM} ORDER BY distanceKm ASC, id ASC LIMIT 50`;
+    const optimizedSql = `SELECT id, ${distance} AS distanceKm FROM Commerce FORCE INDEX (Commerce_location_spatial_idx) WHERE status='APPROVED' AND isHiddenByAdmin=false AND latitude IS NOT NULL AND longitude IS NOT NULL AND MBRWithin(location, ST_GeomFromText('${polygon}')) AND latitude BETWEEN ${minLat} AND ${maxLat} AND longitude BETWEEN ${minLng} AND ${maxLng} AND ${distance} <= ${RADIUS_KM} ORDER BY distanceKm ASC, id ASC LIMIT 50`;
 
     const beforePlan = await prisma.$queryRawUnsafe(`EXPLAIN ${originalSql}`);
     const afterPlan = await prisma.$queryRawUnsafe(`EXPLAIN ${optimizedSql}`);

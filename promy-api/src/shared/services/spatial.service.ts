@@ -62,7 +62,7 @@ export async function findNearbyCommerceDistanceRows(
       AND isHiddenByAdmin = false
       AND latitude IS NOT NULL
       AND longitude IS NOT NULL
-      AND MBRContains(ST_GeomFromText(${boundingPolygonWkt}), location)
+      AND MBRWithin(location, ST_GeomFromText(${boundingPolygonWkt}))
       AND latitude BETWEEN ${bbox.minLatitude} AND ${bbox.maxLatitude}
       AND longitude BETWEEN ${bbox.minLongitude} AND ${bbox.maxLongitude}
       ${categoryFilter}

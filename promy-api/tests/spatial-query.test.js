@@ -40,7 +40,7 @@ test("nearby query keeps exact distance/order and adds an indexable spatial pref
 
   const sql = capturedQuery.strings.join("?");
   assert.match(sql, /FORCE INDEX \(Commerce_location_spatial_idx\)/);
-  assert.match(sql, /MBRContains\(ST_GeomFromText\(\?\), location\)/);
+  assert.match(sql, /MBRWithin\(location, ST_GeomFromText\(\?\)\)/);
   assert.match(sql, /ST_Distance_Sphere/);
   assert.match(sql, /ORDER BY distanceKm ASC, id ASC/);
   assert.match(sql, /LIMIT \? OFFSET \?/);
