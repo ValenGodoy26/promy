@@ -14,6 +14,10 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function stringify(value) {
+  return JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? Number(item) : item));
+}
+
 function databaseUrlFor(baseUrl, databaseName) {
   const parsed = new URL(baseUrl);
   parsed.pathname = `/${databaseName}`;
@@ -49,7 +53,7 @@ async function seedAndSnapshot() {
     "SELECT id, ST_SRID(location) AS srid, ST_X(location) AS longitude, ST_Y(location) AS latitude FROM Commerce WHERE slug='block13-commerce'",
   );
   assert(rows.length === 1 && Number(rows[0].srid) === 0, "Fixture previo no usa SRID 0");
-  console.log(JSON.stringify({ phase: "pre-migration-26", row: rows[0], status: "PASS" }));
+  console.log(stringify({ phase: "pre-migration-26", row: rows[0], status: "PASS" }));
   await prisma.$disconnect();
 }
 
@@ -64,7 +68,7 @@ async function verifyAfterMigration() {
   assert(indexes[0]?.indexType === "SPATIAL", "Índice espacial no fue recreado");
   assert(rows.length === 1 && Number(rows[0].srid) === 0, "La migración alteró o perdió la geometría");
   assert(Number(rows[0].longitude) === -58.017 && Number(rows[0].latitude) === -31.392, "La migración alteró coordenadas");
-  console.log(JSON.stringify({ phase: "post-migration-26", schema: columns[0], index: indexes[0], row: rows[0], status: "PASS" }));
+  console.log(stringify({ phase: "post-migration-26", schema: columns[0], index: indexes[0], row: rows[0], status: "PASS" }));
   await prisma.$disconnect();
 }
 
