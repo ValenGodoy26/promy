@@ -35,9 +35,18 @@ async function seedPreMigrationFixtures() {
     prisma.city.create({ data: { name: "Synthetic City", province: "Entre Ríos", slug: "block12-city" } }),
     prisma.category.create({ data: { name: "Synthetic Category", slug: "block12-category" } }),
   ]);
-  const commerce = await prisma.commerce.create({
-    data: { ownerUserId: commerceOwner.id, cityId: city.id, categoryId: category.id, name: "Synthetic Commerce", slug: "block12-commerce", address: "Synthetic 123", latitude: -31.39, longitude: -58.02, status: "APPROVED" },
-  });
+  await prisma.$executeRaw`
+    INSERT INTO Commerce (
+      ownerUserId, cityId, categoryId, name, slug, address,
+      latitude, longitude, status, isFeatured, featuredRank,
+      isHiddenByAdmin, isSuspendedByAdmin, createdAt, updatedAt
+    ) VALUES (
+      ${commerceOwner.id}, ${city.id}, ${category.id}, ${"Synthetic Commerce"},
+      ${"block12-commerce"}, ${"Synthetic 123"}, ${-31.39}, ${-58.02},
+      ${"APPROVED"}, false, 0, false, false, NOW(), NOW()
+    )
+  `;
+  const commerce = await prisma.commerce.findUniqueOrThrow({ where: { slug: "block12-commerce" } });
   const [globalCap, perUser, secondSuccess, pendingPromo, controlPromo] = await Promise.all([
     prisma.promotion.create({ data: { commerceId: commerce.id, title: "Global cap", description: "Synthetic", promotionType: "BENEFIT", validationMethod: "MANUAL_CODE", maxRedemptions: 1, startDate: yesterday, endDate: tomorrow, status: "APPROVED_VISIBLE" } }),
     prisma.promotion.create({ data: { commerceId: commerce.id, title: "Per user", description: "Synthetic", promotionType: "BENEFIT", validationMethod: "MANUAL_CODE", maxRedemptions: 10, startDate: yesterday, endDate: tomorrow, status: "APPROVED_VISIBLE" } }),
