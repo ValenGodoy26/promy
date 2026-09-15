@@ -18,6 +18,15 @@ async function buildPng() {
     .toBuffer();
 }
 
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function buildCompressedHighPixelPng() {
   return sharp({
     create: {
@@ -148,7 +157,7 @@ async function main() {
       body: JSON.stringify({ logoUrl: secondReference.data.file.url }),
     });
     assert(secondPersist.ok, "No se pudo persistir el segundo reemplazo");
-    await assert.rejects(fs.access(firstPath), "El objeto anterior debería eliminarse después del commit DB");
+    assert(!(await fileExists(firstPath)), "El objeto anterior debería eliminarse después del commit DB");
 
     const failedReference = await upload(client, auth.accessToken, { buffer: png, mimeType: "image/png", filename: "db-failure.png" });
     const failedPath = path.resolve(process.cwd(), failedReference.data.file.relativeUrl.replace(/^\/+/, ""));
@@ -158,7 +167,7 @@ async function main() {
       body: JSON.stringify({ logoUrl: failedReference.data.file.url, cityId: 2147483647 }),
     });
     assert(rejectedPersist.status === 404, "La persistencia sintética inválida debía fallar");
-    await assert.rejects(fs.access(failedPath), "El objeto nuevo debía limpiarse tras fallar DB/validación");
+    assert(!(await fileExists(failedPath)), "El objeto nuevo debía limpiarse tras fallar DB/validación");
 
     const restore = await client.request("/commerce/me", {
       method: "PUT",
