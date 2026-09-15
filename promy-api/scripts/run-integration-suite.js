@@ -95,6 +95,9 @@ async function main() {
   console.log("[integration] migration upgrade 24 -> 25 with representative data");
   await runCommand(process.execPath, ["scripts/qa-migration-24-to-25.js"], { root: ROOT, env });
 
+  console.log("[integration] migration upgrade 25 -> 26 with representative spatial data");
+  await runCommand(process.execPath, ["scripts/qa-migration-25-to-26.js"], { root: ROOT, env });
+
   console.log("[integration] prisma migrate reset");
   await runCommand(
     NPX,

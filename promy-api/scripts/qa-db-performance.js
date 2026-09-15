@@ -116,6 +116,11 @@ async function main() {
       "La consulta optimizada no conserva el conjunto/orden de resultados",
     );
     const optimizedCommercePlan = afterPlan.find((row) => row.table === "Commerce");
+    const spatialColumn = await prisma.$queryRawUnsafe(
+      "SELECT SRS_ID AS srsId FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='Commerce' AND COLUMN_NAME='location'",
+    );
+    console.log(JSON.stringify({ phase: "geo-query-plans", before: planSummary(beforePlan), after: planSummary(afterPlan), spatialSrid: spatialColumn[0]?.srsId ?? null }));
+    assert(Number(spatialColumn[0]?.srsId) === 0, "Commerce.location no está restringida a SRID 0");
     assert(optimizedCommercePlan?.key === "Commerce_location_spatial_idx", "MySQL no eligió el índice espacial");
     assert(optimizedCommercePlan?.type !== "ALL", "La consulta optimizada conserva full table scan");
 
