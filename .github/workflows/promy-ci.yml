@@ -92,6 +92,8 @@ jobs:
         run: npx prisma validate
       - name: Integration and E2E suite
         run: npm run test:integration
+      - name: Block 13 database performance harness
+        run: npm run qa:perf:db
 
   web:
     name: Web
