@@ -34,7 +34,8 @@
     "migrate:reset": "npx prisma migrate reset --force",
     "setup": "npx prisma migrate deploy && node prisma/seed.js",
     "setup:bootstrap": "npx prisma migrate deploy && cross-env SEED_MODE=bootstrap node prisma/seed.js",
-    "setup:fresh": "npx prisma migrate reset --force && node prisma/seed.js"
+    "setup:fresh": "npx prisma migrate reset --force && node prisma/seed.js",
+    "uploads:audit": "npm run build && cross-env ALLOW_WEAK_SECRETS=1 node scripts/audit-upload-orphans.js"
   },
   "keywords": [],
   "author": "",

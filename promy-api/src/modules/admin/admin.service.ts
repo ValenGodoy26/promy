@@ -11,6 +11,7 @@ import { sharedTtlCache } from "../../shared/cache/ttlCache";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { logOperationalEvent, logger, logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
+import { cleanupCommerceImages } from "../../shared/services/uploads.service";
 import { escapeHtmlText } from "../../shared/security/html";
 import { createAppNotification } from "../notifications/notifications.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
@@ -1431,7 +1432,9 @@ export async function updateCommerceByAdmin(input: {
   updateData.adminEditedAt = new Date();
   updateData.adminEditedByUserId = input.adminUserId;
 
-  const commerce = await prisma.$transaction(async (tx) => {
+  let commerce;
+  try {
+    commerce = await prisma.$transaction(async (tx) => {
     const commerce = await tx.commerce.update({
       where: { id: input.commerceId },
       data: updateData,
@@ -1463,7 +1466,29 @@ export async function updateCommerceByAdmin(input: {
     });
 
     return commerce;
-  });
+    });
+  } catch (error) {
+    await cleanupCommerceImages([
+      input.data.logoUrl !== existingCommerce.logoUrl ? input.data.logoUrl : null,
+      input.data.coverUrl !== existingCommerce.coverUrl ? input.data.coverUrl : null,
+    ]);
+    throw error;
+  }
+
+  const replacedCleanupFailures = await cleanupCommerceImages([
+    input.data.logoUrl !== undefined && input.data.logoUrl !== existingCommerce.logoUrl
+      ? existingCommerce.logoUrl
+      : null,
+    input.data.coverUrl !== undefined && input.data.coverUrl !== existingCommerce.coverUrl
+      ? existingCommerce.coverUrl
+      : null,
+  ]);
+  if (replacedCleanupFailures.length) {
+    logWarn(logger, "No pudimos limpiar imágenes reemplazadas por administración", {
+      commerceId: existingCommerce.id,
+      failedObjects: replacedCleanupFailures.length,
+    });
+  }
 
   publishRealtimeEvent({
     type: "commerce.updated",
@@ -1699,7 +1724,9 @@ export async function updatePromotionByAdmin(input: {
   }
   if (input.data.adminNote !== undefined) updateData.adminNote = input.data.adminNote;
 
-  const promotion = await prisma.$transaction(async (tx) => {
+  let promotion;
+  try {
+    promotion = await prisma.$transaction(async (tx) => {
     const promotion = await tx.promotion.update({
       where: { id: input.promotionId },
       data: updateData,
@@ -1779,7 +1806,23 @@ export async function updatePromotionByAdmin(input: {
     });
 
     return promotion;
-  });
+    });
+  } catch (error) {
+    await cleanupCommerceImages([
+      input.data.imageUrl !== existingPromotion.imageUrl ? input.data.imageUrl : null,
+    ]);
+    throw error;
+  }
+
+  if (input.data.imageUrl !== undefined && input.data.imageUrl !== existingPromotion.imageUrl) {
+    const failures = await cleanupCommerceImages([existingPromotion.imageUrl]);
+    if (failures.length) {
+      logWarn(logger, "No pudimos limpiar la imagen reemplazada por administración", {
+        promotionId: existingPromotion.id,
+        failedObjects: failures.length,
+      });
+    }
+  }
 
   publishRealtimeEvent({
     type: "promotion.updated",

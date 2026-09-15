@@ -4,6 +4,8 @@ import prisma from "../../config/prisma";
 import { invalidatePublicCatalogCache } from "../../shared/cache/publicCatalogCache";
 import { parsePromotionTimeToMinutes } from "../../shared/utils/promotionStatus";
 import { nullableOptionalCommercePhoneSchema } from "../../shared/validation/phone";
+import { logWarn } from "../../shared/logging/logger";
+import { cleanupCommerceImages } from "../../shared/services/uploads.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
 function cleanText(value?: string | null) {
@@ -683,10 +685,12 @@ export async function updateManagedCommerceByOwner(params: {
     });
 
     if (!city) {
+      await cleanupCommerceImages([params.data.logoUrl, params.data.coverUrl]);
       throw new CommerceServiceError("La ciudad seleccionada no existe.", 404);
     }
 
     if (!city.isActive) {
+      await cleanupCommerceImages([params.data.logoUrl, params.data.coverUrl]);
       throw new CommerceServiceError("La ciudad seleccionada no esta activa.", 409);
     }
   }
@@ -698,23 +702,45 @@ export async function updateManagedCommerceByOwner(params: {
     });
 
     if (!category) {
+      await cleanupCommerceImages([params.data.logoUrl, params.data.coverUrl]);
       throw new CommerceServiceError("La categoria seleccionada no existe.", 404);
     }
 
     if (!category.isActive) {
+      await cleanupCommerceImages([params.data.logoUrl, params.data.coverUrl]);
       throw new CommerceServiceError("La categoria seleccionada no esta activa.", 409);
     }
   }
 
-  const updatedCommerce = await prisma.commerce.update({
-    where: { id: commerce.id },
-    data: {
-      ...restData,
-      ...(cityId !== undefined ? { cityId } : {}),
-      ...(categoryId !== undefined ? { categoryId } : {}),
-    },
-    select: commerceSelect,
-  });
+  let updatedCommerce;
+  try {
+    updatedCommerce = await prisma.commerce.update({
+      where: { id: commerce.id },
+      data: {
+        ...restData,
+        ...(cityId !== undefined ? { cityId } : {}),
+        ...(categoryId !== undefined ? { categoryId } : {}),
+      },
+      select: commerceSelect,
+    });
+  } catch (error) {
+    await cleanupCommerceImages([
+      params.data.logoUrl !== commerce.logoUrl ? params.data.logoUrl : null,
+      params.data.coverUrl !== commerce.coverUrl ? params.data.coverUrl : null,
+    ]);
+    throw error;
+  }
+
+  const cleanupFailures = await cleanupCommerceImages([
+    params.data.logoUrl !== undefined && params.data.logoUrl !== commerce.logoUrl ? commerce.logoUrl : null,
+    params.data.coverUrl !== undefined && params.data.coverUrl !== commerce.coverUrl ? commerce.coverUrl : null,
+  ]);
+  if (cleanupFailures.length) {
+    logWarn(undefined, "No pudimos limpiar imágenes reemplazadas del comercio", {
+      commerceId: commerce.id,
+      failedObjects: cleanupFailures.length,
+    });
+  }
 
   await invalidatePublicCatalogCache();
 
@@ -821,10 +847,16 @@ export async function createPromotionForOwner(params: {
     );
   }
 
-  const createdPromotion = await prisma.promotion.create({
-    data: buildPromotionCreateData(commerce.id, data),
-    select: promotionSelect,
-  });
+  let createdPromotion;
+  try {
+    createdPromotion = await prisma.promotion.create({
+      data: buildPromotionCreateData(commerce.id, data),
+      select: promotionSelect,
+    });
+  } catch (error) {
+    await cleanupCommerceImages([data.imageUrl]);
+    throw error;
+  }
 
   await invalidatePublicCatalogCache();
 
@@ -857,6 +889,7 @@ export async function updatePromotionForOwner(params: {
     select: {
       id: true,
       status: true,
+      imageUrl: true,
     },
   });
 
@@ -875,7 +908,9 @@ export async function updatePromotionForOwner(params: {
 
   const { updateData } = buildPromotionUpdateData(existingPromotion, data);
 
-  const updatedPromotion: any = await prisma.$transaction(async (tx) => {
+  let updatedPromotion: any;
+  try {
+    updatedPromotion = await prisma.$transaction(async (tx) => {
     await tx.promotion.update({
       where: { id: existingPromotion.id },
       data: updateData,
@@ -902,7 +937,23 @@ export async function updatePromotionForOwner(params: {
       where: { id: existingPromotion.id },
       select: promotionSelect,
     });
-  });
+    });
+  } catch (error) {
+    await cleanupCommerceImages([
+      data.imageUrl !== existingPromotion.imageUrl ? data.imageUrl : null,
+    ]);
+    throw error;
+  }
+
+  if (data.imageUrl !== undefined && data.imageUrl !== existingPromotion.imageUrl) {
+    const failures = await cleanupCommerceImages([existingPromotion.imageUrl]);
+    if (failures.length) {
+      logWarn(undefined, "No pudimos limpiar la imagen reemplazada de la promoción", {
+        promotionId: existingPromotion.id,
+        failedObjects: failures.length,
+      });
+    }
+  }
 
   await invalidatePublicCatalogCache();
 
@@ -933,6 +984,7 @@ export async function deletePromotionForOwner(params: {
     },
     select: {
       id: true,
+      imageUrl: true,
       redemptions: {
         select: { id: true },
         take: 1,
@@ -954,6 +1006,14 @@ export async function deletePromotionForOwner(params: {
   await prisma.promotion.delete({
     where: { id: existingPromotion.id },
   });
+
+  const cleanupFailures = await cleanupCommerceImages([existingPromotion.imageUrl]);
+  if (cleanupFailures.length) {
+    logWarn(undefined, "No pudimos limpiar la imagen de la promoción eliminada", {
+      promotionId: existingPromotion.id,
+      failedObjects: cleanupFailures.length,
+    });
+  }
 
   await invalidatePublicCatalogCache();
 

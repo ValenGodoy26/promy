@@ -18,6 +18,17 @@ async function buildPng() {
     .toBuffer();
 }
 
+async function buildCompressedHighPixelPng() {
+  return sharp({
+    create: {
+      width: 6500,
+      height: 6500,
+      channels: 3,
+      background: { r: 255, g: 255, b: 255 },
+    },
+  }).png({ compressionLevel: 9 }).toBuffer();
+}
+
 async function upload(client, accessToken, { buffer, mimeType, filename, fields = [] }) {
   const body = new FormData();
   for (const [name, value] of fields) body.append(name, value);
@@ -40,6 +51,9 @@ async function main() {
   const client = createWebClient({ forwardedIp: "127.12.0.1" });
   const auth = await loginWeb(client, "comercio@promy.com", "demo1234");
   const png = await buildPng();
+  const originalProfile = await client.request("/commerce/me", {
+    headers: { Authorization: `Bearer ${auth.accessToken}` },
+  });
 
   try {
     const valid = await upload(client, auth.accessToken, {
@@ -80,6 +94,13 @@ async function main() {
     });
     assert(corrupt.status === 415, `Imagen corrupta no devolvio 415: ${JSON.stringify(corrupt.data)}`);
 
+    const highPixel = await upload(client, auth.accessToken, {
+      buffer: await buildCompressedHighPixelPng(),
+      mimeType: "image/png",
+      filename: "compressed-high-pixel.png",
+    });
+    assert(highPixel.status === 413, `Pixel budget no devolvio 413: ${JSON.stringify(highPixel.data)}`);
+
     const twoFilesBody = new FormData();
     twoFilesBody.append("file", new Blob([png], { type: "image/png" }), "first.png");
     twoFilesBody.append("file", new Blob([png], { type: "image/png" }), "second.png");
@@ -109,9 +130,46 @@ async function main() {
     });
     assert(!nestedField.ok, "Multer acepto un indice array superior al limite configurado");
 
+    const firstReference = await upload(client, auth.accessToken, { buffer: png, mimeType: "image/png", filename: "replace-first.png" });
+    assert(firstReference.status === 201, "No se pudo crear el primer objeto de reemplazo");
+    const firstPath = path.resolve(process.cwd(), firstReference.data.file.relativeUrl.replace(/^\/+/, ""));
+    const firstPersist = await client.request("/commerce/me", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({ logoUrl: firstReference.data.file.url }),
+    });
+    assert(firstPersist.ok, "No se pudo persistir el primer reemplazo");
+
+    const secondReference = await upload(client, auth.accessToken, { buffer: png, mimeType: "image/png", filename: "replace-second.png" });
+    assert(secondReference.status === 201, "No se pudo crear el segundo objeto de reemplazo");
+    const secondPersist = await client.request("/commerce/me", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({ logoUrl: secondReference.data.file.url }),
+    });
+    assert(secondPersist.ok, "No se pudo persistir el segundo reemplazo");
+    await assert.rejects(fs.access(firstPath), "El objeto anterior debería eliminarse después del commit DB");
+
+    const failedReference = await upload(client, auth.accessToken, { buffer: png, mimeType: "image/png", filename: "db-failure.png" });
+    const failedPath = path.resolve(process.cwd(), failedReference.data.file.relativeUrl.replace(/^\/+/, ""));
+    const rejectedPersist = await client.request("/commerce/me", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({ logoUrl: failedReference.data.file.url, cityId: 2147483647 }),
+    });
+    assert(rejectedPersist.status === 404, "La persistencia sintética inválida debía fallar");
+    await assert.rejects(fs.access(failedPath), "El objeto nuevo debía limpiarse tras fallar DB/validación");
+
+    const restore = await client.request("/commerce/me", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({ logoUrl: originalProfile.data?.commerce?.logoUrl ?? null }),
+    });
+    assert(restore.ok, "No se pudo restaurar el logo del fixture demo");
+
     console.log(JSON.stringify({
       ok: true,
-      checks: ["valid-image", "5mb-413", "mime-415", "magic-bytes-400", "corrupt-415", "multiple-files-400", "safe-filename", "array-index-limit"],
+      checks: ["valid-image", "5mb-413", "pixel-budget-413", "mime-415", "magic-bytes-400", "corrupt-415", "multiple-files-400", "safe-filename", "array-index-limit", "replace-cleanup", "failed-persist-cleanup"],
       outputMimeType: valid.data.file.mimeType,
       message: "Smoke QA de uploads y Sharp completada correctamente.",
     }, null, 2));
