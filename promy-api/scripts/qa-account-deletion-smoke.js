@@ -32,15 +32,15 @@ async function main() {
     const commerce = await prisma.commerce.findFirstOrThrow({ where: { owner: { email: "comercio@promy.com" } } });
     const promotions = await Promise.all(
       ["uno", "dos", "pendiente"].map((suffix) => prisma.promotion.create({
-        data: { commerceId: commerce.id, title: `Baja QA ${suffix}`, description: "Fixture sintético de privacidad", promotionType: "DISCOUNT", validationMethod: "CODE", status: "APPROVED_VISIBLE" },
+        data: { commerceId: commerce.id, title: `Baja QA ${suffix}`, description: "Fixture sintético de privacidad", promotionType: "BENEFIT", validationMethod: "MANUAL_CODE", status: "APPROVED_VISIBLE" },
       })),
     );
     createdPromotionIds = promotions.map((item) => item.id);
 
     await prisma.redemption.createMany({ data: [
-      { promotionId: promotions[0].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "CODE", validationCode: `${runId}-1`, status: "SUCCESS", redeemedAt: new Date() },
-      { promotionId: promotions[1].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "CODE", validationCode: `${runId}-2`, status: "SUCCESS", redeemedAt: new Date() },
-      { promotionId: promotions[2].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "CODE", validationCode: `${runId}-3`, status: "PENDING" },
+      { promotionId: promotions[0].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "MANUAL_CODE", validationCode: `${runId}-1`, status: "SUCCESS", redeemedAt: new Date() },
+      { promotionId: promotions[1].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "MANUAL_CODE", validationCode: `${runId}-2`, status: "SUCCESS", redeemedAt: new Date() },
+      { promotionId: promotions[2].id, commerceId: commerce.id, userId: createdUserId, validationMethod: "MANUAL_CODE", validationCode: `${runId}-3`, status: "PENDING" },
     ] });
     await prisma.pushToken.create({ data: { userId: createdUserId, token: `ExponentPushToken[${runId}]`, platform: "android", deviceLabel: "Synthetic QA" } });
 

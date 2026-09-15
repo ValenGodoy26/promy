@@ -92,6 +92,9 @@ async function main() {
   console.log("[integration] prisma validate");
   await runCommand(NPX, ["prisma", "validate"], { root: ROOT, env });
 
+  console.log("[integration] migration upgrade 24 -> 25 with representative data");
+  await runCommand(process.execPath, ["scripts/qa-migration-24-to-25.js"], { root: ROOT, env });
+
   console.log("[integration] prisma migrate reset");
   await runCommand(
     NPX,
@@ -101,6 +104,9 @@ async function main() {
 
   console.log("[integration] seed demo");
   await runCommand(process.execPath, ["prisma/seed.js"], { root: ROOT, env });
+
+  console.log("[integration] upload orphan audit fixtures");
+  await runCommand(process.execPath, ["scripts/qa-upload-audit-fixtures.js"], { root: ROOT, env });
 
   const api = startApi({ root: ROOT, env, port });
 

@@ -20,6 +20,12 @@ requirePattern("promy-api/src/server.ts", /uncaughtException[\s\S]*shutdown\("un
 requirePattern("promy-api/src/server.ts", /closeAllRealtimeClients/, "Shutdown does not close SSE clients");
 
 const integration = read("promy-api/scripts/run-integration-suite.js");
+for (const invariant of [
+  "qa-migration-24-to-25.js",
+  "qa-upload-audit-fixtures.js",
+]) {
+  if (!integration.includes(invariant)) throw new Error(`Block 12 integration invariant missing: ${invariant}`);
+}
 for (const smoke of [
   "qa-auth-smoke.js",
   "qa-rate-limit-smoke.js",

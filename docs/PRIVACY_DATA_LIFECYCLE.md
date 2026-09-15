@@ -2,6 +2,12 @@
 
 Estado: técnico, 2026-09-14. Este documento no certifica cumplimiento legal. Las decisiones marcadas `DECISION_REQUIRED` deben resolverse antes de incorporar usuarios externos.
 
+## Clasificación de estado
+
+- `IMPLEMENTED`: comportamiento comprobable en el código y cubierto por gates técnicos.
+- `DECISION_REQUIRED`: definición empresarial, operativa o de producto todavía pendiente.
+- `EXTERNAL/LEGAL_REVIEW_REQUIRED`: garantía que depende de un proveedor real o de revisión jurídica competente y que PROMY no declara resuelta.
+
 ## Matriz de datos
 
 | Categoría | Finalidad | Almacenamiento actual | Visibilidad | Baja/eliminación actual | Retención propuesta |
@@ -24,7 +30,7 @@ Estado: técnico, 2026-09-14. Este documento no certifica cumplimiento legal. La
 | Solicitudes beta: email, ciudad, plataforma, metadata | gestionar acceso pre-piloto | MySQL `BetaAccessRequest` | operación autorizada | no existe endpoint/purga | consentimiento, canal de baja y plazo: `DECISION_REQUIRED` |
 | Backups | recuperación | infraestructura todavía no definida | operación restringida | borrado individual no demostrado en copias | arquitectura, cifrado, expiración y restauración: `DECISION_REQUIRED` |
 
-## Baja CLIENT implementada
+## Baja CLIENT — IMPLEMENTED
 
 1. Se eliminan canjes `PENDING`, `FAILED` o `CANCELLED` del usuario.
 2. Se eliminan sesiones, push tokens y notificaciones.
@@ -34,7 +40,7 @@ Estado: técnico, 2026-09-14. Este documento no certifica cumplimiento legal. La
 
 No se conserva email original, email sustituto ni hash del email. Una cuenta recreada es una identidad nueva; una eventual prevención de reutilización por persona requiere una decisión antifraude separada y una base jurídica explícita.
 
-## Uploads
+## Uploads — IMPLEMENTED
 
 - Antes de decodificar se valida ancho, alto y presupuesto total de píxeles.
 - Sharp admite como máximo dos procesamientos simultáneos y seis en espera; exceso devuelve 429.
@@ -42,12 +48,12 @@ No se conserva email original, email sustituto ni hash del email. Una cuenta rec
 - Si falla la persistencia, se intenta borrar el objeto nuevo como compensación.
 - El borrado es idempotente y sólo acepta paths gestionados `commerce/<uuid>-<nombre>.webp`.
 - `npm run uploads:audit` compara storage con referencias DB, usa 24 h de gracia y es dry-run. `-- --delete` exige una acción explícita.
-- Local y cliente S3 fake están cubiertos. La validación contra R2 real queda `EXTERNAL_PROVIDER_VALIDATION_PENDING`.
+- Local y cliente S3 fake están cubiertos. La validación contra R2 real queda `EXTERNAL/LEGAL_REVIEW_REQUIRED` (`EXTERNAL_PROVIDER_VALIDATION_PENDING`).
 
-## Decisiones previas al piloto
+## Decisiones previas al piloto — DECISION_REQUIRED / EXTERNAL/LEGAL_REVIEW_REQUIRED
 
 - `DECISION_REQUIRED`: responsable jurídico, domicilio y canales oficiales verificables.
 - `DECISION_REQUIRED`: proceso y plazos para derechos, cuentas Commerce/Admin y solicitudes beta.
 - `DECISION_REQUIRED`: retención/purga de logs, auditoría, canjes históricos y sesiones vencidas.
 - `DECISION_REQUIRED`: política de backups y propagación de borrados.
-- `DECISION_REQUIRED`: revisión jurídica argentina del texto público.
+- `EXTERNAL/LEGAL_REVIEW_REQUIRED`: revisión jurídica argentina del texto público.
