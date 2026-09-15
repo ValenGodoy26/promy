@@ -35,7 +35,8 @@
     "setup": "npx prisma migrate deploy && node prisma/seed.js",
     "setup:bootstrap": "npx prisma migrate deploy && cross-env SEED_MODE=bootstrap node prisma/seed.js",
     "setup:fresh": "npx prisma migrate reset --force && node prisma/seed.js",
-    "uploads:audit": "npm run build && node scripts/audit-upload-orphans.js"
+    "uploads:audit": "npm run build && node scripts/audit-upload-orphans.js",
+    "qa:perf:db": "npm run build && node scripts/qa-db-performance.js"
   },
   "keywords": [],
   "author": "",

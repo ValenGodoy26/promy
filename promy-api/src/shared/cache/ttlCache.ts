@@ -7,8 +7,29 @@ type CacheEntry<T> = {
   value: T;
 };
 
-class MemoryTtlStore {
+export const DEFAULT_MEMORY_CACHE_MAX_ENTRIES = 500;
+export const DEFAULT_MEMORY_CACHE_CLEANUP_INTERVAL_MS = 30_000;
+
+export type MemoryTtlStoreStats = {
+  entries: number;
+  maxEntries: number;
+  evictions: number;
+  expiredEntriesRemoved: number;
+};
+
+export class MemoryTtlStore {
   private readonly store = new Map<string, CacheEntry<unknown>>();
+  private evictions = 0;
+  private expiredEntriesRemoved = 0;
+
+  constructor(
+    private readonly maxEntries = DEFAULT_MEMORY_CACHE_MAX_ENTRIES,
+    private readonly now: () => number = Date.now,
+  ) {
+    if (!Number.isInteger(maxEntries) || maxEntries < 1) {
+      throw new Error("Memory cache maxEntries must be a positive integer");
+    }
+  }
 
   get<T>(key: string): T | null {
     const entry = this.store.get(key);
@@ -17,19 +38,32 @@ class MemoryTtlStore {
       return null;
     }
 
-    if (entry.expiresAt <= Date.now()) {
+    if (entry.expiresAt <= this.now()) {
       this.store.delete(key);
+      this.expiredEntriesRemoved += 1;
       return null;
     }
 
+    // Refresh insertion order so the first key remains the least recently used.
+    this.store.delete(key);
+    this.store.set(key, entry);
     return entry.value as T;
   }
 
   set<T>(key: string, value: T, ttlMs: number) {
+    this.deleteExpired();
+    this.store.delete(key);
     this.store.set(key, {
       value,
-      expiresAt: Date.now() + ttlMs,
+      expiresAt: this.now() + Math.max(0, ttlMs),
     });
+
+    while (this.store.size > this.maxEntries) {
+      const leastRecentlyUsedKey = this.store.keys().next().value as string | undefined;
+      if (leastRecentlyUsedKey === undefined) break;
+      this.store.delete(leastRecentlyUsedKey);
+      this.evictions += 1;
+    }
   }
 
   delete(key: string) {
@@ -47,6 +81,25 @@ class MemoryTtlStore {
   clear() {
     this.store.clear();
   }
+
+  deleteExpired() {
+    const now = this.now();
+    for (const [key, entry] of this.store.entries()) {
+      if (entry.expiresAt <= now) {
+        this.store.delete(key);
+        this.expiredEntriesRemoved += 1;
+      }
+    }
+  }
+
+  getStats(): MemoryTtlStoreStats {
+    return {
+      entries: this.store.size,
+      maxEntries: this.maxEntries,
+      evictions: this.evictions,
+      expiredEntriesRemoved: this.expiredEntriesRemoved,
+    };
+  }
 }
 
 type MinimalRedisClient = Awaited<ReturnType<typeof createClient>>;
@@ -62,10 +115,29 @@ async function collectRedisKeysByPrefix(client: MinimalRedisClient, pattern: str
 }
 
 export class TtlCache {
-  private readonly memory = new MemoryTtlStore();
+  private readonly memory: MemoryTtlStore;
+  private readonly cleanupTimer: ReturnType<typeof setInterval>;
   private redisClient: MinimalRedisClient | null = null;
   private redisConnectingPromise: Promise<MinimalRedisClient | null> | null = null;
   private redisFailed = false;
+
+  constructor(options?: {
+    memoryMaxEntries?: number;
+    memoryCleanupIntervalMs?: number;
+    now?: () => number;
+    setIntervalFn?: typeof setInterval;
+  }) {
+    this.memory = new MemoryTtlStore(options?.memoryMaxEntries, options?.now);
+    const intervalMs =
+      options?.memoryCleanupIntervalMs ?? DEFAULT_MEMORY_CACHE_CLEANUP_INTERVAL_MS;
+    const setIntervalFn = options?.setIntervalFn ?? setInterval;
+    this.cleanupTimer = setIntervalFn(() => this.memory.deleteExpired(), intervalMs);
+    this.cleanupTimer.unref?.();
+  }
+
+  getMemoryStats() {
+    return this.memory.getStats();
+  }
 
   private getRedisCacheKey(key: string) {
     return `${env.REDIS_KEY_PREFIX}${key}`;
@@ -205,6 +277,7 @@ export class TtlCache {
   }
 
   async close() {
+    clearInterval(this.cleanupTimer);
     this.memory.clear();
     const connecting = this.redisConnectingPromise;
     if (connecting) await connecting.catch(() => null);
