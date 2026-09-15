@@ -20,7 +20,7 @@ export function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
 
   const rows = redemptions.map((r) => [
     r.id,
-    r.user.fullName,
+    r.user?.fullName || "Cuenta eliminada",
     r.promotion.title,
     r.promotion.promotionType,
     r.promotion.discountValue ?? "",
@@ -105,7 +105,7 @@ export function CommerceRedemptionsHistoryTable({
             {redemptions.map((redemption) => (
               <tr key={redemption.id}>
                 <td>
-                  <div className="cell-primary">{redemption.user.fullName}</div>
+                  <div className="cell-primary">{redemption.user?.fullName || "Cuenta eliminada"}</div>
                 </td>
                 <td>{redemption.promotion.title}</td>
                 <td>

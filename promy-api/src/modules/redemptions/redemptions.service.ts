@@ -779,21 +779,23 @@ export async function validateCommerceRedemptionByCode(input: {
     throw new RedemptionServiceError("No pudimos recuperar el canje validado", 404);
   }
 
-  await createAppNotification({
-    userId: validatedRedemption.user.id,
-    type: AppNotificationType.REDEMPTION_VALIDATED,
-    title: "Canje validado",
-    body: `Tu canje de "${validatedRedemption.promotion.title}" en ${validatedRedemption.commerce.name} fue confirmado correctamente.`,
-    data: {
-      redemptionId: validatedRedemption.id,
-      promotionId: validatedRedemption.promotion.id,
-      commerceId: validatedRedemption.commerce.id,
-      validationCode: validatedRedemption.validationCode,
-      deepLink: buildPromotionDeepLink(validatedRedemption.promotion.id),
-      commerceDeepLink: buildCommerceDeepLink(validatedRedemption.commerce.id),
-      section: "notifications",
-    },
-  });
+  if (validatedRedemption.user) {
+    await createAppNotification({
+      userId: validatedRedemption.user.id,
+      type: AppNotificationType.REDEMPTION_VALIDATED,
+      title: "Canje validado",
+      body: `Tu canje de "${validatedRedemption.promotion.title}" en ${validatedRedemption.commerce.name} fue confirmado correctamente.`,
+      data: {
+        redemptionId: validatedRedemption.id,
+        promotionId: validatedRedemption.promotion.id,
+        commerceId: validatedRedemption.commerce.id,
+        validationCode: validatedRedemption.validationCode,
+        deepLink: buildPromotionDeepLink(validatedRedemption.promotion.id),
+        commerceDeepLink: buildCommerceDeepLink(validatedRedemption.commerce.id),
+        section: "notifications",
+      },
+    });
+  }
 
   publishRealtimeEvent({
     type: "redemption.validated",

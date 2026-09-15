@@ -254,7 +254,7 @@ model PromotionSchedule {
 model Redemption {
   id               Int              @id @default(autoincrement())
   promotionId      Int
-  userId           Int
+  userId           Int?
   commerceId       Int
   validatedByUserId Int?
   validationMethod ValidationMethod
@@ -268,7 +268,7 @@ model Redemption {
   createdAt        DateTime         @default(now())
 
   promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   commerce  Commerce  @relation(fields: [commerceId], references: [id], onDelete: Cascade)
   validatedByUser User? @relation("RedemptionValidator", fields: [validatedByUserId], references: [id], onDelete: SetNull)
 

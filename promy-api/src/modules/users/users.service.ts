@@ -748,6 +748,14 @@ export async function deleteCurrentUserAccount(userId: number) {
   }
 
   await prisma.$transaction(async (tx) => {
+    // Los estados no consumados no son hechos comerciales y no deben sobrevivir
+    // sin su titular. Los SUCCESS quedan anonimizados por la FK ON DELETE SET NULL.
+    await tx.redemption.deleteMany({
+      where: {
+        userId,
+        status: { not: "SUCCESS" },
+      },
+    });
     await tx.pushToken.deleteMany({ where: { userId } });
     await tx.appNotification.deleteMany({ where: { userId } });
     await tx.session.deleteMany({ where: { userId } });
@@ -756,7 +764,5 @@ export async function deleteCurrentUserAccount(userId: number) {
 
   return {
     deletedUserId: user.id,
-    deletedEmail: user.email,
-    deletedFullName: user.fullName,
   };
 }

@@ -177,7 +177,7 @@ export type CommerceRedemptionSummary = {
   user: {
     id: number;
     fullName: string;
-  };
+  } | null;
   promotion: {
     id: number;
     title: string;
@@ -345,7 +345,7 @@ export type CommerceManagedRedemption = {
   user: {
     id: number;
     fullName: string;
-  };
+  } | null;
   promotion: {
     id: number;
     title: string;

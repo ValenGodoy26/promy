@@ -23,7 +23,7 @@ export function CommerceLastValidatedCard({ redemption }: CommerceLastValidatedC
         </div>
         <div className="redeem-detail-card">
           <span className="redeem-detail-label">Cliente</span>
-          <strong>{redemption.user.fullName}</strong>
+          <strong>{redemption.user?.fullName || "Cuenta eliminada"}</strong>
         </div>
         <div className="redeem-detail-card">
           <span className="redeem-detail-label">Codigo</span>

@@ -227,7 +227,7 @@ export function CommerceDashboardPage({
                 title="Canjes recientes"
                 items={data.recentRedemptions.map((redemption) => ({
                   title: redemption.promotion.title,
-                  meta: `${redemption.user.fullName} · ${getStatusLabel(redemption.status)}`,
+                  meta: `${redemption.user?.fullName || "Cuenta eliminada"} · ${getStatusLabel(redemption.status)}`,
                 }))}
               />
             </div>

@@ -514,8 +514,8 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     logOperationalEvent(req, "users.account_deleted", {
       requestId: req.requestId,
       userId: deletedAccount.deletedUserId,
-      email: deletedAccount.deletedEmail,
       role: "CLIENT",
+      personalDataRetained: false,
     });
 
     return res.status(200).json({
