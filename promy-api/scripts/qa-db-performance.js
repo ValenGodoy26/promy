@@ -17,10 +17,17 @@ function planSummary(rows) {
   return rows.map((row) => ({
     table: row.table,
     accessType: row.type,
+    possibleKeys: row.possible_keys ?? null,
     key: row.key,
+    keyLength: row.key_len ?? null,
     rows: Number(row.rows),
+    filtered: row.filtered == null ? null : Number(row.filtered),
     extra: row.Extra,
   }));
+}
+
+function stringify(value) {
+  return JSON.stringify(value, (_, current) => (typeof current === "bigint" ? current.toString() : current));
 }
 
 function elapsedMs(start) {
@@ -117,9 +124,19 @@ async function main() {
     );
     const optimizedCommercePlan = afterPlan.find((row) => row.table === "Commerce");
     const spatialColumn = await prisma.$queryRawUnsafe(
-      "SELECT SRS_ID AS srsId FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='Commerce' AND COLUMN_NAME='location'",
+      "SELECT COLUMN_TYPE AS columnType, IS_NULLABLE AS isNullable, SRS_ID AS srsId FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='Commerce' AND COLUMN_NAME='location'",
     );
-    console.log(JSON.stringify({ phase: "geo-query-plans", before: planSummary(beforePlan), after: planSummary(afterPlan), spatialSrid: spatialColumn[0]?.srsId ?? null }));
+    const spatialIndexes = await prisma.$queryRawUnsafe(
+      "SELECT INDEX_NAME AS indexName, INDEX_TYPE AS indexType, COLUMN_NAME AS columnName FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='Commerce' AND INDEX_TYPE='SPATIAL' ORDER BY INDEX_NAME, SEQ_IN_INDEX",
+    );
+    console.log(stringify({
+      phase: "geo-query-plans",
+      sql: { before: originalSql, after: optimizedSql },
+      before: planSummary(beforePlan),
+      after: planSummary(afterPlan),
+      spatialColumn: spatialColumn[0] ?? null,
+      spatialIndexes,
+    }));
     assert(Number(spatialColumn[0]?.srsId) === 0, "Commerce.location no está restringida a SRID 0");
     assert(optimizedCommercePlan?.key === "Commerce_location_spatial_idx", "MySQL no eligió el índice espacial");
     assert(optimizedCommercePlan?.type !== "ALL", "La consulta optimizada conserva full table scan");
@@ -142,7 +159,7 @@ async function main() {
     });
     assert(nativeSearch.length > 0, "La consulta FULLTEXT real de Prisma no devolvió fixtures");
 
-    console.log(JSON.stringify({
+    console.log(stringify({
       harness: "db-performance",
       engine: version,
       dataset: { commerces: COMMERCE_COUNT, promotions: PROMOTION_COUNT, nearby: 100 },
