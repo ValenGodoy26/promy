@@ -13,16 +13,22 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function explainValue(row, name) {
+  const target = name.toLowerCase();
+  const matchingKey = Object.keys(row).find((key) => key.toLowerCase() === target);
+  return matchingKey === undefined ? undefined : row[matchingKey];
+}
+
 function planSummary(rows) {
   return rows.map((row) => ({
-    table: row.table,
-    accessType: row.type,
-    possibleKeys: row.possible_keys ?? null,
-    key: row.key,
-    keyLength: row.key_len ?? null,
-    rows: Number(row.rows),
-    filtered: row.filtered == null ? null : Number(row.filtered),
-    extra: row.Extra,
+    table: explainValue(row, "table") ?? null,
+    accessType: explainValue(row, "type") ?? null,
+    possibleKeys: explainValue(row, "possible_keys") ?? null,
+    key: explainValue(row, "key") ?? null,
+    keyLength: explainValue(row, "key_len") ?? null,
+    rows: explainValue(row, "rows") == null ? null : Number(explainValue(row, "rows")),
+    filtered: explainValue(row, "filtered") == null ? null : Number(explainValue(row, "filtered")),
+    extra: explainValue(row, "Extra") ?? null,
   }));
 }
 
@@ -122,7 +128,7 @@ async function main() {
       JSON.stringify(beforeRows.map((row) => row.id)) === JSON.stringify(afterRows.map((row) => row.id)),
       "La consulta optimizada no conserva el conjunto/orden de resultados",
     );
-    const optimizedCommercePlan = afterPlan.find((row) => row.table === "Commerce");
+    const optimizedCommercePlan = planSummary(afterPlan).find((row) => row.table === "Commerce");
     const spatialColumn = await prisma.$queryRawUnsafe(
       "SELECT COLUMN_TYPE AS columnType, IS_NULLABLE AS isNullable, SRS_ID AS srsId FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='Commerce' AND COLUMN_NAME='location'",
     );
