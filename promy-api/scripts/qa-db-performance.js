@@ -174,7 +174,10 @@ async function main() {
     const fulltextIndexes = await prisma.$queryRawUnsafe(
       "SELECT TABLE_NAME AS tableName, INDEX_NAME AS indexName, INDEX_TYPE AS indexType FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND INDEX_TYPE='FULLTEXT' AND TABLE_NAME IN ('Commerce','Promotion') ORDER BY TABLE_NAME, INDEX_NAME",
     );
-    assert(fulltextIndexes.length === 7, `Se esperaban 7 índices FULLTEXT y se encontraron ${fulltextIndexes.length}`);
+    const fulltextIndexNames = new Set(fulltextIndexes.map((index) => index.indexName));
+    assert(fulltextIndexes.length === 9, `Se esperaban 9 índices FULLTEXT y se encontraron ${fulltextIndexes.length}`);
+    assert(fulltextIndexNames.has("Commerce_catalog_fulltext_idx"), "Falta el índice FULLTEXT compuesto de Commerce");
+    assert(fulltextIndexNames.has("Promotion_catalog_fulltext_idx"), "Falta el índice FULLTEXT compuesto de Promotion");
     let nativeSearch = null;
     let nativeSearchError = null;
     let nativeCommerceSearch = null;
@@ -231,7 +234,12 @@ async function main() {
       before: { plan: planSummary(beforePlan), approximateMs: Number(beforeMs.toFixed(3)) },
       after: { plan: planSummary(afterPlan), approximateMs: Number(afterMs.toFixed(3)) },
       equivalentResultIds: beforeRows.length,
-      fulltext: { indexes: fulltextIndexes.length, prismaNativeResults: nativeSearch.length, classification: "MYSQL_FIXED" },
+      fulltext: {
+        indexes: fulltextIndexes.length,
+        prismaNativeResults: nativeSearch.length,
+        prismaNativeCommerceResults: nativeCommerceSearch.length,
+        classification: "MYSQL_FIXED",
+      },
       status: "PASS",
     }));
   } finally {

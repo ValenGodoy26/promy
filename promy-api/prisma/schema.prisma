@@ -196,6 +196,7 @@ model Commerce {
   @@fulltext([shortDescription])
   @@fulltext([description])
   @@fulltext([address])
+  @@fulltext([shortDescription, description, address, name], map: "Commerce_catalog_fulltext_idx")
 }
 
 model Promotion {
@@ -235,6 +236,7 @@ model Promotion {
   @@fulltext([title])
   @@fulltext([description])
   @@fulltext([conditions])
+  @@fulltext([description, conditions, title], map: "Promotion_catalog_fulltext_idx")
 }
 
 model PromotionSchedule {

@@ -91,8 +91,9 @@ async function orchestrate() {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    assert(migrations.length === 26 && migrations.at(-1) === TARGET_MIGRATION, "Se esperaban 26 migraciones y la de SRID al final");
-    for (const migration of migrations.slice(0, -1)) {
+    const targetIndex = migrations.indexOf(TARGET_MIGRATION);
+    assert(migrations.length === 27 && targetIndex === 25, "Se esperaban 27 migraciones y SRID en la posición 26");
+    for (const migration of migrations.slice(0, targetIndex)) {
       await fs.cp(path.join(migrationSource, migration), path.join(temporaryPrisma, "migrations", migration), { recursive: true });
     }
     await runCommand(NPX, ["prisma", "migrate", "deploy", "--schema", path.join(temporaryPrisma, "schema.prisma")], { root: ROOT, env: workerEnv });

@@ -173,7 +173,7 @@ async function orchestrate() {
       .map((entry) => entry.name)
       .sort();
     const targetIndex = migrations.indexOf(TARGET_MIGRATION);
-    assert(migrations.length === 26 && targetIndex === 24, "Se esperaban 26 migraciones y anonimización en la posición 25");
+    assert(migrations.length === 27 && targetIndex === 24, "Se esperaban 27 migraciones y anonimización en la posición 25");
     for (const migration of migrations.slice(0, targetIndex)) {
       await fs.cp(path.join(migrationSource, migration), path.join(temporaryPrisma, "migrations", migration), { recursive: true });
     }
