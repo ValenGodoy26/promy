@@ -67,6 +67,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     defaults:
       run:
         working-directory: promy-api
@@ -92,6 +101,10 @@ jobs:
         run: npx prisma validate
       - name: Integration and E2E suite
         run: npm run test:integration
+      - name: Block 14 Redis resilience harness
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: npm run qa:redis
       - name: Block 13 database performance harness
         run: npm run qa:perf:db
 
