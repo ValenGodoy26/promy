@@ -26,6 +26,10 @@ export function normalizeSearchTerm(value?: string | null) {
   return cleanText(value)?.toLowerCase();
 }
 
+export function isNativeFullTextSafe(value: string) {
+  return /^[\p{L}\p{N}\s]+$/u.test(value);
+}
+
 export function isMissingFullTextIndexError(error: unknown) {
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&

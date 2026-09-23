@@ -6,8 +6,16 @@ const {
   getCommerceReadiness,
 } = require("../dist/modules/admin/admin.service.js");
 const {
+  isNativeFullTextSafe,
   withFullTextSearchFallback,
 } = require("../dist/shared/utils/service.js");
+
+test("native fulltext is used only for terms without boolean-mode syntax", () => {
+  assert.equal(isNativeFullTextSafe("Hamburguesas 2x1"), true);
+  assert.equal(isNativeFullTextSafe("Café en Entre Ríos"), true);
+  assert.equal(isNativeFullTextSafe("2x1-otoño"), false);
+  assert.equal(isNativeFullTextSafe("pizza + bebida"), false);
+});
 
 test("withFullTextSearchFallback retries with contains fallback when fulltext index is missing", async () => {
   let usedFallback = false;

@@ -72,6 +72,7 @@ async function main() {
   assert(/^8\.4\./.test(version), `El harness autoritativo requiere MySQL 8.4; recibido ${version}`);
 
   const marker = `block13-${Date.now()}`;
+  const fulltextToken = `fulltext${Date.now()}`;
   const city = await prisma.city.findFirstOrThrow({ where: { isActive: true } });
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
   const passwordHash = "$2b$12$C6UzMDM.H6dfI/f/IKxGhuM/0BNTVnPtuNnTjk6kXyMnYpIzcW6i";
@@ -100,7 +101,7 @@ async function main() {
         ownerUserId: owners[index].id,
         cityId: city.id,
         categoryId: category.id,
-        name: `${marker} comercio ${index}`,
+        name: `${marker} ${fulltextToken} comercio ${index}`,
         slug: `${marker}-commerce-${index}`,
         shortDescription: `Comercio performance ${marker}`,
         description: `Fixture geográfico ${marker}`,
@@ -119,7 +120,7 @@ async function main() {
     await prisma.promotion.createMany({
       data: Array.from({ length: PROMOTION_COUNT }, (_, index) => ({
         commerceId: commerces[index % commerces.length].id,
-        title: `${marker} promoción ${index}`,
+        title: `${marker} ${fulltextToken} promoción ${index}`,
         description: `Oferta performance ${marker}`,
         conditions: `Condiciones ${marker}`,
         promotionType: "BENEFIT",
@@ -186,10 +187,10 @@ async function main() {
       nativeSearch = await fulltextProbe.promotion.findMany({
         where: {
           OR: [
-            { title: { search: marker } },
-            { description: { search: marker } },
-            { conditions: { search: marker } },
-            { commerce: { is: { name: { search: marker } } } },
+            { title: { search: fulltextToken } },
+            { description: { search: fulltextToken } },
+            { conditions: { search: fulltextToken } },
+            { commerce: { is: { name: { search: fulltextToken } } } },
           ],
         },
         take: 10,
@@ -202,10 +203,10 @@ async function main() {
       nativeCommerceSearch = await fulltextProbe.commerce.findMany({
         where: {
           OR: [
-            { name: { search: marker } },
-            { shortDescription: { search: marker } },
-            { description: { search: marker } },
-            { address: { search: marker } },
+            { name: { search: fulltextToken } },
+            { shortDescription: { search: fulltextToken } },
+            { description: { search: fulltextToken } },
+            { address: { search: fulltextToken } },
           ],
         },
         take: 10,

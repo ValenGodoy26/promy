@@ -13,6 +13,7 @@ import {
 } from "../../shared/utils/promotionStatus";
 import {
   cleanText,
+  isNativeFullTextSafe,
   ServiceError,
   withFullTextSearchFallback,
 } from "../../shared/utils/service";
@@ -45,7 +46,7 @@ function ensureValidGeoPair(input: SearchQueryInput) {
 }
 
 function getCommerceSearchConditions(query: string, useNativeSearch: boolean) {
-  const searchOperator = useNativeSearch ? { search: query } : { contains: query };
+  const searchOperator = useNativeSearch && isNativeFullTextSafe(query) ? { search: query } : { contains: query };
 
   return [
     { name: searchOperator },
@@ -58,7 +59,7 @@ function getCommerceSearchConditions(query: string, useNativeSearch: boolean) {
 }
 
 function getPromotionSearchConditions(query: string, useNativeSearch: boolean) {
-  const searchOperator = useNativeSearch ? { search: query } : { contains: query };
+  const searchOperator = useNativeSearch && isNativeFullTextSafe(query) ? { search: query } : { contains: query };
 
   return [
     { title: searchOperator },
