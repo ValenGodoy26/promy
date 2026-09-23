@@ -8,6 +8,20 @@ const COMMERCE_COUNT = Number(process.env.QA_DB_COMMERCE_COUNT || 1100);
 const PROMOTION_COUNT = Number(process.env.QA_DB_PROMOTION_COUNT || 5500);
 const ORIGIN = { latitude: -31.392, longitude: -58.017 };
 const RADIUS_KM = 8;
+const EXPLAIN_POSITIONAL_FIELDS = {
+  id: "f0",
+  select_type: "f1",
+  table: "f2",
+  partitions: "f3",
+  type: "f4",
+  possible_keys: "f5",
+  key: "f6",
+  key_len: "f7",
+  ref: "f8",
+  rows: "f9",
+  filtered: "f10",
+  extra: "f11",
+};
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -16,7 +30,9 @@ function assert(condition, message) {
 function explainValue(row, name) {
   const target = name.toLowerCase();
   const matchingKey = Object.keys(row).find((key) => key.toLowerCase() === target);
-  return matchingKey === undefined ? undefined : row[matchingKey];
+  if (matchingKey !== undefined) return row[matchingKey];
+  const positionalKey = EXPLAIN_POSITIONAL_FIELDS[target];
+  return positionalKey === undefined ? undefined : row[positionalKey];
 }
 
 function planSummary(rows) {
@@ -138,11 +154,6 @@ async function main() {
     console.log(stringify({
       phase: "geo-query-plans",
       sql: { before: originalSql, after: optimizedSql },
-      explainRowKeys: {
-        before: beforePlan.map((row) => Object.keys(row)),
-        after: afterPlan.map((row) => Object.keys(row)),
-      },
-      explainRaw: { before: beforePlan, after: afterPlan },
       before: planSummary(beforePlan),
       after: planSummary(afterPlan),
       spatialColumn: spatialColumn[0] ?? null,
@@ -150,7 +161,7 @@ async function main() {
     }));
     assert(Number(spatialColumn[0]?.srsId) === 0, "Commerce.location no está restringida a SRID 0");
     assert(optimizedCommercePlan?.key === "Commerce_location_spatial_idx", "MySQL no eligió el índice espacial");
-    assert(optimizedCommercePlan?.type !== "ALL", "La consulta optimizada conserva full table scan");
+    assert(optimizedCommercePlan?.accessType !== "ALL", "La consulta optimizada conserva full table scan");
 
     const fulltextIndexes = await prisma.$queryRawUnsafe(
       "SELECT TABLE_NAME AS tableName, INDEX_NAME AS indexName, INDEX_TYPE AS indexType FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND INDEX_TYPE='FULLTEXT' AND TABLE_NAME IN ('Commerce','Promotion') ORDER BY TABLE_NAME, INDEX_NAME",
