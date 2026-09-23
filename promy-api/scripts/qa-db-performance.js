@@ -177,6 +177,8 @@ async function main() {
     assert(fulltextIndexes.length === 7, `Se esperaban 7 índices FULLTEXT y se encontraron ${fulltextIndexes.length}`);
     let nativeSearch = null;
     let nativeSearchError = null;
+    let nativeCommerceSearch = null;
+    let nativeCommerceSearchError = null;
     try {
       nativeSearch = await fulltextProbe.promotion.findMany({
         where: {
@@ -193,14 +195,33 @@ async function main() {
     } catch (error) {
       nativeSearchError = error instanceof Error ? error.message : String(error);
     }
+    try {
+      nativeCommerceSearch = await fulltextProbe.commerce.findMany({
+        where: {
+          OR: [
+            { name: { search: marker } },
+            { shortDescription: { search: marker } },
+            { description: { search: marker } },
+            { address: { search: marker } },
+          ],
+        },
+        take: 10,
+        select: { id: true },
+      });
+    } catch (error) {
+      nativeCommerceSearchError = error instanceof Error ? error.message : String(error);
+    }
     console.log(stringify({
       phase: "fulltext-native-search",
       indexes: fulltextIndexes,
       queries: fulltextQueries,
       nativeSearchError,
       resultCount: nativeSearch?.length ?? null,
+      nativeCommerceSearchError,
+      commerceResultCount: nativeCommerceSearch?.length ?? null,
     }));
     assert(!nativeSearchError, "La búsqueda FULLTEXT nativa de Prisma falló");
+    assert(!nativeCommerceSearchError, "La búsqueda FULLTEXT nativa de Commerce falló");
     assert(nativeSearch.length > 0, "La consulta FULLTEXT real de Prisma no devolvió fixtures");
 
     console.log(stringify({
