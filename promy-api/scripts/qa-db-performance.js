@@ -4,6 +4,14 @@ const { validateTestDatabaseUrl, assertCurrentTestDatabase } = require("./qa-dat
 const { createCommerceWithLocation } = require("../prisma/commerce.spatial");
 
 const prisma = new PrismaClient();
+const fulltextProbe = new PrismaClient({ log: [{ emit: "event", level: "query" }] });
+const fulltextQueries = [];
+
+fulltextProbe.$on("query", (event) => {
+  if (/MATCH\s*\(|AGAINST\s*\(/i.test(event.query)) {
+    fulltextQueries.push({ query: event.query, params: event.params });
+  }
+});
 const COMMERCE_COUNT = Number(process.env.QA_DB_COMMERCE_COUNT || 1100);
 const PROMOTION_COUNT = Number(process.env.QA_DB_PROMOTION_COUNT || 5500);
 const ORIGIN = { latitude: -31.392, longitude: -58.017 };
@@ -167,18 +175,32 @@ async function main() {
       "SELECT TABLE_NAME AS tableName, INDEX_NAME AS indexName, INDEX_TYPE AS indexType FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND INDEX_TYPE='FULLTEXT' AND TABLE_NAME IN ('Commerce','Promotion') ORDER BY TABLE_NAME, INDEX_NAME",
     );
     assert(fulltextIndexes.length === 7, `Se esperaban 7 índices FULLTEXT y se encontraron ${fulltextIndexes.length}`);
-    const nativeSearch = await prisma.promotion.findMany({
-      where: {
-        OR: [
-          { title: { search: marker } },
-          { description: { search: marker } },
-          { conditions: { search: marker } },
-          { commerce: { is: { name: { search: marker } } } },
-        ],
-      },
-      take: 10,
-      select: { id: true },
-    });
+    let nativeSearch = null;
+    let nativeSearchError = null;
+    try {
+      nativeSearch = await fulltextProbe.promotion.findMany({
+        where: {
+          OR: [
+            { title: { search: marker } },
+            { description: { search: marker } },
+            { conditions: { search: marker } },
+            { commerce: { is: { name: { search: marker } } } },
+          ],
+        },
+        take: 10,
+        select: { id: true },
+      });
+    } catch (error) {
+      nativeSearchError = error instanceof Error ? error.message : String(error);
+    }
+    console.log(stringify({
+      phase: "fulltext-native-search",
+      indexes: fulltextIndexes,
+      queries: fulltextQueries,
+      nativeSearchError,
+      resultCount: nativeSearch?.length ?? null,
+    }));
+    assert(!nativeSearchError, "La búsqueda FULLTEXT nativa de Prisma falló");
     assert(nativeSearch.length > 0, "La consulta FULLTEXT real de Prisma no devolvió fixtures");
 
     console.log(stringify({
@@ -194,11 +216,13 @@ async function main() {
   } finally {
     await prisma.user.deleteMany({ where: { email: { startsWith: marker } } });
     await prisma.$disconnect();
+    await fulltextProbe.$disconnect();
   }
 }
 
 main().catch(async (error) => {
   console.error(error instanceof Error ? error.stack || error.message : error);
   await prisma.$disconnect().catch(() => undefined);
+  await fulltextProbe.$disconnect().catch(() => undefined);
   process.exit(1);
 });
