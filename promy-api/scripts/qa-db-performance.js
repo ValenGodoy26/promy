@@ -138,6 +138,11 @@ async function main() {
     console.log(stringify({
       phase: "geo-query-plans",
       sql: { before: originalSql, after: optimizedSql },
+      explainRowKeys: {
+        before: beforePlan.map((row) => Object.keys(row)),
+        after: afterPlan.map((row) => Object.keys(row)),
+      },
+      explainRaw: { before: beforePlan, after: afterPlan },
       before: planSummary(beforePlan),
       after: planSummary(afterPlan),
       spatialColumn: spatialColumn[0] ?? null,
