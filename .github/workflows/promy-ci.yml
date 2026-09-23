@@ -104,6 +104,9 @@ jobs:
       - name: Block 14 Redis resilience harness
         env:
           REDIS_URL: redis://127.0.0.1:6379
+          APP_ENV: test
+          JWT_SECRET: promy_ci_redis_harness_jwt_secret_32_chars
+          JWT_REFRESH_SECRET: promy_ci_redis_harness_refresh_secret_32_chars
         run: npm run qa:redis
       - name: Block 13 database performance harness
         run: npm run qa:perf:db
