@@ -17,6 +17,7 @@ import PromoLogo from "../PromoLogo";
 import PromoImagePlaceholder from "../PromoImagePlaceholder";
 import { SkeletonBlock } from "../PromyUI";
 import { theme } from "../../../styles/theme";
+import type { LocationFallbackReason } from "../../../services/location";
 import { ApiCategory, ApiCommerce, ApiRedemption, FeedPromotion } from "../../../types/api";
 import { formatDistance, getPromotionBadgeLabel, getPromotionImage } from "../../../utils/promy";
 
@@ -99,7 +100,7 @@ export function HomeLocationNotice({
   fallbackReason,
   message,
 }: {
-  fallbackReason?: "permission_denied" | "device_error" | null;
+  fallbackReason?: LocationFallbackReason | null;
   message: string;
 }) {
   return (
@@ -113,9 +114,17 @@ export function HomeLocationNotice({
       </View>
       <View style={styles.locationNoticeBody}>
         <Text style={styles.locationNoticeTitle}>
-          {fallbackReason === "permission_denied"
-            ? "Ubicacion desactivada"
-            : "Usando ciudad de respaldo"}
+          {fallbackReason === "permission_not_requested"
+            ? "Ubicación opcional"
+            : fallbackReason === "permission_permanently_denied"
+              ? "Permiso de ubicación bloqueado"
+              : fallbackReason === "permission_denied"
+                ? "Ubicación no autorizada"
+                : fallbackReason === "location_services_disabled"
+                  ? "Ubicación desactivada"
+                : fallbackReason === "timeout"
+                  ? "Ubicación no disponible"
+                  : "Usando ciudad de respaldo"}
         </Text>
         <Text style={styles.locationNoticeText}>{message}</Text>
       </View>

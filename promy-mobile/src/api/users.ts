@@ -21,9 +21,10 @@ export async function registerPushToken(token: string, platform: "ios" | "androi
   });
 }
 
-export async function unregisterPushToken(token: string) {
+export async function unregisterPushToken(token: string, accessToken?: string | null) {
   return apiRequest<PushTokenDeactivateResponse>("/users/me/push-tokens", {
     method: "DELETE",
+    token: accessToken ?? undefined,
     body: {
       token,
     },

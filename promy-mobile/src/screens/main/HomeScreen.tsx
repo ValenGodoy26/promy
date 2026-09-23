@@ -38,7 +38,6 @@ import { useNotifications } from "../../context/NotificationsContext";
 import type { MainStackParamList } from "../../navigation/types";
 import {
   DEFAULT_CITY_LABEL,
-  getLocationPermissionSnapshot,
   getPromyLocation,
 } from "../../services/location";
 import { theme } from "../../styles/theme";
@@ -60,7 +59,7 @@ type HomeState = {
   redemptions: ApiRedemption[];
   locationLabel: string;
   locationSource: "device" | "city_fallback";
-  locationFallbackReason?: "permission_denied" | "device_error" | null;
+  locationFallbackReason?: Awaited<ReturnType<typeof getPromyLocation>>["fallbackReason"];
 };
 
 const HOME_STALE_MS = 30000;
@@ -102,33 +101,10 @@ export default function HomeScreen() {
   const [hasMorePromotions, setHasMorePromotions] = useState(true);
   const [hasMoreCommerces, setHasMoreCommerces] = useState(true);
   const lastLoadedAtRef = React.useRef(0);
-  const locationPromptShownRef = React.useRef(false);
   const endReachedLockedRef = React.useRef(true);
   const locationSnapshotRef = React.useRef<Awaited<ReturnType<typeof getPromyLocation>> | null>(
     null,
   );
-
-  const maybeExplainLocationPermission = async () => {
-    if (locationPromptShownRef.current) return;
-
-    const permission = await getLocationPermissionSnapshot().catch(() => null);
-    if (!permission || permission.status === "granted" || permission.canAskAgain === false) {
-      return;
-    }
-
-    locationPromptShownRef.current = true;
-    await new Promise<void>((resolve) => {
-      Alert.alert(
-        "Activa tu ubicacion si quieres ver lo mas cercano",
-        "PROMY puede funcionar igual con la ciudad activa, pero con tu ubicacion el orden de promos y comercios queda mucho mejor.",
-        [
-          { text: "Ahora no", style: "cancel", onPress: () => resolve() },
-          { text: "Continuar", onPress: () => resolve() },
-        ],
-        { cancelable: true, onDismiss: () => resolve() },
-      );
-    });
-  };
 
   const loadHome = async (mode: "initial" | "refresh" = "initial") => {
     try {
@@ -136,10 +112,7 @@ export default function HomeScreen() {
       if (mode === "refresh") setRefreshing(true);
       setError(null);
 
-      if (mode === "initial") {
-        await maybeExplainLocationPermission();
-      }
-
+      // Inicio conserva el catálogo usable sin abrir permisos nativos.
       const location = await getPromyLocation();
       const [categoriesResponse, commercesResponse, promotionsResponse] = await Promise.all([
         fetchCategories(),
@@ -320,9 +293,17 @@ export default function HomeScreen() {
 
   const locationMessage =
     state.locationSource === "city_fallback"
-      ? state.locationFallbackReason === "permission_denied"
-        ? "No activaste tu ubicacion. Por ahora te mostramos Concordia para que puedas seguir explorando promos reales."
-        : "No pudimos leer tu ubicacion en este momento. Mientras tanto te mostramos Concordia como zona activa."
+      ? state.locationFallbackReason === "permission_not_requested"
+        ? "Estás explorando Concordia. Podés activar tu ubicación desde el mapa si querés ordenar los resultados por cercanía."
+        : state.locationFallbackReason === "permission_permanently_denied"
+          ? "La ubicación está bloqueada en los ajustes del dispositivo. Mientras tanto te mostramos Concordia."
+          : state.locationFallbackReason === "timeout"
+            ? "La ubicación tardó demasiado. Mientras tanto te mostramos Concordia como zona activa."
+            : state.locationFallbackReason === "location_services_disabled"
+              ? "La ubicación está desactivada en el dispositivo. Mientras tanto te mostramos Concordia como zona activa."
+            : state.locationFallbackReason === "permission_denied"
+              ? "No diste permiso para usar tu ubicación. Por ahora te mostramos Concordia para que sigas explorando promos reales."
+              : "No pudimos leer tu ubicación en este momento. Mientras tanto te mostramos Concordia como zona activa."
       : null;
   const locationCaption =
     state.locationSource === "device" ? "Tu ubicacion" : "Mostrando";

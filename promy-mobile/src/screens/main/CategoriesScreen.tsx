@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Linking,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -109,13 +110,16 @@ export default function CategoriesScreen() {
   const [mapSheetExpanded, setMapSheetExpanded] = useState(false);
   const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION);
 
-  const loadBaseMap = async (mode: "initial" | "refresh" = "initial") => {
+  const loadBaseMap = async (
+    mode: "initial" | "refresh" = "initial",
+    requestPermission = false,
+  ) => {
     try {
       if (mode === "initial") setLoading(true);
       if (mode === "refresh") setRefreshing(true);
       setError(null);
 
-      const currentLocation = await getPromyLocation();
+      const currentLocation = await getPromyLocation({ requestPermission });
       const [categoriesResponse, mapResponse] = await Promise.all([
         fetchCategories(),
         fetchMapMarkers({
@@ -260,12 +264,39 @@ export default function CategoriesScreen() {
 
   const locationMessage =
     location?.source === "city_fallback"
-      ? location.fallbackReason === "permission_denied"
-        ? "No activaste tu ubicacion. Te mostramos Concordia para que sigas explorando promos y locales reales."
-        : "No pudimos leer tu ubicacion real. Por ahora estas viendo Concordia como zona activa."
+      ? location.fallbackReason === "permission_not_requested"
+        ? "Estás viendo Concordia. Usá tu ubicación si querés ordenar el mapa por cercanía."
+        : location.fallbackReason === "permission_permanently_denied"
+          ? "La ubicación está bloqueada en los ajustes del dispositivo. Podés activar el permiso o seguir explorando Concordia."
+          : location.fallbackReason === "permission_denied"
+            ? "No diste permiso para usar tu ubicación. Podés intentarlo de nuevo o seguir explorando Concordia."
+            : location.fallbackReason === "timeout"
+              ? "La ubicación tardó demasiado. Por ahora estás viendo Concordia como zona activa."
+              : location.fallbackReason === "location_services_disabled"
+                ? "La ubicación está desactivada en el dispositivo. Activala y volvé a intentar, o seguí explorando Concordia."
+              : "No pudimos leer tu ubicación real. Por ahora estás viendo Concordia como zona activa."
       : null;
   const sourceLabel =
     location?.source === "device" ? "Ubicacion actual" : "Mostrando Concordia";
+
+  const requestLocationForMap = () => {
+    if (location?.canAskAgain === false) {
+      void Linking.openSettings().catch(() => undefined);
+      return;
+    }
+
+    void loadBaseMap("refresh", true);
+  };
+
+  const locationActionLabel =
+    location?.fallbackReason === "permission_permanently_denied"
+      ? "Abrir ajustes"
+      : location?.fallbackReason === "permission_not_requested" ||
+          location?.fallbackReason === "permission_denied"
+        ? "Usar mi ubicación"
+        : location?.fallbackReason === "location_services_disabled" || location?.fallbackReason === "timeout"
+          ? "Reintentar"
+        : undefined;
 
   const coordinateMarkers = useMemo(
     () =>
@@ -395,8 +426,8 @@ export default function CategoriesScreen() {
               <MapNotice
                 message={locationMessage}
                 fallbackReason={location?.fallbackReason ?? null}
-                actionLabel={location?.fallbackReason === "permission_denied" ? "Intentar de nuevo" : undefined}
-                onAction={location?.fallbackReason === "permission_denied" ? () => void loadBaseMap("refresh") : undefined}
+                actionLabel={locationActionLabel}
+                onAction={locationActionLabel ? requestLocationForMap : undefined}
               />
             ) : null}
             <EmptyState
@@ -412,8 +443,8 @@ export default function CategoriesScreen() {
               <MapNotice
                 message={locationMessage}
                 fallbackReason={location?.fallbackReason ?? null}
-                actionLabel={location?.fallbackReason === "permission_denied" ? "Intentar de nuevo" : undefined}
-                onAction={location?.fallbackReason === "permission_denied" ? () => void loadBaseMap("refresh") : undefined}
+                actionLabel={locationActionLabel}
+                onAction={locationActionLabel ? requestLocationForMap : undefined}
               />
             ) : null}
 

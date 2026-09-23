@@ -241,7 +241,7 @@ export async function syncDevicePushToken(): Promise<PushSyncResult> {
   return { ok: true, token: nextToken };
 }
 
-export async function unregisterStoredPushToken() {
+export async function unregisterStoredPushToken(accessToken?: string | null) {
   const storedToken = await getStoredPushToken();
 
   if (!storedToken) {
@@ -249,7 +249,7 @@ export async function unregisterStoredPushToken() {
   }
 
   try {
-    await unregisterPushToken(storedToken);
+    await unregisterPushToken(storedToken, accessToken);
   } finally {
     await clearStoredPushToken();
   }

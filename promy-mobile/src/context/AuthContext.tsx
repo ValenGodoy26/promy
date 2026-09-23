@@ -22,6 +22,12 @@ import {
   readStoredSession,
   writeStoredSession,
 } from "../auth/sessionStorage";
+import {
+  createAsyncMutationQueue,
+  createGenerationTaskCoordinator,
+  createSessionEpoch,
+  isTerminalRefreshStatus,
+} from "../auth/sessionLifecycle";
 
 type AuthContextValue = {
   session: AuthSession | null;
@@ -49,45 +55,87 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const sessionRef = useRef<AuthSession | null>(null);
-  const refreshPromiseRef = useRef<Promise<AuthSession | null> | null>(null);
+  const sessionEpochRef = useRef(createSessionEpoch());
+  const storageMutationQueueRef = useRef(createAsyncMutationQueue());
+  const refreshCoordinatorRef = useRef(createGenerationTaskCoordinator<AuthSession | null>());
 
-  const persistSession = async (nextSession: AuthSession | null) => {
-    if (nextSession) {
-      try {
-        await writeStoredSession(JSON.stringify(nextSession));
-      } catch (error) {
-        sessionRef.current = null;
-        setSession(null);
-        await clearStoredSession();
-        throw error;
-      }
-      sessionRef.current = nextSession;
-      setSession(nextSession);
-      return;
+  const persistSession = async (
+    nextSession: AuthSession,
+    expectedEpoch = sessionEpochRef.current.current(),
+  ) => {
+    if (!sessionEpochRef.current.isCurrent(expectedEpoch)) {
+      return false;
     }
 
-    sessionRef.current = null;
-    setSession(null);
-    await clearStoredSession();
+    const serializedSession = JSON.stringify(nextSession);
+
+    try {
+      const stored = await storageMutationQueueRef.current.enqueue(async () => {
+        if (!sessionEpochRef.current.isCurrent(expectedEpoch)) {
+          return false;
+        }
+
+        await writeStoredSession(serializedSession);
+        return true;
+      });
+
+      if (!stored || !sessionEpochRef.current.isCurrent(expectedEpoch)) {
+        return false;
+      }
+
+      sessionRef.current = nextSession;
+      setSession(nextSession);
+      return true;
+    } catch (error) {
+      if (sessionEpochRef.current.isCurrent(expectedEpoch)) {
+        await invalidateSession(null, expectedEpoch);
+      }
+      throw error;
+    }
   };
 
-  const clearSession = async (notice?: string | null) => {
-    setAuthNotice(notice ?? null);
-    await persistSession(null);
+  const invalidateSession = async (
+    notice?: string | null,
+    expectedEpoch?: number,
+  ) => {
+    if (
+      expectedEpoch !== undefined &&
+      !sessionEpochRef.current.isCurrent(expectedEpoch)
+    ) {
+      return false;
+    }
+
+    sessionEpochRef.current.invalidate();
+    sessionRef.current = null;
+    setSession(null);
+    if (notice !== undefined) {
+      setAuthNotice(notice);
+    }
+
+    try {
+      await storageMutationQueueRef.current.enqueue(async () => {
+        await clearStoredSession();
+      });
+    } catch {
+      console.warn("No pudimos borrar la sesión local de forma segura.");
+    }
+
+    return true;
+  };
+
+  const clearSession = async () => {
+    await invalidateSession();
   };
 
   const refreshSessionInternal = async (baseSession?: AuthSession | null) => {
     const activeSession = baseSession ?? sessionRef.current;
+    const refreshEpoch = sessionEpochRef.current.current();
 
     if (!activeSession?.refreshToken) {
       return null;
     }
 
-    if (refreshPromiseRef.current) {
-      return refreshPromiseRef.current;
-    }
-
-    refreshPromiseRef.current = (async () => {
+    return refreshCoordinatorRef.current.run(refreshEpoch, async () => {
       try {
         const response = await refreshAccessToken(activeSession.refreshToken!);
         const nextSession: AuthSession = {
@@ -96,52 +144,69 @@ export function AuthProvider({ children }: PropsWithChildren) {
           user: response.user,
         };
 
-        await persistSession(nextSession);
-        return nextSession;
+        const stored = await persistSession(nextSession, refreshEpoch);
+        if (stored) {
+          return nextSession;
+        }
+
+        // Si logout ganó la carrera, también invalidamos el token rotado remoto.
+        void logoutSession(nextSession.refreshToken).catch(() => {
+          console.warn("No pudimos revocar una sesión que terminó de renovarse.");
+        });
+        return null;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 0) {
+        if (!sessionEpochRef.current.isCurrent(refreshEpoch)) {
+          return null;
+        }
+
+        if (!(error instanceof ApiError) || !isTerminalRefreshStatus(error.status)) {
           throw error;
         }
 
-        await clearSession("Tu sesión venció. Volvé a ingresar para seguir usando PROMY.");
+        await invalidateSession(
+          "Tu sesión venció o fue revocada. Volvé a ingresar para seguir usando PROMY.",
+          refreshEpoch,
+        );
         return null;
-      } finally {
-        refreshPromiseRef.current = null;
       }
-    })();
-
-    return refreshPromiseRef.current;
+    });
   };
 
   useEffect(() => {
     const restoreSession = async () => {
+      const restoreEpoch = sessionEpochRef.current.current();
+
       try {
         const raw = await readStoredSession();
         if (!raw) {
-          await persistSession(null);
+          await invalidateSession(null, restoreEpoch);
           return;
         }
 
         const restoredSession = JSON.parse(raw) as AuthSession;
+        const restored = await persistSession(restoredSession, restoreEpoch);
+        if (!restored) return;
 
         try {
           const me = await fetchCurrentUser(restoredSession.accessToken);
           await persistSession({
             ...restoredSession,
             user: me.user,
-          });
+          }, restoreEpoch);
         } catch (error) {
           if (error instanceof ApiError && error.status === 401) {
-            const refreshedSession = await refreshSessionInternal(restoredSession);
-            await persistSession(refreshedSession);
+            await refreshSessionInternal(restoredSession);
             return;
           }
 
-          await persistSession(restoredSession);
+          // Red, timeout y 5xx no invalidan credenciales que todavía pueden recuperarse.
+          if (!sessionEpochRef.current.isCurrent(restoreEpoch)) return;
         }
       } catch (error) {
-        console.warn("No pudimos restaurar la sesión", error);
-        await clearSession();
+        if (sessionEpochRef.current.isCurrent(restoreEpoch)) {
+          console.warn("No pudimos restaurar la sesión local de forma segura.");
+          await invalidateSession(null, restoreEpoch);
+        }
       } finally {
         setIsBootstrapping(false);
       }
@@ -224,23 +289,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       },
       signOut: async (options?: { reason?: string | null }) => {
-        try {
-          await unregisterStoredPushToken();
-        } catch (error) {
-          console.warn("No pudimos desactivar el token push del dispositivo", error);
-        }
-
+        const currentAccessToken = sessionRef.current?.accessToken;
         const currentRefreshToken = sessionRef.current?.refreshToken;
+        await invalidateSession(options?.reason ?? null);
 
-        try {
-          if (currentRefreshToken) {
-            await logoutSession(currentRefreshToken);
+        // El logout local es inmediato aun sin red. La revocación remota es best-effort.
+        void (async () => {
+          try {
+            await unregisterStoredPushToken(currentAccessToken);
+          } catch {
+            console.warn("No pudimos desactivar el token push del dispositivo.");
           }
-        } catch (error) {
-          console.warn("No pudimos cerrar sesión en el backend", error);
-        } finally {
-          await clearSession(options?.reason ?? null);
-        }
+
+          if (!currentRefreshToken) return;
+
+          try {
+            await logoutSession(currentRefreshToken);
+          } catch {
+            console.warn("No pudimos revocar la sesión en el backend.");
+          }
+        })();
       },
       refreshSession: async () => refreshSessionInternal(),
       updateSessionUser: async (nextUser) => {
