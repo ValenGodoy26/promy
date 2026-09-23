@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { fetchCategories, fetchCities, registerCommerceRequest } from "../../lib/api";
-import type { PublicCategory, PublicCity } from "../../types/api";
+import { getUserFacingErrorMessage } from "../../lib/httpErrors";
+import type { PublicCategory } from "../../types/api";
 import { PromyMark } from "../../components/Logo";
 import { IconArrowRight, IconCheck, IconStore } from "../../components/Icons";
 import { getCommercePhoneError } from "../commerce/commerceRules";
@@ -11,9 +12,9 @@ type StepKey = "access" | "owner" | "commerce" | "details";
 
 const STEPS: { key: StepKey; label: string; helper: string }[] = [
   { key: "access", label: "Acceso", helper: "Tu email y una contraseña" },
-  { key: "owner", label: "Sobre vos", helper: "Cómo te llamamos" },
-  { key: "commerce", label: "Tu comercio", helper: "Datos del local" },
-  { key: "details", label: "Contanos más", helper: "Para destacarte" },
+  { key: "owner", label: "Tus datos", helper: "Datos de contacto" },
+  { key: "commerce", label: "Tu comercio", helper: "Información del comercio" },
+  { key: "details", label: "Contanos más", helper: "Últimos detalles" },
 ];
 
 type FormState = {
@@ -63,8 +64,26 @@ function validatePasswordPolicy(password: string) {
   return null;
 }
 
+function normalizeDevelopmentVerificationLink(link: string | null) {
+  if (!link || !import.meta.env.DEV || typeof window === "undefined") return link;
+
+  try {
+    const url = new URL(link);
+    const isLocalHost =
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname.startsWith("192.168.") ||
+      url.hostname.startsWith("10.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname);
+
+    if (!isLocalHost) return link;
+    return `${window.location.origin}${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return link;
+  }
+}
+
 export default function CommerceRegisterPage() {
-  const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -75,33 +94,61 @@ export default function CommerceRegisterPage() {
   const [verificationPreviewLink, setVerificationPreviewLink] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState("");
 
-  const [cities, setCities] = useState<PublicCity[]>([]);
   const [categories, setCategories] = useState<PublicCategory[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogRetryNonce, setCatalogRetryNonce] = useState(0);
 
-  // Load cities + categories on mount
+  // Concordia and the category catalog are only needed on step 3. Loading them lazily keeps
+  // an unrelated catalog/network issue from interrupting the access step.
   useEffect(() => {
+    if (stepIdx !== 2 || catalogLoaded) return;
+
     let cancelled = false;
     setCatalogLoading(true);
+    setCatalogError(null);
+
     Promise.all([fetchCities(), fetchCategories()])
       .then(([citiesRes, catsRes]) => {
         if (cancelled) return;
-        setCities(citiesRes.cities ?? []);
-        setCategories((catsRes.categories ?? []).filter((c) => c.isActive !== false));
+
+        const availableCities = citiesRes.cities ?? [];
+        const concordia =
+          availableCities.find((city) => city.slug === "concordia") ??
+          availableCities.find((city) => city.name.trim().toLowerCase() === "concordia") ??
+          (availableCities.length === 1 ? availableCities[0] : undefined);
+        const activeCategories = (catsRes.categories ?? []).filter((category) => category.isActive !== false);
+
+        if (!concordia) {
+          throw new Error("No pudimos preparar Concordia para el registro.");
+        }
+        if (activeCategories.length === 0) {
+          throw new Error("No pudimos cargar las categorías.");
+        }
+
+        setForm((prev) => ({ ...prev, cityId: String(concordia.id) }));
+        setErrors((prev) => ({ ...prev, cityId: undefined }));
+        setCategories(activeCategories);
+        setCatalogLoaded(true);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
-        setGlobalError(
-          "No pudimos cargar las ciudades y categorías. Probá refrescar la página.",
-        );
+        const fallback = "No pudimos cargar las categorías. Revisá tu conexión o volvé a intentar.";
+        const message =
+          error instanceof Error && error.message.includes("Concordia")
+            ? error.message
+            : getUserFacingErrorMessage(error, "load");
+        setCatalogError(message === "No pudimos cargar la información. Intentá nuevamente." ? fallback : message);
       })
       .finally(() => {
         if (!cancelled) setCatalogLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [stepIdx, catalogLoaded, catalogRetryNonce]);
 
   const currentStep = STEPS[stepIdx];
   const isLastStep = stepIdx === STEPS.length - 1;
@@ -183,7 +230,9 @@ export default function CommerceRegisterPage() {
       };
       const response = await registerCommerceRequest(payload);
       setSubmittedEmail(payload.email);
-      setVerificationPreviewLink(response.verification?.link || null);
+      setVerificationPreviewLink(
+        normalizeDevelopmentVerificationLink(response.verification?.link || null),
+      );
       setCompleted(true);
     } catch (err) {
       const message =
@@ -206,18 +255,16 @@ export default function CommerceRegisterPage() {
             </div>
             <h1>¡Listo, tu comercio está en camino!</h1>
             <p>
-              Recibimos tu solicitud. Te vamos a avisar por email cuando finalice la revisión.
-              Te avisamos por email cuando esté aprobada y puedas empezar a cargar promos.
+              Recibimos tu solicitud. Verificá tu email para continuar. Después revisaremos los
+              datos de tu comercio y te avisaremos cuando esté aprobado.
             </p>
             {verificationPreviewLink ? (
-              <div className="auth-preview-card" style={{ marginTop: 18, textAlign: "left" }}>
-                <div className="auth-preview-label">Enlace de verificación en desarrollo</div>
-                <a className="auth-preview-link" href={verificationPreviewLink}>
-                  {verificationPreviewLink}
-                </a>
+              <div className="register-dev-access" role="note">
+                <div className="auth-preview-label">Acceso de desarrollo</div>
+                <span>Podés abrir la verificación directamente desde este entorno local.</span>
               </div>
             ) : (
-              <p className="register-form-fineprint" style={{ marginTop: 14 }}>
+              <p className="register-form-fineprint register-success-email">
                 Te mandamos un email a <strong>{submittedEmail || form.email.trim()}</strong> para
                 verificar la cuenta antes de operar el panel.
               </p>
@@ -228,12 +275,6 @@ export default function CommerceRegisterPage() {
                   Verificar email ahora <IconArrowRight size={14} />
                 </a>
               ) : null}
-              <button
-                className="landing-btn landing-btn-primary"
-                onClick={() => navigate("/login")}
-              >
-                Ir al login <IconArrowRight size={14} />
-              </button>
               <Link className="landing-btn landing-btn-ghost" to="/">
                 Volver al inicio
               </Link>
@@ -251,7 +292,6 @@ export default function CommerceRegisterPage() {
       <main className="register-shell">
         <aside className="register-aside">
           <div className="register-aside-brand">
-            <PromyMark size="md" variant="default" />
             <div>
               <div className="register-aside-eyebrow">Bienvenido</div>
               <h1 className="register-aside-title">
@@ -264,29 +304,25 @@ export default function CommerceRegisterPage() {
             <li>
               <span className="register-aside-bullet-icon"><IconCheck size={14} /></span>
               <div>
-                <strong>Gratis para empezar</strong>
-                <p>Sin tarjeta, sin compromiso. Cargás tu comercio y listo.</p>
+                <strong>Empezá en pocos pasos</strong>
+                <p>Creá tu cuenta, completá tu comercio y envialo a revisión.</p>
               </div>
             </li>
             <li>
               <span className="register-aside-bullet-icon"><IconCheck size={14} /></span>
               <div>
                 <strong>Aparecé cerca de tus clientes</strong>
-                <p>Tu local en el mapa, con tus promos visibles para gente del barrio.</p>
+                <p>Tu local en el mapa, con tus promociones visibles para gente del barrio.</p>
               </div>
             </li>
             <li>
               <span className="register-aside-bullet-icon"><IconCheck size={14} /></span>
               <div>
-                <strong>Métricas reales</strong>
-                <p>Mirá quiénes canjean, cuándo y qué promos funcionan mejor.</p>
+                <strong>Métricas que sirven</strong>
+                <p>Conocé qué promociones reciben más vistas, interés y canjes.</p>
               </div>
             </li>
           </ul>
-
-          <div className="register-aside-footer">
-            ¿Ya tenés una cuenta? <Link to="/login">Iniciá sesión</Link>
-          </div>
         </aside>
 
         <section className="register-card">
@@ -337,9 +373,13 @@ export default function CommerceRegisterPage() {
                 form={form}
                 errors={errors}
                 update={update}
-                cities={cities}
                 categories={categories}
                 catalogLoading={catalogLoading}
+                catalogError={catalogError}
+                onRetryCatalog={() => {
+                  setCatalogLoaded(false);
+                  setCatalogRetryNonce((value) => value + 1);
+                }}
               />
             ) : null}
             {currentStep.key === "details" ? (
@@ -369,19 +409,24 @@ export default function CommerceRegisterPage() {
               </label>
             ) : null}
 
-            <div className="register-form-actions">
-              <button
-                type="button"
-                className="landing-btn landing-btn-ghost"
-                disabled={isFirstStep || submitting}
-                onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
-              >
-                Volver
-              </button>
+            <div className={`register-form-actions ${isFirstStep ? "is-first-step" : ""}`}>
+              {!isFirstStep ? (
+                <button
+                  type="button"
+                  className="landing-btn landing-btn-ghost"
+                  disabled={submitting}
+                  onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+                >
+                  Volver
+                </button>
+              ) : null}
               <button
                 type="submit"
                 className="landing-btn landing-btn-primary"
-                disabled={submitting || (currentStep.key === "commerce" && catalogLoading)}
+                disabled={
+                  submitting ||
+                  (currentStep.key === "commerce" && (catalogLoading || Boolean(catalogError)))
+                }
               >
                 {submitting
                   ? "Creando cuenta..."
@@ -494,7 +539,7 @@ function StepOwner({ form, errors, update }: StepProps) {
       <Field
         fieldId="register-phone"
         label="Teléfono (opcional)"
-        hint="Para que podamos contactarte si hace falta."
+        hint="Lo usamos sólo si necesitamos contactarte."
         error={errors.phone}
       >
         <input
@@ -518,24 +563,16 @@ function StepCommerce({
   form,
   errors,
   update,
-  cities,
   categories,
   catalogLoading,
+  catalogError,
+  onRetryCatalog,
 }: StepProps & {
-  cities: PublicCity[];
   categories: PublicCategory[];
   catalogLoading: boolean;
+  catalogError: string | null;
+  onRetryCatalog: () => void;
 }) {
-  const groupedCities = useMemo(() => {
-    const map = new Map<string, PublicCity[]>();
-    cities.forEach((c) => {
-      const list = map.get(c.province) ?? [];
-      list.push(c);
-      map.set(c.province, list);
-    });
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [cities]);
-
   return (
     <div className="register-form-grid">
       <Field
@@ -574,60 +611,145 @@ function StepCommerce({
         />
       </Field>
 
-      <div className="register-form-row">
-        <Field fieldId="register-city" label="Ciudad" error={errors.cityId}>
-          <select
-            id="register-city"
-            name="cityId"
-            className={`register-input register-select ${errors.cityId ? "is-error" : ""}`}
-            value={form.cityId}
-            onChange={(e) => update("cityId", e.target.value)}
-            disabled={catalogLoading}
-            required
-            aria-invalid={Boolean(errors.cityId)}
-            aria-describedby={errors.cityId ? "register-city-error" : undefined}
-          >
-            <option value="">
-              {catalogLoading ? "Cargando ciudades..." : "Elegí una ciudad"}
-            </option>
-            {groupedCities.map(([province, list]) => (
-              <optgroup key={province} label={province}>
-                {list.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </Field>
+      {catalogError ? (
+        <div className="register-catalog-error" role="alert">
+          <div>
+            <strong>No pudimos cargar las categorías.</strong>
+            <span>Revisá tu conexión o volvé a intentar.</span>
+          </div>
+          <button type="button" className="register-retry-btn" onClick={onRetryCatalog}>
+            Reintentar
+          </button>
+        </div>
+      ) : null}
 
-        <Field fieldId="register-category" label="Categoría" error={errors.categoryId}>
-          <select
-            id="register-category"
-            name="categoryId"
-            className={`register-input register-select ${errors.categoryId ? "is-error" : ""}`}
-            value={form.categoryId}
-            onChange={(e) => update("categoryId", e.target.value)}
-            disabled={catalogLoading}
-            required
-            aria-invalid={Boolean(errors.categoryId)}
-            aria-describedby={errors.categoryId ? "register-category-error" : undefined}
+      <div className="register-form-row register-commerce-location-row">
+        <div className="register-field">
+          <span className="register-field-label">Ubicación</span>
+          <div
+            className={`register-fixed-location ${errors.cityId ? "is-error" : ""}`}
+            aria-label="Ubicación fija: Concordia, Entre Ríos"
           >
-            <option value="">
-              {catalogLoading ? "Cargando categorías..." : "Elegí una categoría"}
-            </option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+            <span className="register-fixed-location-dot" aria-hidden="true" />
+            <span>Concordia, Entre Ríos</span>
+          </div>
+          {errors.cityId ? (
+            <span id="register-city-error" className="register-field-error" role="alert">
+              {errors.cityId}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="register-field">
+          <label className="register-field-label" htmlFor="register-category">
+            Categoría
+          </label>
+          <CategoryPicker
+            categories={categories}
+            value={form.categoryId}
+            loading={catalogLoading}
+            error={Boolean(errors.categoryId)}
+            onChange={(value) => update("categoryId", value)}
+          />
+          {errors.categoryId ? (
+            <span id="register-category-error" className="register-field-error" role="alert">
+              {errors.categoryId}
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
+
+function CategoryPicker({
+  categories,
+  value,
+  loading,
+  error,
+  onChange,
+}: {
+  categories: PublicCategory[];
+  value: string;
+  loading: boolean;
+  error: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = categories.find((category) => String(category.id) === value);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="register-category-picker" ref={rootRef}>
+      <button
+        id="register-category"
+        name="categoryId"
+        type="button"
+        className={`register-input register-category-trigger ${error ? "is-error" : ""}`}
+        disabled={loading}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="register-category-options"
+        aria-invalid={error}
+        aria-describedby={error ? "register-category-error" : undefined}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={selected ? "" : "register-category-placeholder"}>
+          {loading ? "Cargando categorías..." : selected?.name ?? "Elegí una categoría"}
+        </span>
+        <span className={`register-category-chevron ${open ? "is-open" : ""}`} aria-hidden="true" />
+      </button>
+
+      {open && !loading ? (
+        <div
+          id="register-category-options"
+          className="register-category-menu"
+          role="listbox"
+          aria-label="Categorías disponibles"
+        >
+          {categories.map((category) => {
+            const isSelected = String(category.id) === value;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                className={`register-category-option ${isSelected ? "is-selected" : ""}`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(String(category.id));
+                  setOpen(false);
+                }}
+              >
+                <span>{category.name}</span>
+                {isSelected ? <IconCheck size={14} /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 
 function StepDetails({ form, errors, update }: StepProps) {
   return (
@@ -658,7 +780,7 @@ function StepDetails({ form, errors, update }: StepProps) {
       <Field
         fieldId="register-description"
         label="Descripción corta (opcional)"
-        hint={`${form.shortDescription.length}/160 — la usamos en el listado del mapa.`}
+        hint={`${form.shortDescription.length}/160 · Se muestra en tu perfil y en la app.`}
         error={errors.shortDescription}
       >
         <textarea
@@ -678,8 +800,8 @@ function StepDetails({ form, errors, update }: StepProps) {
       </Field>
 
       <p className="register-form-fineprint">
-        Al crear tu cuenta vas a recibir un email para verificar tu dirección. Tu comercio queda
-        pendiente de aprobación; cuando lo revisemos te avisamos por mail.
+        Al crear tu cuenta te enviaremos un email de verificación. Tu comercio quedará pendiente
+        de revisión y te avisaremos cuando esté aprobado.
       </p>
     </div>
   );

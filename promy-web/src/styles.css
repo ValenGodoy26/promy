@@ -2317,13 +2317,15 @@ body:has(.landing-shell)::after {
 .landing-hero-title em::after {
   content: "";
   position: absolute;
-  left: -2%;
-  right: -2%;
-  bottom: 6%;
-  height: 14%;
-  background: rgba(255, 191, 0, 0.5);
+  left: -1%;
+  right: -1%;
+  bottom: 1%;
+  height: 9%;
+  background: rgba(255, 191, 0, 0.48);
   z-index: -1;
-  border-radius: 4px;
+  border-radius: 999px 70% 999px 55%;
+  transform: rotate(-0.45deg);
+  transform-origin: center;
 }
 
 .landing-hero-copy {
@@ -2519,7 +2521,7 @@ body:has(.landing-shell)::after {
 
 .landing-section-title {
   font-family: "Fraunces", serif;
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: clamp(29px, 3.7vw, 41px);
   font-weight: 500;
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -6856,27 +6858,32 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-shell {
   position: relative;
   z-index: 5;
-  max-width: 1180px;
-  margin: 24px auto 80px;
-  padding: 0 32px;
+  max-width: 1120px;
+  margin: 8px auto 56px;
+  padding: 0 28px;
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 38px;
   align-items: start;
+}
+
+.register-page .public-topbar {
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /* ---- aside (left) ---- */
 
 .register-aside {
   position: sticky;
-  top: 32px;
-  padding: 36px 4px;
+  top: 20px;
+  padding: 20px 4px;
 }
 
 .register-aside-brand {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 0;
 }
 
 .register-aside-eyebrow {
@@ -6890,8 +6897,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
 .register-aside-title {
   font-family: var(--serif, Georgia, serif);
-  font-size: clamp(32px, 3.5vw, 46px);
-  line-height: 1.05;
+  font-size: clamp(30px, 3vw, 40px);
+  line-height: 1.04;
   letter-spacing: -0.025em;
   margin: 0;
   color: var(--ink);
@@ -6905,23 +6912,23 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
 .register-aside-bullets {
   list-style: none;
-  margin: 32px 0 28px;
+  margin: 24px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .register-aside-bullets li {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .register-aside-bullet-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: rgba(22, 163, 74, 0.12);
   color: #16a34a;
@@ -6933,7 +6940,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-aside-bullets strong {
   display: block;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   margin-bottom: 2px;
 }
@@ -6941,8 +6948,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-aside-bullets p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .register-aside-footer {
@@ -6964,32 +6971,32 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-card {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 24px;
-  padding: 36px 40px 40px;
+  border-radius: 22px;
+  padding: 28px 32px 30px;
   box-shadow: 0 30px 80px -50px rgba(15, 15, 16, 0.18);
 }
 
 .register-card-head {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 /* Stepper */
 
 .register-stepper {
   list-style: none;
-  margin: 0 0 28px;
+  margin: 0 0 22px;
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .register-stepper-item {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 7px 10px;
   border-radius: 999px;
   background: rgba(15, 15, 16, 0.04);
   color: var(--muted);
@@ -6998,8 +7005,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 }
 
 .register-stepper-num {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: rgba(15, 15, 16, 0.08);
   color: var(--ink);
@@ -7054,7 +7061,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
 .register-card-title {
   font-family: var(--serif, Georgia, serif);
-  font-size: 30px;
+  font-size: 27px;
   line-height: 1.1;
   margin: 0 0 4px;
   color: var(--ink);
@@ -7064,13 +7071,13 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
 .register-card-helper {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .register-card-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   background: rgba(255, 191, 0, 0.18);
   color: var(--ink);
@@ -7085,13 +7092,13 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
 
 .register-form-grid {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .register-form-row {
@@ -7126,7 +7133,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
 .register-input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 13px;
   border: 1px solid var(--line);
   border-radius: 10px;
   font-family: inherit;
@@ -7168,6 +7175,114 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   background-position: right 14px center;
   padding-right: 36px;
   appearance: none;
+}
+
+.register-fixed-location {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafaf7;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.register-fixed-location.is-error {
+  border-color: var(--red);
+  background: rgba(255, 49, 49, 0.04);
+}
+
+.register-fixed-location-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--yellow, #ffbf00);
+  box-shadow: 0 0 0 4px rgba(255, 191, 0, 0.14);
+  flex: 0 0 auto;
+}
+
+.register-category-picker {
+  position: relative;
+}
+
+.register-category-trigger {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.register-category-trigger:disabled {
+  cursor: not-allowed;
+}
+
+.register-category-placeholder {
+  color: rgba(15, 15, 16, 0.48);
+}
+
+.register-category-chevron {
+  width: 8px;
+  height: 8px;
+  border-top: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(2px);
+  transform-origin: center;
+  color: var(--muted);
+  flex: 0 0 auto;
+  transition: transform 0.15s ease;
+}
+
+.register-category-chevron.is-open {
+  transform: rotate(225deg) translateY(1px);
+}
+
+.register-category-menu {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 7px);
+  max-height: 258px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 45px -18px rgba(15, 15, 16, 0.34);
+}
+
+.register-category-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.register-category-option:hover,
+.register-category-option:focus-visible {
+  outline: none;
+  background: rgba(255, 191, 0, 0.12);
+}
+
+.register-category-option.is-selected {
+  background: rgba(255, 191, 0, 0.2);
+  font-weight: 700;
 }
 
 .register-textarea {
@@ -7223,6 +7338,53 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   line-height: 1.5;
 }
 
+.register-catalog-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  background: rgba(255, 49, 49, 0.06);
+  border: 1px solid rgba(255, 49, 49, 0.2);
+  border-radius: 10px;
+  color: #991b1b;
+}
+
+.register-catalog-error > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.register-catalog-error strong {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.register-catalog-error span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.register-retry-btn {
+  flex: 0 0 auto;
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 7px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.register-retry-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 15, 16, 0.36);
+}
+
 .register-legal-check {
   display: flex;
   align-items: flex-start;
@@ -7246,8 +7408,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 }
 
 .register-legal-check a {
-  color: var(--red);
-  font-weight: 900;
+  color: var(--red-dim);
+  font-weight: 800;
 }
 
 .register-form-fineprint {
@@ -7264,9 +7426,13 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
-  margin-top: 8px;
+  margin-top: 4px;
+}
+
+.register-form-actions.is-first-step {
+  justify-content: flex-end;
 }
 
 .register-form-actions .landing-btn:disabled {
@@ -7279,16 +7445,16 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .register-success {
   position: relative;
   z-index: 5;
-  max-width: 600px;
-  margin: 80px auto;
-  padding: 0 32px;
+  max-width: 680px;
+  margin: 64px auto;
+  padding: 0 28px;
 }
 
 .register-success-card {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 24px;
-  padding: 48px 44px;
+  padding: 48px 52px;
   text-align: center;
   box-shadow: 0 30px 80px -50px rgba(15, 15, 16, 0.18);
 }
@@ -7320,7 +7486,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   color: var(--muted);
   font-size: 15px;
   line-height: 1.55;
-  max-width: 44ch;
+  max-width: 52ch;
   margin-left: auto;
   margin-right: auto;
 }
@@ -7330,6 +7496,29 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.register-dev-access {
+  margin: 18px auto 0;
+  max-width: 470px;
+  padding: 13px 15px;
+  border: 1px dashed rgba(15, 15, 16, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 190, 0, 0.08);
+  text-align: left;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.register-dev-access .auth-preview-label {
+  margin-bottom: 5px;
+}
+
+.register-success-email {
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
 }
 
 /* Public topbar (used in register/login) */
@@ -7354,14 +7543,14 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 @media (max-width: 900px) {
   .register-shell {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
     padding: 0 20px;
-    margin: 16px auto 60px;
+    margin: 8px auto 48px;
   }
 
   .register-aside {
     position: static;
-    padding: 16px 4px 0;
+    padding: 10px 4px 0;
   }
 
   .register-aside-bullets {
@@ -7374,7 +7563,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   }
 
   .register-card {
-    padding: 24px 20px 28px;
+    padding: 22px 20px 24px;
     border-radius: 18px;
   }
 
@@ -7410,6 +7599,11 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 
   .register-card-icon {
     display: none;
+  }
+
+  .register-catalog-error {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -8555,4 +8749,134 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   .scanner-frame { min-height: 180px; }
   .subnav { margin-inline: 0; }
   .btn { white-space: normal; text-align: center; }
+}
+
+
+/* ==========================================================================
+   Landing commerce — microajustes finales
+   Mantiene la identidad actual y refuerza la jerarquía Commerce > Cliente.
+   ========================================================================== */
+
+/* La sección cierra un poco más compacta antes del footer. */
+.landing-section {
+  padding-bottom: 36px;
+}
+
+/* Commerce sigue siendo la acción principal; Cliente queda deliberadamente secundario. */
+.landing-roles-grid-2col .role-card-primary {
+  border-color: rgba(255, 191, 0, 0.58);
+  box-shadow: 0 24px 52px -34px rgba(255, 191, 0, 0.72);
+}
+
+.landing-btn-client {
+  background: rgba(255, 255, 255, 0.48);
+  color: #0E0E10;
+  border-color: rgba(14, 14, 16, 0.28);
+  font-weight: 650;
+}
+
+.landing-btn-client:hover {
+  background: #FFFFFF;
+  border-color: rgba(14, 14, 16, 0.58);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(14, 14, 16, 0.10);
+}
+
+/* Microinteracciones suaves en las tarjetas, sin cambiar el layout. */
+.landing-roles-grid-2col .role-card-v2 {
+  transition:
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 260ms ease;
+}
+
+.landing-roles-grid-2col .role-card-v2:hover {
+  transform: translateY(-3px);
+}
+
+.landing-roles-grid-2col .role-card-primary:hover {
+  box-shadow: 0 28px 58px -34px rgba(255, 191, 0, 0.82);
+}
+
+.landing-roles-grid-2col .role-card-client:hover {
+  border-color: rgba(14, 14, 16, 0.16);
+  box-shadow: 0 18px 38px -30px rgba(14, 14, 16, 0.28);
+}
+
+/* Footer más cerca del contenido y con un poco más de contraste. */
+.landing-footer {
+  margin-top: 0;
+  padding-top: 28px;
+  padding-bottom: 42px;
+  color: #6F6657;
+}
+
+.landing-footer-links a {
+  color: #5E574D;
+}
+
+/* Entrada sutil: movimiento corto, sin parallax ni animaciones invasivas. */
+.landing-hero-text {
+  animation: promyLandingCopyIn 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-hero-mascot {
+  animation: promyLandingMascotIn 720ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-section-head {
+  animation: promyLandingSectionIn 620ms 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-roles-grid-2col > .role-card-v2:first-child {
+  animation: promyLandingCardIn 620ms 190ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-roles-grid-2col > .role-card-v2:last-child {
+  animation: promyLandingCardIn 620ms 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes promyLandingCopyIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes promyLandingMascotIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes promyLandingSectionIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes promyLandingCardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-text,
+  .landing-hero-mascot,
+  .landing-section-head,
+  .landing-roles-grid-2col > .role-card-v2 {
+    animation: none !important;
+  }
+
+  .landing-roles-grid-2col .role-card-v2,
+  .landing-btn-client {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .landing-section {
+    padding-bottom: 32px;
+  }
+
+  .landing-footer {
+    padding-top: 26px;
+    padding-bottom: 36px;
+  }
 }

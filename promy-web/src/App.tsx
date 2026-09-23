@@ -1,4 +1,4 @@
-﻿import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "./auth";
 import {
@@ -129,13 +129,12 @@ function LandingPage() {
         <div className="landing-nav-start">
           <PromyMark size="sm" variant="default" />
           <span className="landing-nav-wordmark">PROMY</span>
-          <span className="landing-nav-pill">v0.1 · Panel</span>
         </div>
         <div className="landing-nav-end">
           <a href="#roles" className="landing-nav-link">Cómo funciona</a>
           <a href="#app" className="landing-nav-link">Para clientes</a>
           <Link to="/register-commerce" className="landing-btn landing-btn-ghost">
-            <IconStore size={14} /> Soy comercio
+            <IconStore size={14} /> Para comercios
           </Link>
           <Link to="/login" className="landing-btn landing-btn-primary">
             Entrar <IconArrowRight size={14} />
@@ -155,8 +154,8 @@ function LandingPage() {
           </h1>
 
           <p className="landing-hero-copy">
-            PROMY conecta a los <strong>comercios locales</strong> con gente que vive cerca.
-            Descubrís beneficios reales, los canjeás en el local, y ya está.
+            PROMY conecta <strong>comercios locales</strong> con personas que buscan promociones cerca.
+            Descubrí beneficios reales en tu ciudad o sumá tu comercio para empezar a ofrecerlos.
             Sin vueltas, sin cupones raros, sin tarjetas de plástico.
           </p>
 
@@ -186,7 +185,7 @@ function LandingPage() {
               2x1 hoy
             </div>
             <div className="landing-mascot-chip landing-mascot-chip-3">
-              Alta moderada
+              Comercios verificados
             </div>
           </div>
         </div>
@@ -195,9 +194,9 @@ function LandingPage() {
       <section className="landing-section" id="roles">
         <div className="landing-section-head">
           <div>
-            <div className="landing-section-label">Para quién es esto</div>
+            <div className="landing-section-label">Para comercios y clientes</div>
             <h2 className="landing-section-title">
-              Si tenés un comercio, <em>estás en el lugar correcto</em>.
+              Una plataforma para <em>conectar lo que ofrecés con quien está cerca</em>.
             </h2>
           </div>
         </div>
@@ -208,7 +207,7 @@ function LandingPage() {
               <span className="role-card-dot commerce" />
             </div>
             <h3 className="role-card-title-v2">
-              Cargá tus promos en <em>2 minutos</em>.
+              Creá tus promos <em>sin vueltas</em>.
             </h3>
             <p className="role-card-desc-v2">
               Gestioná tu perfil, tus promociones y los canjes desde un panel pensado para operar.
@@ -234,7 +233,7 @@ function LandingPage() {
             </div>
             <h3 className="role-card-title-v2">¿Buscás promos <em>cerca tuyo</em>?</h3>
             <p className="role-card-desc-v2">
-              Descubrí beneficios reales de comercios del barrio desde la app mobile de PROMY.
+              Descubrí promociones reales de comercios del barrio desde la app de PROMY.
             </p>
             <div className="role-card-bullets-v2">
               <span className="role-card-bullet-v2"><IconCheck size={12} /> Promos geolocalizadas cerca tuyo</span>
@@ -243,13 +242,12 @@ function LandingPage() {
             </div>
             <Link
               to={buildClientAppNoticePath(
-                "Ver acceso de la app mobile",
-                "La experiencia cliente de PROMY se usa desde la app mobile y hoy funciona con acceso privado mientras seguimos sumando comercios reales.",
+                "Conocé la app de PROMY",
+                "La experiencia para clientes de PROMY se usa desde la app y hoy funciona con acceso privado mientras seguimos sumando comercios reales.",
               )}
-              className="landing-btn landing-btn-yellow landing-btn-lg"
-              style={{ display: "inline-flex", textDecoration: "none", marginTop: "auto" }}
+              className="landing-btn landing-btn-client landing-btn-lg"
             >
-              Ver estado de la app <IconArrowRight size={14} />
+              Conocé la app <IconArrowRight size={14} />
             </Link>
           </article>
         </div>
@@ -261,7 +259,6 @@ function LandingPage() {
           <span>PROMY · Concordia</span>
         </div>
         <div className="landing-footer-links">
-          <span>Versión 0.1 · Abril 2026</span>
           <Link to="/terms">Términos</Link>
           <Link to="/privacy">Privacidad</Link>
         </div>
