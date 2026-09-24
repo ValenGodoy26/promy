@@ -13,11 +13,14 @@ export type MobileLegalDocument = {
   updatedAt: string;
   version: string;
   lawLabel: string;
-  contactEmail: string;
+  contactEmail: string | null;
   summary: Array<{ label: string; value: string }>;
   sections: MobileLegalSection[];
   footer: string;
 };
+
+const prePilotNotice =
+  "PROMY está en etapa pre-piloto. Este documento describe el funcionamiento técnico conocido y no reemplaza la revisión jurídica pendiente.";
 
 export const mobileLegalDocuments: Record<MobileLegalDocument["kind"], MobileLegalDocument> = {
   privacy: {
@@ -25,228 +28,120 @@ export const mobileLegalDocuments: Record<MobileLegalDocument["kind"], MobileLeg
     title: "Política de privacidad",
     shortTitle: "Privacidad",
     intro:
-      "Esta política explica qué datos personales recolecta PROMY, para qué se usan, con quién se comparten, cuánto tiempo se conservan y qué derechos podés ejercer.",
-    updatedAt: "6 de mayo de 2026",
-    version: "1.0",
-    lawLabel: "Ley 25.326 · AAIP · Argentina",
-    contactEmail: "privacidad@promy.app",
+      "Explica qué datos usa PROMY para operar cuentas, mostrar promociones y validar canjes durante la etapa pre-piloto.",
+    updatedAt: "14 de septiembre de 2026",
+    version: "1.1-prepiloto",
+    lawLabel: "Estado técnico pre-piloto · Argentina",
+    contactEmail: null,
     summary: [
-      { label: "Responsable", value: "PROMY · Concordia, Entre Ríos" },
-      { label: "Contacto", value: "privacidad@promy.app" },
-      { label: "Derechos", value: "Acceso, rectificación, supresión y oposición" },
+      { label: "Responsable", value: "Pendiente de definición antes del piloto" },
+      { label: "Contacto", value: "Canal oficial pendiente antes del piloto" },
+      { label: "Datos", value: "Uso técnico necesario para operar PROMY" },
     ],
     sections: [
       {
         number: "01",
-        title: "Responsable del tratamiento",
+        title: "Estado actual",
         paragraphs: [
-          "El responsable del tratamiento de tus datos personales es PROMY, con domicilio en Concordia, Entre Ríos, Argentina.",
-          "Si PROMY adopta una forma societaria formal, esta página se actualizará con esos datos.",
+          prePilotNotice,
+          "La identidad jurídica responsable, el domicilio legal y el canal oficial para privacidad deben publicarse antes de incorporar usuarios externos.",
         ],
       },
       {
         number: "02",
-        title: "Datos que recolectamos",
+        title: "Datos y uso técnico",
         bullets: [
-          "Clientes: nombre, email, teléfono opcional, contraseña hasheada, fecha de nacimiento si la cargás, ciudad, tokens push y tokens de sesión.",
-          "Uso de la app: ubicación GPS aproximada solo para mostrar promos cercanas, favoritos, historial de canjes, notificaciones y datos técnicos básicos.",
-          "Comercios: datos del responsable, nombre comercial, descripción, dirección, coordenadas, ciudad, categoría, Instagram opcional, imágenes y promociones.",
-          "No recolectamos tarjetas, datos bancarios, contactos, fotos o micrófono.",
+          "Clientes: datos de cuenta, credenciales protegidas, ciudad declarada, sesiones, notificaciones y canjes.",
+          "Ubicación: se usa durante la consulta para ordenar resultados cercanos; PROMY no conserva un historial GPS en el backend.",
+          "Comercios: datos de onboarding, catálogo, ubicación del local, imágenes y estadísticas de canjes.",
+          "No se procesan pagos ni datos de tarjetas desde PROMY.",
         ],
       },
       {
         number: "03",
-        title: "Finalidades de uso",
-        bullets: [
-          "Crear y proteger cuentas.",
-          "Mostrar promociones cercanas.",
-          "Generar y validar canjes.",
-          "Enviar avisos operativos o notificaciones relevantes.",
-          "Moderar comercios y promociones.",
-          "Mejorar la plataforma con datos agregados.",
-          "Cumplir obligaciones legales.",
-        ],
+        title: "Compartición y seguridad",
         paragraphs: [
-          "No usamos tus datos para publicidad de terceros ni para perfilamiento publicitario.",
+          "Un comercio que valida un canje recibe solamente la información necesaria para esa operación. No accede al contacto ni al historial del cliente.",
+        ],
+        bullets: [
+          "Contraseñas hasheadas, sesiones con expiración y rotación de refresh tokens.",
+          "Validaciones, límites de uso y sanitización de telemetría para reducir exposición de datos.",
+          "Proveedores técnicos se usan únicamente para operar infraestructura, email, notificaciones e imágenes cuando estén configurados.",
         ],
       },
       {
         number: "04",
-        title: "Con quién compartimos datos",
+        title: "Baja y datos que permanecen",
         bullets: [
-          "Con el comercio que valida un canje: código, nombre y fecha/hora del canje.",
-          "Con proveedores de hosting, base de datos, email, push notifications y almacenamiento de imágenes, solo para que PROMY funcione.",
-          "Con autoridades cuando exista un requerimiento formal y legalmente válido.",
-        ],
-        paragraphs: [
-          "PROMY no vende tus datos ni los cede para campañas publicitarias de terceros.",
+          "La app permite la baja de una cuenta CLIENT: elimina identidad, credenciales, sesiones, tokens push, notificaciones y canjes no consumados.",
+          "Los canjes SUCCESS permanecen sin vínculo con la identidad eliminada para conservar cupos y métricas comerciales.",
+          "Las decisiones definitivas sobre logs, backups, solicitudes beta y retención histórica siguen pendientes antes del piloto.",
         ],
       },
       {
         number: "05",
-        title: "Conservación",
-        bullets: [
-          "Cuenta activa: mientras la cuenta siga operativa.",
-          "Cuenta dada de baja: eliminación de datos personales identificables dentro de 30 días.",
-          "Canjes: se pueden conservar en forma anónima para auditoría y estadísticas.",
-          "Logs técnicos: hasta 12 meses.",
-        ],
-      },
-      {
-        number: "06",
-        title: "Seguridad",
-        bullets: [
-          "Contraseñas protegidas con bcrypt.",
-          "Tokens firmados, expiración corta y refresh rotativo.",
-          "HTTPS en producción.",
-          "Controles de abuso y validación de archivos.",
-          "Acceso restringido al panel de administración.",
-        ],
-      },
-      {
-        number: "07",
-        title: "Tus derechos ARCO",
-        bullets: [
-          "Acceso",
-          "Rectificación",
-          "Cancelación o supresión",
-          "Oposición",
-        ],
+        title: "Tus derechos y contacto",
         paragraphs: [
-          "Podés ejercerlos escribiendo a privacidad@promy.app desde el email registrado. El plazo estimado de respuesta es de 10 días corridos.",
-        ],
-      },
-      {
-        number: "08",
-        title: "Menores y transferencias",
-        paragraphs: [
-          "PROMY no está dirigida a menores de 18 años.",
-          "Algunos proveedores pueden operar fuera de Argentina, principalmente en Estados Unidos o Europa, bajo estándares reconocidos de seguridad y privacidad.",
-        ],
-      },
-      {
-        number: "09",
-        title: "Cambios y contacto",
-        paragraphs: [
-          "Si esta política cambia de forma sustancial, PROMY lo avisará dentro de la app y/o por email antes de que el cambio entre en vigor.",
-          "Contacto de privacidad: privacidad@promy.app · Domicilio: Concordia, Entre Ríos, Argentina.",
+          "El canal oficial para solicitudes de acceso, rectificación o supresión debe definirse y verificarse antes del piloto. Mientras no exista, PROMY no debe abrir registro público en un entorno real.",
+          "Los procedimientos, responsables y plazos aplicables requieren revisión jurídica argentina.",
         ],
       },
     ],
     footer:
-      "Al usar PROMY aceptás esta política. Si no estás de acuerdo con ella, no podés usar la plataforma.",
+      "Esta es una comunicación técnica pre-piloto. Antes de usar PROMY con usuarios externos se publicarán el responsable, el canal oficial y la versión jurídica revisada.",
   },
   terms: {
     kind: "terms",
     title: "Términos y condiciones",
     shortTitle: "Términos",
     intro:
-      "Estos términos regulan el uso de PROMY por clientes, comercios y administradores. Al usar la plataforma aceptás estas condiciones junto con la política de privacidad.",
-    updatedAt: "6 de mayo de 2026",
-    version: "1.0",
-    lawLabel: "República Argentina · Defensa del consumidor",
-    contactEmail: "soporte@promy.app",
+      "Resume las reglas técnicas actuales para clientes, comercios y administradores mientras PROMY se prepara para un piloto controlado.",
+    updatedAt: "14 de septiembre de 2026",
+    version: "1.1-prepiloto",
+    lawLabel: "Estado técnico pre-piloto · Argentina",
+    contactEmail: null,
     summary: [
       { label: "Rol de PROMY", value: "Intermediario tecnológico" },
-      { label: "Edad mínima", value: "18 años o autorización válida" },
-      { label: "Canjes", value: "Personales, únicos y sujetos a vigencia" },
+      { label: "Canjes", value: "Únicos y sujetos a vigencia" },
+      { label: "Contacto", value: "Canales oficiales pendientes antes del piloto" },
     ],
     sections: [
       {
         number: "01",
-        title: "Qué es PROMY",
+        title: "Estado y alcance",
         paragraphs: [
-          "PROMY conecta personas que buscan promociones reales con comercios locales que las ofrecen.",
-          "PROMY no vende productos ni servicios propios: facilita descubrimiento, validación y seguimiento de beneficios.",
+          prePilotNotice,
+          "PROMY conecta personas con promociones de comercios locales. No procesa pagos ni reemplaza la relación comercial entre cliente y comercio.",
         ],
       },
       {
         number: "02",
-        title: "Quién puede usar PROMY",
+        title: "Cómo funciona",
         bullets: [
-          "Clientes: mayores de 18 años o con autorización válida, con datos reales y email verificado antes de canjear.",
-          "Comercios: actividad real y legal en Argentina, datos verdaderos y responsabilidad por sus promociones.",
+          "Clientes exploran promociones, generan un código o QR y el comercio valida el canje.",
+          "Comercios completan onboarding, esperan aprobación y publican promociones sujetas a moderación.",
+          "Las promociones dependen de su vigencia, horarios y condiciones informadas.",
         ],
       },
       {
         number: "03",
-        title: "Cómo funciona el servicio",
+        title: "Reglas de uso",
         bullets: [
-          "Clientes: se registran, verifican email, exploran promociones y generan un canje mediante código o QR.",
-          "Comercios: se registran, completan perfil, esperan aprobación, cargan promociones y validan canjes.",
-          "Cada promoción pasa por moderación antes de mostrarse a clientes.",
+          "Los datos y promociones deben ser reales, claros y cumplibles.",
+          "No se permiten cuentas falsas, transferencia de códigos, fraude ni intentos de burlar validaciones.",
+          "PROMY puede moderar contenido y restringir cuentas ante abuso o incumplimientos.",
         ],
       },
       {
         number: "04",
-        title: "Reglas para clientes",
-        bullets: [
-          "No se permiten cuentas falsas, múltiples cuentas ni emails desechables.",
-          "Los códigos de canje son personales y no pueden venderse, transferirse ni regalarse.",
-          "No se puede burlar el sistema ni intentar validar canjes ajenos.",
-          "Cada promoción se puede canjear una sola vez por persona, salvo que se indique otra cosa.",
-          "Las promociones dependen de vigencia, horarios y condiciones del comercio.",
-        ],
-      },
-      {
-        number: "05",
-        title: "Reglas para comercios",
-        bullets: [
-          "Las promociones deben ser reales, claras y cumplibles.",
-          "Cada canje válido debe respetarse dentro de la vigencia y condiciones publicadas.",
-          "No se puede cobrar más por usar una promo de PROMY que el precio declarado.",
-          "El comercio es responsable por stock, calidad, precios, productos y atención.",
-        ],
-      },
-      {
-        number: "06",
-        title: "Qué hace y qué no hace PROMY",
+        title: "Aceptación y cambios pendientes",
         paragraphs: [
-          "PROMY sí muestra promociones verificadas, genera códigos únicos, modera contenido y guarda historial de canjes.",
-          "PROMY no procesa pagos, no garantiza la calidad del comercio y no reemplaza la relación comercial entre cliente y local.",
-        ],
-      },
-      {
-        number: "07",
-        title: "Responsabilidad de PROMY",
-        bullets: [
-          "PROMY no responde por calidad, stock, atención o promesas del comercio.",
-          "Tampoco responde por interrupciones causadas por proveedores externos o por problemas técnicos del dispositivo del usuario.",
-          "La responsabilidad total de PROMY se limita al monto de promociones efectivamente canjeadas en los últimos 30 días o $10.000 ARS, lo que sea menor, en la máxima medida permitida por la ley.",
-        ],
-      },
-      {
-        number: "08",
-        title: "Contenido, propiedad intelectual y moderación",
-        bullets: [
-          "Los comercios son responsables de textos, imágenes, precios y condiciones que publiquen.",
-          "PROMY puede moderar, eliminar promociones, suspender comercios o bloquear cuentas ante abuso o incumplimientos.",
-          "La marca, el logo, la app, el panel y el código fuente de PROMY son propiedad de la plataforma.",
-        ],
-      },
-      {
-        number: "09",
-        title: "Bajas, cambios y jurisdicción",
-        paragraphs: [
-          "Podés pedir la baja de tu cuenta escribiendo a privacidad@promy.app desde el email registrado.",
-          "PROMY puede suspender cuentas ante fraude, incumplimientos reiterados o requerimientos formales.",
-          "Estos términos se rigen por las leyes de la República Argentina y, salvo norma protectoria aplicable, los conflictos se resolverán en los tribunales ordinarios de Concordia, Entre Ríos.",
-        ],
-      },
-      {
-        number: "10",
-        title: "Contacto y aceptación",
-        bullets: [
-          "Soporte general: soporte@promy.app",
-          "Moderación: moderacion@promy.app",
-          "Privacidad: privacidad@promy.app",
-        ],
-        paragraphs: [
-          "Al aceptar durante el registro declarás haber leído y entendido estos términos y la política de privacidad, ser mayor de 18 años o contar con autorización válida, y cargar datos reales.",
+          "Las pantallas de registro solicitan aceptar estos términos y la política de privacidad. PROMY no declara actualmente conservar IP, fecha, hora ni versión como evidencia verificable de esa aceptación.",
+          "Responsable, domicilio, canales de soporte, moderación, privacidad y alcance jurídico definitivo deben definirse antes del piloto.",
         ],
       },
     ],
     footer:
-      "Estos términos se complementan con la Política de Privacidad de PROMY y ambos documentos forman parte del mismo acuerdo entre vos y la plataforma.",
+      "Estos términos técnicos pre-piloto se actualizarán luego de la revisión jurídica y la definición de canales oficiales.",
   },
 };

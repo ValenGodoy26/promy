@@ -14,7 +14,7 @@ export async function createBetaRequest(req: Request, res: Response) {
       });
     }
 
-    const result = await createBetaAccessRequest(parsed.data);
+    const result = await createBetaAccessRequest(parsed.data, { requestId: req.requestId });
 
     return res.status(201).json({
       ok: true,

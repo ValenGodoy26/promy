@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner",
-    "test": "node --test tests/public-stats.test.mjs",
+    "test": "node --test tests/public-stats.test.mjs && node ../tools/test-legal-parity.mjs --surface=landing",
     "typecheck": "tsc -b --pretty false",
     "build": "tsc -b && vite build --configLoader runner",
     "preview": "vite preview"

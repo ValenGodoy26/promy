@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getMe } from "../users/users.controller";
 import { requireAuth } from "../../middlewares/auth.middleware";
+import { requirePublicRegistration } from "../../shared/privacy/publicRegistration";
 import {
   forgotPassword,
   login,
@@ -24,8 +25,8 @@ import {
 
 const router = Router();
 
-router.post("/register", registrationLimiter, register);
-router.post("/register-commerce", registrationLimiter, registerCommerce);
+router.post("/register", requirePublicRegistration, registrationLimiter, register);
+router.post("/register-commerce", requirePublicRegistration, registrationLimiter, registerCommerce);
 router.post("/login", loginLimiter, login);
 router.post("/refresh", refreshLimiter, refresh);
 router.post("/logout", logoutLimiter, logout);

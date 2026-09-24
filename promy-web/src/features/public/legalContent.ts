@@ -37,7 +37,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
     version: "1.1-prepiloto",
     contactEmail: null,
     summary: [
-      { label: "Responsable", value: "PROMY · Concordia, Entre Ríos, Argentina" },
+      { label: "Responsable", value: "Pendiente de definición antes del piloto" },
       { label: "Contacto", value: "Canal oficial pendiente antes del piloto" },
       { label: "Derechos", value: "Acceso, rectificación, supresión y oposición" },
       { label: "Regla clave", value: "PROMY no vende tus datos personales" },
@@ -176,7 +176,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         title: "Contacto",
         bullets: [
           "Canal oficial: pendiente de publicación antes del piloto",
-          "Domicilio: Concordia, Entre Ríos, Argentina",
+          "Domicilio legal: pendiente de definición antes del piloto",
         ],
         paragraphs: [
           "Esta política fue redactada conforme a la Ley 25.326 de Protección de los Datos Personales y normativa concordante de la República Argentina.",
@@ -192,9 +192,9 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
     shortTitle: "Términos",
     intro:
       "Estos términos regulan el uso de PROMY para clientes, comercios y administradores. Al crear una cuenta, navegar el catálogo, canjear una promoción o publicar promociones, aceptás expresamente estas condiciones.",
-    lawLabel: "República Argentina · Defensa del consumidor · Concordia",
-    updatedAt: "6 de mayo de 2026",
-    version: "1.0",
+    lawLabel: "Estado técnico pre-piloto · Argentina",
+    updatedAt: "14 de septiembre de 2026",
+    version: "1.1-prepiloto",
     contactEmail: null,
     summary: [
       { label: "Rol de PROMY", value: "Intermediario tecnológico, no vendedor" },
@@ -328,8 +328,8 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
         number: "12",
         title: "Ley aplicable y jurisdicción",
         paragraphs: [
-          "Estos términos se rigen por las leyes de la República Argentina.",
-          "Los conflictos se resolverán en los tribunales ordinarios de Concordia, Entre Ríos, salvo que una norma protectoria del consumidor establezca otro fuero aplicable.",
+          "La ley aplicable, jurisdicción y alcance definitivo de estos términos requieren revisión jurídica antes del piloto.",
+          "PROMY no publica todavía un responsable ni domicilio legal para resolver reclamos externos.",
         ],
       },
       {
@@ -353,7 +353,7 @@ export const legalDocuments: Record<LegalDocument["kind"], LegalDocument> = {
           "Confirmás que los datos ingresados son reales.",
         ],
         paragraphs: [
-          "PROMY conserva un registro de aceptación con fecha, hora, IP y versión del documento aceptado.",
+          "Las pantallas de registro solicitan esta aceptación. El registro verificable de fecha, hora, IP y versión aplicable requiere una definición técnica y jurídica antes del piloto.",
         ],
       },
     ],

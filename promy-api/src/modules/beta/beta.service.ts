@@ -70,7 +70,28 @@ async function sendBetaAccessConfirmationEmail(params: {
   });
 }
 
-export async function createBetaAccessRequest(input: z.infer<typeof createBetaAccessRequestSchema>) {
+export type BetaAccessRequestLogContext = {
+  requestId: string | null;
+  betaAccessRequestId: number | string;
+  platform: "IPHONE" | "ANDROID";
+  source: string;
+  outcome: "upserted" | "email_confirmation_failed";
+};
+
+export function buildBetaAccessRequestLogContext(params: BetaAccessRequestLogContext) {
+  return {
+    requestId: params.requestId,
+    betaAccessRequestId: params.betaAccessRequestId,
+    platform: params.platform,
+    source: params.source,
+    outcome: params.outcome,
+  };
+}
+
+export async function createBetaAccessRequest(
+  input: z.infer<typeof createBetaAccessRequestSchema>,
+  context: { requestId?: string } = {},
+) {
   const normalizedEmail = input.email.trim().toLowerCase();
   const normalizedCity = input.city?.trim() || null;
   const normalizedSource = input.source?.trim() || "landing";
@@ -94,13 +115,18 @@ export async function createBetaAccessRequest(input: z.infer<typeof createBetaAc
     },
   });
 
-  logOperationalEvent(undefined, "beta_access_request_upserted", {
-    email: normalizedEmail,
-    platform: input.platform,
-    source: normalizedSource,
-    city: normalizedCity,
-    requestId: null,
-  }, "info");
+  logOperationalEvent(
+    undefined,
+    "beta_access_request_upserted",
+    buildBetaAccessRequestLogContext({
+      requestId: context.requestId || null,
+      betaAccessRequestId: request.id,
+      platform: input.platform,
+      source: normalizedSource,
+      outcome: "upserted",
+    }),
+    "info",
+  );
 
   try {
     await sendBetaAccessConfirmationEmail({
@@ -109,12 +135,20 @@ export async function createBetaAccessRequest(input: z.infer<typeof createBetaAc
       platform: input.platform,
     });
   } catch (error) {
-    logWarn(undefined, "No pudimos enviar la confirmacion de beta access", {
-      email: normalizedEmail,
-      platform: input.platform,
-      city: normalizedCity,
-      error,
-    });
+    logWarn(
+      undefined,
+      "No pudimos enviar la confirmacion de beta access",
+      {
+        ...buildBetaAccessRequestLogContext({
+          requestId: context.requestId || null,
+          betaAccessRequestId: request.id,
+          platform: input.platform,
+          source: normalizedSource,
+          outcome: "email_confirmation_failed",
+        }),
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      },
+    );
   }
 
   return {

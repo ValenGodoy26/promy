@@ -74,6 +74,20 @@ function canUseWeakSecrets(appEnv: "development" | "test" | "production", allowW
   return appEnv === "development" && allowWeakSecrets === "1";
 }
 
+export type PublicRegistrationConfig = {
+  APP_ENV: "development" | "test" | "production";
+  PUBLIC_REGISTRATION_ENABLED?: "0" | "1";
+};
+
+/**
+ * Development and test stay usable without additional setup. Real environments
+ * are deliberately closed until both an explicit opt-in and a verified privacy
+ * contact have been configured.
+ */
+export function isPublicRegistrationEnabled(config: PublicRegistrationConfig) {
+  return config.APP_ENV !== "production" || config.PUBLIC_REGISTRATION_ENABLED === "1";
+}
+
 export const envSchema = z
   .object({
     NODE_ENV: z.preprocess(
@@ -133,6 +147,11 @@ export const envSchema = z
     S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
     S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
     ALLOW_WEAK_SECRETS: z.enum(["0", "1"]).optional(),
+    PUBLIC_REGISTRATION_ENABLED: z.enum(["0", "1"]).optional(),
+    PRIVACY_CONTACT_EMAIL: z.preprocess(
+      emptyStringToUndefined,
+      z.string().trim().email("PRIVACY_CONTACT_EMAIL debe ser un email valido").optional(),
+    ),
     JWT_SECRET: z.string().min(32, "JWT_SECRET debe tener al menos 32 caracteres"),
     JWT_REFRESH_SECRET: z
       .string()
@@ -322,6 +341,15 @@ export const envSchema = z
           code: z.ZodIssueCode.custom,
           path: ["JWT_REFRESH_SECRET"],
           message: "JWT_REFRESH_SECRET debe ser independiente de JWT_SECRET en produccion.",
+        });
+      }
+
+      if (env.PUBLIC_REGISTRATION_ENABLED === "1" && !env.PRIVACY_CONTACT_EMAIL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PRIVACY_CONTACT_EMAIL"],
+          message:
+            "PRIVACY_CONTACT_EMAIL es obligatoria para habilitar PUBLIC_REGISTRATION_ENABLED=1 en produccion.",
         });
       }
 

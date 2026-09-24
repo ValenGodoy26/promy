@@ -25,6 +25,7 @@ export default function LegalScreen({ navigation, route }: Props) {
   const alternateKind = kind === "privacy" ? "terms" : "privacy";
 
   const openMail = async () => {
+    if (!document.contactEmail) return;
     await Linking.openURL(`mailto:${document.contactEmail}`).catch(() => undefined);
   };
 
@@ -64,7 +65,7 @@ export default function LegalScreen({ navigation, route }: Props) {
           <View style={styles.heroGlowYellow} />
           <View style={styles.heroGlowRed} />
 
-          <Text style={styles.heroEyebrow}>Documento legal vigente</Text>
+          <Text style={styles.heroEyebrow}>Estado legal pre-piloto</Text>
           <Text style={styles.heroTitle}>{document.title}</Text>
           <Text style={styles.heroIntro}>{document.intro}</Text>
 
@@ -73,10 +74,19 @@ export default function LegalScreen({ navigation, route }: Props) {
             <MetaPill label="Versión" value={document.version} />
           </View>
 
-          <TouchableOpacity style={styles.contactButton} activeOpacity={0.9} onPress={openMail}>
-            <Feather name="mail" size={15} color={theme.colors.text} />
-            <Text style={styles.contactButtonText}>{document.contactEmail}</Text>
-          </TouchableOpacity>
+          {document.contactEmail ? (
+            <TouchableOpacity style={styles.contactButton} activeOpacity={0.9} onPress={openMail}>
+              <Feather name="mail" size={15} color={theme.colors.text} />
+              <Text style={styles.contactButtonText}>{document.contactEmail}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.contactPending}>
+              <Feather name="info" size={15} color={theme.colors.text} />
+              <Text style={styles.contactPendingText}>
+                Canal oficial pendiente antes del piloto
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.summaryGrid}>
@@ -289,6 +299,24 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 13,
     fontWeight: "900",
+  },
+  contactPending: {
+    marginTop: 14,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF8EA",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  contactPendingText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: "800",
   },
   summaryGrid: {
     gap: 12,

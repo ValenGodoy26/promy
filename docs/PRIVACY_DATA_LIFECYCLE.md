@@ -40,6 +40,46 @@ Estado: técnico, 2026-09-14. Este documento no certifica cumplimiento legal. La
 
 No se conserva email original, email sustituto ni hash del email. Una cuenta recreada es una identidad nueva; una eventual prevención de reutilización por persona requiere una decisión antifraude separada y una base jurídica explícita.
 
+## Derechos y bajas — estado operativo real
+
+### Capacidades self-service — IMPLEMENTED
+
+- CLIENT puede consultar y rectificar los datos expuestos por su perfil, solicitar cambio de email y gestionar notificaciones dentro de las capacidades actuales de la app.
+- CLIENT puede eliminar su cuenta desde la app. La operación revoca sesiones, borra push/notificaciones y elimina identidad, credenciales y canjes no consumados.
+- La baja conserva canjes `SUCCESS` anonimizados (`userId=NULL`) para no alterar cupos, métricas ni hechos comerciales.
+
+### Procedimientos asistidos — DECISION_REQUIRED
+
+- Baja, acceso o rectificación de cuentas Commerce y ADMIN.
+- Solicitudes formales de privacidad, identidad del responsable y canal oficial verificable.
+- Tratamiento de solicitudes beta, evidencia operativa y coordinación con proveedores reales.
+
+### Runbook mínimo cuando exista canal oficial
+
+1. Recibir la solicitud por el canal oficial ya configurado.
+2. Verificar la identidad de manera proporcional, sin pedir ni copiar datos innecesarios.
+3. Clasificar la solicitud: acceso, rectificación, supresión, oposición, cuenta Commerce/ADMIN o beta.
+4. Ejecutar la acción técnica autorizada y distinguir los datos que por diseño permanecen anonimizados.
+5. Guardar sólo la evidencia mínima necesaria para seguimiento operativo, sin replicar datos personales.
+6. Confirmar el resultado por el canal oficial.
+7. Cerrar el caso según el plazo legal que determine la revisión jurídica.
+
+No se definen plazos jurídicos propios en este documento. La revisión jurídica argentina debe determinar responsable, canal, procedimiento y plazos antes del piloto.
+
+## Reporte de retención — IMPLEMENTED (dry-run)
+
+`npm run privacy:retention-report -- --before=<timestamp ISO-8601>` genera únicamente conteos y rangos temporales para sesiones vencidas, tokens temporales vencidos, notificaciones, solicitudes beta, auditoría e inactividad de push. El timestamp es una referencia explícita del operador, **no** una política legal. El comando no ejecuta `DELETE` ni emite emails, nombres, tokens o contenidos de registros.
+
+Los uploads potencialmente huérfanos se revisan por separado con `npm run uploads:audit`, también en dry-run salvo `--delete` explícito. Ninguno de los dos reportes reemplaza una política definitiva de conservación.
+
+## Retención, plataformas y copias
+
+- La base de datos tiene comportamientos distintos por entidad; no existe una purga global que equivalga a una política legal aprobada.
+- Los logs stdout dependen de la plataforma donde se despliegue la API. La sanitización reduce secretos, pero el plazo y acceso operativo siguen pendientes.
+- Sentry sólo existe si se configura y su retención depende de la cuenta/proveedor real.
+- Backups, restauración y propagación de bajas dependen de la infraestructura que todavía debe definirse.
+- Uploads tienen lifecycle parcial: replace/delete compensado y auditoría de huérfanos; la validación del proveedor real sigue siendo externa.
+
 ## Uploads — IMPLEMENTED
 
 - Antes de decodificar se valida ancho, alto y presupuesto total de píxeles.

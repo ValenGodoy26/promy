@@ -1300,7 +1300,7 @@ function App() {
             {betaSuccess ? <p className="beta-form-status success">{betaSuccess}</p> : null}
             {betaError ? <p className="beta-form-status error">{betaError}</p> : null}
             <p className="subtle reveal delay-3" style={{ marginTop: 8 }}>
-              Al anotarte aceptás nuestras{" "}
+              Al solicitar acceso compartís tu email para gestionar esta etapa interna. Consultá nuestras{" "}
               <a href={buildPanelUrl("/terms")} className="faq-mail">
                 condiciones de uso
               </a>{" "}
@@ -1311,7 +1311,9 @@ function App() {
               .
             </p>
             <p className="subtle reveal delay-3" style={{ marginTop: 10 }}>
-              Guardamos tu pedido en PROMY para avisarte apenas habilitemos acceso para tu plataforma.
+              PROMY está en etapa pre-piloto. La política publicada describe el funcionamiento técnico
+              conocido; el responsable legal y el canal oficial de derechos deben definirse antes de
+              abrir registros externos.
             </p>
           </div>
         </div>
@@ -1365,26 +1367,25 @@ function App() {
         <div className="container">
           <div className="legal-band-head">
             <span className="section-kicker">Legal · Ley 25.326</span>
-            <h2>Documentos claros, completos y siempre visibles.</h2>
+            <h2>Documentos técnicos claros para la etapa pre-piloto.</h2>
             <p>
-              Antes de abrir mas cupos dejamos publicados los documentos completos: que datos trata
-              PROMY, cómo se usan y cuáles son las reglas para clientes, comercios y la plataforma.
+              Estos documentos explican el funcionamiento técnico actual de PROMY. No reemplazan la
+              revisión jurídica ni la publicación del responsable y canal oficial requeridos antes del piloto.
             </p>
           </div>
           <div className="legal-card-grid">
             <article className="legal-card" id="privacidad">
               <h3>Politica de privacidad</h3>
               <p>
-                Explica que datos recolecta PROMY, para que se usan, con quien se comparten y cuanto
-                tiempo se conservan y que derechos puedes ejercer sobre ellos.
+                Describe qué datos usa PROMY para operar el producto, con quién se comparten cuando es
+                necesario y qué capacidades técnicas existen hoy.
               </p>
               <p>
-                Incluye contacto de privacidad, criterios de conservacion, seguridad, derechos ARCO y
-                referencias concretas a la Ley 25.326 y la AAIP.
+                El responsable jurídico, el canal oficial de privacidad y las decisiones definitivas de
+                conservación siguen pendientes antes de abrir el piloto.
               </p>
               <p>
-                Si necesitas acceso, rectificacion o supresion de datos, tambien vas a encontrar el
-                canal exacto para pedirlo.
+                La versión publicada es pre-piloto y no sustituye una revisión jurídica argentina.
               </p>
               <a href={buildPanelUrl("/privacy")} className="legal-card-link">
                 Leer politica completa <ArrowRightMini />
@@ -1400,7 +1401,7 @@ function App() {
                 También aclaran qué hace PROMY, qué no hace, qué responsabilidad asume cada parte y
                 cómo se resuelven cambios, reclamos o conflictos.
               </p>
-              <p>Version vigente: mayo 2026.</p>
+              <p>Estado publicado: pre-piloto · versión 1.1-prepiloto.</p>
               <a href={buildPanelUrl("/terms")} className="legal-card-link">
                 Leer terminos completos <ArrowRightMini />
               </a>

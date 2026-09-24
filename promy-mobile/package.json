@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node scripts/test-session-storage.mjs && node scripts/test-sentry-sanitizer.mjs && node scripts/test-mobile-resilience.mjs && node scripts/test-commerce-contract.mjs",
+    "test": "node scripts/test-session-storage.mjs && node scripts/test-sentry-sanitizer.mjs && node scripts/test-mobile-resilience.mjs && node scripts/test-commerce-contract.mjs && node ../tools/test-legal-parity.mjs --surface=mobile",
     "typecheck": "tsc --noEmit",
     "eas:build:android:preview": "eas build --platform android --profile preview",
     "eas:build:ios:preview": "eas build --platform ios --profile preview"

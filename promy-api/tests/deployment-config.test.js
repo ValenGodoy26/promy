@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
-const { validateEnvironment } = require("../dist/config/env.js");
+const { isPublicRegistrationEnabled, validateEnvironment } = require("../dist/config/env.js");
 
 const API_ROOT = path.resolve(__dirname, "..");
 const ACCESS_SECRET = "A7zQ9mK2pR4sT6vW8yB1cD3fG5hJ7kL9nP2qS4uV6xZ8";
@@ -64,6 +64,32 @@ test("synthetic production configuration is accepted", () => {
 
   const startup = runConfig();
   assert.equal(startup.status, 0, `${startup.stdout}\n${startup.stderr}`);
+});
+
+test("public registration is fail-closed in production and usable by default in development/test", () => {
+  assert.equal(isPublicRegistrationEnabled({ APP_ENV: "development" }), true);
+  assert.equal(isPublicRegistrationEnabled({ APP_ENV: "test" }), true);
+  assert.equal(isPublicRegistrationEnabled({ APP_ENV: "production" }), false);
+  assert.equal(
+    isPublicRegistrationEnabled({ APP_ENV: "production", PUBLIC_REGISTRATION_ENABLED: "1" }),
+    true,
+  );
+});
+
+test("production registration opt-in requires a valid privacy contact", () => {
+  const missingContact = validateEnvironment(
+    productionEnvironment({ PUBLIC_REGISTRATION_ENABLED: "1" }),
+  );
+  assert.equal(missingContact.success, false);
+  assert.ok(missingContact.error.flatten().fieldErrors.PRIVACY_CONTACT_EMAIL);
+
+  const validContact = validateEnvironment(
+    productionEnvironment({
+      PUBLIC_REGISTRATION_ENABLED: "1",
+      PRIVACY_CONTACT_EMAIL: "privacy-contact@promy.invalid",
+    }),
+  );
+  assert.equal(validContact.success, true, validContact.success ? undefined : JSON.stringify(validContact.error.flatten()));
 });
 
 test("test environment keeps the isolated email provider available", () => {
