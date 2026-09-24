@@ -19,6 +19,7 @@ import betaRoutes from "../modules/beta/beta.routes";
 import statsRoutes from "../modules/stats/stats.routes";
 import analyticsRoutes from "../modules/analytics/analytics.routes";
 import billingCommerceRoutes, { adminBillingRouter } from "../modules/billing/billing.routes";
+import mercadoPagoWebhookRoutes from "../modules/billing/mercado-pago-webhooks.routes";
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.use("/realtime", realtimeRoutes);
 router.use("/beta", betaRoutes);
 router.use("/stats", statsRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/webhooks", mercadoPagoWebhookRoutes);
 
 export default router;

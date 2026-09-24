@@ -147,6 +147,11 @@ export const envSchema = z
     S3_BUCKET: z.string().trim().min(1).optional(),
     S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
     S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
+    MERCADO_PAGO_MODE: z.enum(["disabled", "sandbox", "production"]).default("disabled"),
+    MERCADO_PAGO_ACCESS_TOKEN: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
+    MERCADO_PAGO_WEBHOOK_SECRET: z.preprocess(emptyStringToUndefined, z.string().trim().min(16).optional()),
+    MERCADO_PAGO_PUBLIC_KEY: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
+    MERCADO_PAGO_BACK_URL: z.preprocess(emptyStringToUndefined, z.string().trim().url().optional()),
     ALLOW_WEAK_SECRETS: z.enum(["0", "1"]).optional(),
     PUBLIC_REGISTRATION_ENABLED: z.enum(["0", "1"]).optional(),
     PRIVACY_CONTACT_EMAIL: z.preprocess(
@@ -250,6 +255,12 @@ export const envSchema = z
     }
 
     if (production) {
+      if (env.MERCADO_PAGO_MODE === "production") {
+        for (const [name, value] of [["MERCADO_PAGO_ACCESS_TOKEN", env.MERCADO_PAGO_ACCESS_TOKEN], ["MERCADO_PAGO_WEBHOOK_SECRET", env.MERCADO_PAGO_WEBHOOK_SECRET], ["MERCADO_PAGO_BACK_URL", env.MERCADO_PAGO_BACK_URL]] as const) {
+          if (!value || isWeakProviderSecret(value)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [name], message: `${name} es obligatoria y debe ser segura para Mercado Pago production.` });
+        }
+        if (env.MERCADO_PAGO_BACK_URL && !isSecurePublicUrl(env.MERCADO_PAGO_BACK_URL)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["MERCADO_PAGO_BACK_URL"], message: "MERCADO_PAGO_BACK_URL debe ser HTTPS no local en production." });
+      }
       if (!isProductionDatabaseUrl(env.DATABASE_URL)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

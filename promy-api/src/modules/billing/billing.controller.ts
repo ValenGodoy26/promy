@@ -15,12 +15,14 @@ import {
   revokeComplimentaryCoverage,
   updateBillingSettings,
 } from "./billing.service";
+import { cancelMercadoPagoSubscription, ensureMercadoPagoPlan, reconcileMercadoPagoSubscription, refreshMercadoPagoSubscription, startMercadoPagoEnrollment } from "./mercado-pago.service";
 
 const dateSchema = z.string().datetime().transform((value) => new Date(value));
 const settingsSchema = z.object({ mode: z.nativeEnum(BillingMode), billingStartsAt: dateSchema.nullable().optional(), monthlyPrice: z.number().positive().finite().nullable().optional() });
 const complimentarySchema = z.object({ startsAt: dateSchema.optional(), endsAt: dateSchema.nullable().optional(), months: z.number().int().min(1).max(120).optional(), reason: z.string().trim().max(1000).optional() }).refine((value) => !(value.endsAt && value.months), { message: "Usa fecha final o meses, no ambos." });
 const manualPaymentSchema = z.object({ amount: z.number().positive().finite(), months: z.number().int().min(1).max(24).optional(), reference: z.string().trim().max(190).optional(), note: z.string().trim().max(2000).optional(), idempotencyKey: z.string().trim().min(8).max(190).optional() });
 const reverseSchema = z.object({ note: z.string().trim().max(2000).optional() });
+const enrollmentSchema = z.object({ cardToken: z.string().trim().min(8).max(512) });
 
 function sendError(req: AuthRequest, res: Response, label: string, error: unknown) {
   if (isBillingServiceError(error)) return res.status(error.statusCode).json({ ok: false, message: error.message, ...(error.details ?? {}) });
@@ -33,6 +35,16 @@ export async function getCommerceSubscription(req: AuthRequest, res: Response) {
     if (!req.managedCommerce) return res.status(500).json({ ok: false, message: "No pudimos resolver tu comercio." });
     return res.json({ ok: true, subscription: await getCommerceBillingSummary(req.managedCommerce.id) });
   } catch (error) { return sendError(req, res, "Get commerce billing subscription error", error); }
+}
+
+export async function startCommerceSubscription(req: AuthRequest, res: Response) {
+  try { if (!req.managedCommerce) return res.status(500).json({ ok: false, message: "No pudimos resolver tu comercio." }); const parsed = enrollmentSchema.safeParse(req.body); if (!parsed.success) return res.status(400).json({ ok: false, message: "Datos de suscripción inválidos." }); const result = await startMercadoPagoEnrollment(req.managedCommerce.id, parsed.data.cardToken); return res.status(result.duplicate ? 200 : 201).json({ ok: true, enrollment: result }); } catch (error) { return sendError(req, res, "Start commerce subscription error", error); }
+}
+export async function cancelCommerceSubscription(req: AuthRequest, res: Response) {
+  try { if (!req.managedCommerce) return res.status(500).json({ ok: false, message: "No pudimos resolver tu comercio." }); return res.json({ ok: true, subscription: await cancelMercadoPagoSubscription(req.managedCommerce.id) }); } catch (error) { return sendError(req, res, "Cancel commerce subscription error", error); }
+}
+export async function refreshCommerceSubscription(req: AuthRequest, res: Response) {
+  try { if (!req.managedCommerce) return res.status(500).json({ ok: false, message: "No pudimos resolver tu comercio." }); return res.json({ ok: true, subscription: await refreshMercadoPagoSubscription(req.managedCommerce.id) }); } catch (error) { return sendError(req, res, "Refresh commerce subscription error", error); }
 }
 
 export async function getAdminBillingSettings(req: AuthRequest, res: Response) {
@@ -48,6 +60,12 @@ export async function patchAdminBillingSettings(req: AuthRequest, res: Response)
     const settings = await updateBillingSettings({ actorUserId: req.user.userId, ...parsed.data });
     return res.json({ ok: true, settings });
   } catch (error) { return sendError(req, res, "Update billing settings error", error); }
+}
+export async function provisionMercadoPagoPlan(req: AuthRequest, res: Response) {
+  try { if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." }); return res.json({ ok: true, settings: await ensureMercadoPagoPlan(req.user.userId) }); } catch (error) { return sendError(req, res, "Provision Mercado Pago plan error", error); }
+}
+export async function reconcileAdminBillingSubscription(req: AuthRequest, res: Response) {
+  try { const commerceId = Number(req.params.commerceId); if (!Number.isInteger(commerceId) || commerceId <= 0) return res.status(400).json({ ok: false, message: "Comercio inválido." }); if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." }); return res.json({ ok: true, subscription: await reconcileMercadoPagoSubscription(commerceId, req.user.userId) }); } catch (error) { return sendError(req, res, "Reconcile Mercado Pago subscription error", error); }
 }
 
 export async function getAdminBillingSubscriptions(req: AuthRequest, res: Response) {

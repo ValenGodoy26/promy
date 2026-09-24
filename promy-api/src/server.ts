@@ -17,6 +17,7 @@ import {
   stopPromotionAnalyticsReceiptCleanupLoop,
 } from "./modules/analytics/analytics.service";
 import { startBillingMaintenanceLoop, stopBillingMaintenanceLoop } from "./modules/billing/billing.service";
+import { startMercadoPagoReconciliationLoop, stopMercadoPagoReconciliationLoop } from "./modules/billing/mercado-pago.service";
 
 initApiSentry();
 
@@ -26,6 +27,7 @@ const bootstrap = async () => {
     startPromotionExpirationLoop();
     startPromotionAnalyticsReceiptCleanupLoop();
     startBillingMaintenanceLoop();
+    startMercadoPagoReconciliationLoop();
 
     const server = app.listen(env.PORT, () => {
       logInfo(undefined, "PROMY API iniciada", {
@@ -41,6 +43,7 @@ const bootstrap = async () => {
         stopPromotionExpirationLoop();
         stopPromotionAnalyticsReceiptCleanupLoop();
         stopBillingMaintenanceLoop();
+        stopMercadoPagoReconciliationLoop();
       },
       closeRealtime: closeAllRealtimeClients,
       closeCache: () => sharedTtlCache.close(),

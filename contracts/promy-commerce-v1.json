@@ -79,7 +79,7 @@
       }
     }
   },
-  "billing": {
+    "billing": {
     "currency": "ARS",
     "modes": ["OFF", "SCHEDULED", "ON"],
     "coverageSources": ["BETA_FREE", "MERCADO_PAGO", "MANUAL", "COMPLIMENTARY"],
@@ -95,11 +95,18 @@
       "privilegedWriteRole": "SUPER_ADMIN",
       "operations": ["complimentary", "revoke-complimentary", "manual-payment", "manual-payment-reversal"]
     },
-    "rules": {
+      "rules": {
       "graceDays": 5,
       "legacyBetaTransitionDays": 5,
       "manualPaymentsImmutable": true,
-      "browserReturnCannotActivateCoverage": true
+        "browserReturnCannotActivateCoverage": true
+      },
+      "providerEnrollment": {
+        "providerIndependent": true,
+        "commerceEndpoints": ["GET /commerce/subscription", "POST /commerce/subscription/enroll", "POST /commerce/subscription/cancel", "POST /commerce/subscription/refresh"],
+        "adminEndpoints": ["POST /admin/billing/mercado-pago/plan", "POST /admin/billing/:commerceId/reconcile"],
+        "enrollmentResponse": ["status", "initPoint|null", "duplicate"],
+        "forbiddenFields": ["accessToken", "webhookSecret", "cardToken", "payerEmail"]
+      }
     }
-  }
 }

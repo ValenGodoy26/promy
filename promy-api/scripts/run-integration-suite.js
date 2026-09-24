@@ -30,6 +30,7 @@ const SMOKES = [
   "scripts/qa-pagination-smoke.js",
   "scripts/qa-promotion-analytics-smoke.js",
   "scripts/qa-billing-domain-smoke.js",
+  "scripts/qa-mercado-pago-smoke.js",
 ];
 
 function getAvailablePort() {
@@ -64,6 +65,8 @@ async function main() {
     CORS_ORIGIN: "http://localhost:5173,http://127.0.0.1:5173",
     PUBLIC_WEB_URL: "http://localhost:5173",
     PUBLIC_API_BASE_URL: `http://127.0.0.1:${port}`,
+    MERCADO_PAGO_BACK_URL: `http://127.0.0.1:${port}/commerce/subscription/return`,
+    MERCADO_PAGO_WEBHOOK_SECRET: "mercado-pago-integration-webhook-secret",
     AUTH_EMAIL_PROVIDER: "test",
     AUTH_EMAIL_FROM: "PROMY Tests <no-reply@promy.test>",
     JWT_SECRET: "9f84k2m1q7r6x5a4n8c3v2b7p6d1s9h4j8k2m5",
