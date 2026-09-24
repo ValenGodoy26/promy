@@ -6,6 +6,7 @@ type ApiRequestOptions = {
   body?: unknown;
   auth?: boolean;
   skipAuthRefresh?: boolean;
+  suppressSessionInvalidation?: boolean;
 };
 
 type ApiAuthHandlers = {
@@ -84,7 +85,12 @@ export async function apiRequest<T>(
             ? data.message
             : null) || `Error ${response.status}`;
 
-        if (response.status === 401 && shouldAttachAuth && !options.token) {
+        if (
+          response.status === 401 &&
+          shouldAttachAuth &&
+          !options.token &&
+          !options.suppressSessionInvalidation
+        ) {
           await authHandlers.clearSession();
         }
 

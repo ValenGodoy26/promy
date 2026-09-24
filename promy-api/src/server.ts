@@ -12,6 +12,10 @@ import { flushApiSentry } from "./shared/observability/sentry";
 import { closeAllRealtimeClients } from "./modules/realtime/realtime.service";
 import { sharedTtlCache } from "./shared/cache/ttlCache";
 import { createShutdownController } from "./shared/server/shutdown";
+import {
+  startPromotionAnalyticsReceiptCleanupLoop,
+  stopPromotionAnalyticsReceiptCleanupLoop,
+} from "./modules/analytics/analytics.service";
 
 initApiSentry();
 
@@ -19,6 +23,7 @@ const bootstrap = async () => {
   try {
     await prisma.$connect();
     startPromotionExpirationLoop();
+    startPromotionAnalyticsReceiptCleanupLoop();
 
     const server = app.listen(env.PORT, () => {
       logInfo(undefined, "PROMY API iniciada", {
@@ -30,7 +35,10 @@ const bootstrap = async () => {
     const runShutdown = createShutdownController({
       server,
       timeoutMs: 10_000,
-      stopBackgroundWork: stopPromotionExpirationLoop,
+      stopBackgroundWork: () => {
+        stopPromotionExpirationLoop();
+        stopPromotionAnalyticsReceiptCleanupLoop();
+      },
       closeRealtime: closeAllRealtimeClients,
       closeCache: () => sharedTtlCache.close(),
       disconnectDatabase: () => prisma.$disconnect(),

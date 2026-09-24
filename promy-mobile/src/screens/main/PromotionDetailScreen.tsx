@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -34,6 +34,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useFavorites } from "../../context/FavoritesContext";
 import type { MainStackParamList } from "../../navigation/types";
 import { buildValidationDeepLink } from "../../services/deepLinks";
+import { trackPromotionOpen } from "../../services/promotionAnalytics";
 import { theme } from "../../styles/theme";
 import type { ApiRedemption, PromotionDetail, ValidationMethod } from "../../types/api";
 import {
@@ -56,6 +57,7 @@ type FeedbackTone = "info" | "success" | "error";
 export default function PromotionDetailScreen() {
   const navigation = useNavigation<PromotionDetailNavigation>();
   const route = useRoute<PromotionDetailRoute>();
+  const isFocused = useIsFocused();
   const { session, signOut } = useAuth();
   const { isPromotionFavorite, togglePromotionFavorite } = useFavorites();
 
@@ -124,6 +126,12 @@ export default function PromotionDetailScreen() {
   useEffect(() => {
     void loadPromotion();
   }, [route.params.promotionId]);
+
+  useEffect(() => {
+    if (isFocused && promotion?.id === route.params.promotionId) {
+      trackPromotionOpen(promotion.id);
+    }
+  }, [isFocused, promotion?.id, route.params.promotionId]);
 
   const validationMethod: ValidationMethod | null = useMemo(
     () => promotion?.validationMethod || null,

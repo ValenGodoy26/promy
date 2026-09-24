@@ -17,6 +17,7 @@ import searchRoutes from "../modules/search/search.routes";
 import realtimeRoutes from "../modules/realtime/realtime.routes";
 import betaRoutes from "../modules/beta/beta.routes";
 import statsRoutes from "../modules/stats/stats.routes";
+import analyticsRoutes from "../modules/analytics/analytics.routes";
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use("/search", searchRoutes);
 router.use("/realtime", realtimeRoutes);
 router.use("/beta", betaRoutes);
 router.use("/stats", statsRoutes);
+router.use("/analytics", analyticsRoutes);
 
 export default router;

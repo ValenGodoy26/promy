@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import {
@@ -40,6 +40,7 @@ import {
 import { theme } from "../../styles/theme";
 import { ApiCategory, ApiCommerce, FeedPromotion } from "../../types/api";
 import { formatAuthError } from "../../utils/promy";
+import { trackPromotionImpression } from "../../services/promotionAnalytics";
 
 const EXPLORE_PAGE_SIZE = 24;
 const RECENT_SEARCHES_LIMIT = 6;
@@ -63,6 +64,7 @@ function mergeById<T extends { id: number }>(current: T[], incoming: T[]) {
 }
 
 export default function CommercesScreen() {
+  const isFocused = useIsFocused();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { session } = useAuth();
   const [categories, setCategories] = useState<ApiCategory[]>([]);
@@ -87,6 +89,28 @@ export default function CommercesScreen() {
   const [hasMoreCommerces, setHasMoreCommerces] = useState(true);
   const searchRequestIdRef = useRef(0);
   const endReachedLockedRef = useRef(true);
+  const focusedRef = useRef(isFocused);
+  const tabRef = useRef<ExploreTab>("promotions");
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 750,
+    waitForInteraction: false,
+  }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item: FeedPromotion | ApiCommerce }> }) => {
+    if (!focusedRef.current || tabRef.current !== "promotions") return;
+    for (const item of viewableItems) {
+      const promotion = item.item as FeedPromotion;
+      if (promotion && typeof promotion.id === "number") trackPromotionImpression(promotion.id);
+    }
+  }).current;
+
+  useEffect(() => {
+    focusedRef.current = isFocused;
+  }, [isFocused]);
+
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
 
   const loadBrowsePage = async (page = 1) => {
     if (!location) return;
@@ -443,6 +467,8 @@ export default function CommercesScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         onEndReachedThreshold={0.4}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
         onEndReached={() => void loadMoreBrowseResults()}
         onMomentumScrollBegin={() => {
           endReachedLockedRef.current = false;

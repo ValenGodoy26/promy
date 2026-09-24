@@ -55,6 +55,11 @@ enum RedemptionStatus {
   CANCELLED
 }
 
+enum PromotionAnalyticsEventType {
+  IMPRESSION
+  OPEN
+}
+
 enum AppNotificationType {
   REDEMPTION_VALIDATED
   REDEMPTION_CREATED
@@ -237,6 +242,37 @@ model Promotion {
   @@fulltext([description])
   @@fulltext([conditions])
   @@fulltext([description, conditions, title], map: "Promotion_catalog_fulltext_idx")
+}
+
+// Analytics intentionally keeps only aggregate facts and irreversible, short-lived
+// deduplication keys. There are no foreign keys here: deleting a promotion or an
+// account must not cascade into historical aggregate measurements.
+model PromotionAnalyticsDaily {
+  id          Int      @id @default(autoincrement())
+  promotionId Int
+  commerceId  Int
+  day         DateTime @db.Date
+  impressions Int      @default(0)
+  opens       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([promotionId, day])
+  @@index([commerceId, day])
+  @@index([promotionId, day])
+  @@index([day])
+}
+
+model PromotionAnalyticsReceipt {
+  id          Int                        @id @default(autoincrement())
+  dedupeKey   String                     @unique @db.Char(64)
+  promotionId Int
+  eventType   PromotionAnalyticsEventType
+  createdAt   DateTime                   @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+  @@index([promotionId, eventType])
 }
 
 model PromotionSchedule {

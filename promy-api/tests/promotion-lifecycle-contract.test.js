@@ -52,3 +52,14 @@ test("API commerce redemption projection matches the versioned privacy contract"
     assert.equal(selectedUserFields.includes(forbiddenField), false, `forbidden user field ${forbiddenField}`);
   }
 });
+
+test("API promotion analytics semantics match the versioned commerce contract", () => {
+  const analytics = contract.promotionAnalytics;
+  assert.deepEqual(analytics.eventTypes, ["IMPRESSION", "OPEN"]);
+  assert.equal(analytics.impression.itemVisiblePercentThreshold, 50);
+  assert.equal(analytics.impression.minimumViewTimeMs, 750);
+  assert.equal(analytics.impression.waitForInteraction, false);
+  assert.equal(analytics.session.memoryOnly, true);
+  assert.equal(analytics.receipt.storesRawSessionId, false);
+  assert.equal(analytics.receipt.storesUserId, false);
+});

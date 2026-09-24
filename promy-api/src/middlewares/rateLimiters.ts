@@ -185,3 +185,13 @@ export const realtimeLimiter = rateLimit({
     "Se alcanzo el limite temporal de conexiones en tiempo real. Espera unos minutos antes de reconectar.",
   ),
 });
+
+export const analyticsIngestionLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: buildMessage(
+    "Se alcanzo el limite temporal de mediciones. La app seguira funcionando normalmente.",
+  ),
+});

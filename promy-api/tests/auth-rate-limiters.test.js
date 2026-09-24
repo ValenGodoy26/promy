@@ -5,6 +5,7 @@ const express = require("express");
 
 const {
   loginLimiter,
+  analyticsIngestionLimiter,
   logoutLimiter,
   passwordResetLimiter,
   refreshLimiter,
@@ -22,6 +23,7 @@ async function withServer(run) {
   app.post("/verification", verificationLimiter, ok);
   app.post("/logout", logoutLimiter, ok);
   app.post("/reset", passwordResetLimiter, ok);
+  app.post("/analytics", analyticsIngestionLimiter, ok);
 
   const server = await new Promise((resolve) => {
     const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
@@ -59,5 +61,15 @@ test("refresh traffic does not consume registration, verification, logout or rec
     assert.equal((await post(baseUrl, "/refresh")).status, 200);
     assert.equal((await post(baseUrl, "/verification")).status, 200);
     assert.equal((await post(baseUrl, "/logout")).status, 200);
+  });
+});
+
+test("analytics has an isolated bounded ingestion budget", async () => {
+  await withServer(async (baseUrl) => {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      assert.equal((await post(baseUrl, "/analytics")).status, 200);
+    }
+    assert.equal((await post(baseUrl, "/analytics")).status, 429);
+    assert.equal((await post(baseUrl, "/refresh")).status, 200);
   });
 });

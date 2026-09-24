@@ -80,3 +80,10 @@ test("business dates preserve their calendar day across month and year boundarie
   assert.match(formatBusinessDate("2026-12-31T00:00:00.000Z"), /^31\D/);
   assert.match(formatBusinessDate("2027-01-01T00:00:00.000Z"), /^01\D/);
 });
+
+test("commerce analytics contract keeps measured coverage and unambiguous rates", () => {
+  const analytics = commerceContract.promotionAnalytics;
+  assert.equal(analytics.commerceStatistics.timezone, "PROMOTION_TIMEZONE");
+  assert.equal(analytics.commerceStatistics.nullBeforeCoverage, true);
+  assert.equal(analytics.commerceStatistics.rates.finalConversion, "validated/impressions");
+});

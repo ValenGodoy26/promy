@@ -9,6 +9,7 @@ const { isPublicRegistrationEnabled, validateEnvironment } = require("../dist/co
 const API_ROOT = path.resolve(__dirname, "..");
 const ACCESS_SECRET = "A7zQ9mK2pR4sT6vW8yB1cD3fG5hJ7kL9nP2qS4uV6xZ8";
 const REFRESH_SECRET = "R8xV6uS4qP2nL9kJ7hG5fD3cB1yW8vT6sR4pK2mQ9zA7";
+const ANALYTICS_SECRET = "M3nP8qR5sT1vW7xY2zA4bC6dE9fG0hJkL8mN5pQ2rS6";
 
 function productionEnvironment(overrides = {}) {
   return {
@@ -18,6 +19,7 @@ function productionEnvironment(overrides = {}) {
     DATABASE_URL: "mysql://promy_owner:N7pQ4vM8xK2s@db.internal.internal.invalid/promy_prod",
     JWT_SECRET: ACCESS_SECRET,
     JWT_REFRESH_SECRET: REFRESH_SECRET,
+    ANALYTICS_HMAC_SECRET: ANALYTICS_SECRET,
     CORS_ORIGIN: "https://panel.promy.invalid",
     PUBLIC_WEB_URL: "https://panel.promy.invalid",
     PUBLIC_API_BASE_URL: "https://api.promy.invalid",
@@ -100,6 +102,7 @@ test("test environment keeps the isolated email provider available", () => {
     DATABASE_URL: "mysql://root:qa_password@127.0.0.1:3306/promy_integration_test",
     JWT_SECRET: ACCESS_SECRET,
     JWT_REFRESH_SECRET: REFRESH_SECRET,
+    ANALYTICS_HMAC_SECRET: ANALYTICS_SECRET,
     CORS_ORIGIN: "http://127.0.0.1:5173",
     PUBLIC_WEB_URL: "http://127.0.0.1:5173",
     PUBLIC_API_BASE_URL: "http://127.0.0.1:4000",
@@ -119,6 +122,7 @@ test("development keeps explicit local weak-secret override", () => {
     DATABASE_URL: "mysql://root@127.0.0.1:3306/promy_db",
     JWT_SECRET: "development-secret-allowed-locally-123456",
     JWT_REFRESH_SECRET: "development-refresh-secret-allowed-123456",
+    ANALYTICS_HMAC_SECRET: "development-analytics-secret-allowed-123456",
     CORS_ORIGIN: "*",
     AUTH_EMAIL_PROVIDER: "console",
     UPLOADS_DRIVER: "local",

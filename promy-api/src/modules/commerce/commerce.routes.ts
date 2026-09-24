@@ -16,6 +16,7 @@ import {
   getMyCommerce,
   getMyPromotions,
   getMyRedemptions,
+  getCommerceStatistics,
   updateMyCommerceStatus,
   validateCommerceRedemption,
   updateMyCommerce,
@@ -44,6 +45,7 @@ router.put("/promotions/:id", requireOperableCommerce, updateMyPromotion);
 router.delete("/promotions/:id", requireOperableCommerce, deleteMyPromotion);
 
 router.get("/redemptions", getMyRedemptions);
+router.get("/statistics", getCommerceStatistics);
 router.post(
   "/redemptions/validate",
   redemptionValidationLimiter,

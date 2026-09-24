@@ -12,8 +12,10 @@ import { FavoritesProvider } from "./src/context/FavoritesContext";
 import { NotificationsProvider } from "./src/context/NotificationsContext";
 import { initMobileSentry, setMobileSentryRouteContext, setMobileSentryUserContext, Sentry } from "./src/lib/sentry";
 import { theme } from "./src/styles/theme";
+import { initializePromotionAnalytics } from "./src/services/promotionAnalytics";
 
 initMobileSentry();
+initializePromotionAnalytics();
 
 function ObservabilityBridge() {
   const { session } = useAuth();

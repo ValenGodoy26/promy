@@ -10,5 +10,7 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET || "promy-local-jwt-s3cret-9f84k2m1q7r6x5a4";
 process.env.JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "promy-local-refresh-s3cret-8d73j1n2p4q6w9";
+process.env.ANALYTICS_HMAC_SECRET =
+  process.env.ANALYTICS_HMAC_SECRET || "promy-local-analytics-s3cret-4m2n8p6q9r7t5v3";
 process.env.DATABASE_URL =
   process.env.DATABASE_URL || "mysql://promy:promy@localhost:3306/promy_test";

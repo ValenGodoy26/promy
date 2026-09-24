@@ -14,6 +14,7 @@ import type {
   CommerceManagedPromotionResponse,
   CommerceManagedPromotionsResponse,
   CommerceManagedRedemptionsResponse,
+  CommerceStatisticsResponse,
   CommerceValidateRedemptionResponse,
   CreateCommercePromotionInput,
   DeleteCommercePromotionResponse,
@@ -304,6 +305,21 @@ export async function fetchCommerceRedemptions(session: AuthSession) {
     cursor = page.hasMore ? page.nextCursor ?? null : null;
   } while (cursor);
   return { ok: true, redemptions, hasMore: false, nextCursor: null };
+}
+
+export async function fetchCommerceStatistics(
+  session: AuthSession,
+  query: { range: "today" | "7d" | "30d" | "custom"; from?: string; to?: string },
+) {
+  const params = new URLSearchParams({ range: query.range });
+  if (query.range === "custom" && query.from && query.to) {
+    params.set("from", query.from);
+    params.set("to", query.to);
+  }
+  return request<CommerceStatisticsResponse>(`/commerce/statistics?${params.toString()}`, {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
 }
 
 export async function validateCommerceRedemption(

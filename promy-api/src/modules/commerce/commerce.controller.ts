@@ -23,6 +23,10 @@ import {
   validateCommerceRedemptionByCode,
   validateRedemptionSchema,
 } from "../redemptions/redemptions.service";
+import {
+  commerceStatisticsQuerySchema,
+  getCommerceStatisticsByOwner,
+} from "../analytics/analytics.service";
 
 function handleCommerceServiceError(error: unknown, res: Response) {
   if (isCommerceServiceError(error)) {
@@ -353,6 +357,22 @@ export const getMyRedemptions = async (req: AuthRequest, res: Response) => {
       ok: false,
       message: "Error interno al obtener los canjes del comercio",
     });
+  }
+};
+
+export const getCommerceStatistics = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ ok: false, message: "No autenticado" });
+
+    const parsed = commerceStatisticsQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Rango de estadísticas invalido" });
+
+    const statistics = await getCommerceStatisticsByOwner(userId, parsed.data);
+    return res.status(200).json({ ok: true, statistics });
+  } catch (error) {
+    logControllerError(req, "Get commerce statistics error", error);
+    return res.status(500).json({ ok: false, message: "Error interno al obtener las estadísticas" });
   }
 };
 

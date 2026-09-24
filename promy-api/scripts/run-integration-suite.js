@@ -28,6 +28,7 @@ const SMOKES = [
   "scripts/qa-api-correctness-smoke.js",
   "scripts/qa-data-security-smoke.js",
   "scripts/qa-pagination-smoke.js",
+  "scripts/qa-promotion-analytics-smoke.js",
 ];
 
 function getAvailablePort() {
@@ -66,6 +67,7 @@ async function main() {
     AUTH_EMAIL_FROM: "PROMY Tests <no-reply@promy.test>",
     JWT_SECRET: "9f84k2m1q7r6x5a4n8c3v2b7p6d1s9h4j8k2m5",
     JWT_REFRESH_SECRET: "8d73j1n2p4q6w9z5c7v3b8m1k6s2h9f4q7r5t3y1",
+    ANALYTICS_HMAC_SECRET: "analytics-qa-s3cret-6d2k9m4p7r1t8v5w3x0y",
     SEED_MODE: "demo",
     SEED_ADMIN_EMAIL: "admin@promy.com",
     SEED_ADMIN_PASSWORD: "demo1234",

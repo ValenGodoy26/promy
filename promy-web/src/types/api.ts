@@ -369,6 +369,54 @@ export type CommerceManagedRedemptionsResponse = {
   nextCursor?: number | null;
 };
 
+export type CommerceStatisticsRange = {
+  preset: "today" | "7d" | "30d" | "custom";
+  from: string;
+  to: string;
+};
+
+export type CommerceStatisticsSeriesPoint = {
+  date: string;
+  impressions: number | null;
+  opens: number | null;
+  generated: number;
+  validated: number;
+};
+
+export type CommercePromotionStatistics = {
+  promotionId: number;
+  title: string;
+  status: string;
+  impressions: number | null;
+  opens: number | null;
+  generated: number;
+  validated: number;
+  openRate: number | null;
+  redemptionRate: number | null;
+  finalConversion: number | null;
+  validationRate: number | null;
+};
+
+export type CommerceStatistics = {
+  timezone: string;
+  range: CommerceStatisticsRange;
+  analyticsDataFrom: string | null;
+  summary: {
+    impressions: number | null;
+    opens: number | null;
+    generatedRedemptions: number;
+    validatedRedemptions: number;
+    openRate: number | null;
+    redemptionRate: number | null;
+    finalConversion: number | null;
+    validationRate: number | null;
+  };
+  series: CommerceStatisticsSeriesPoint[];
+  promotions: CommercePromotionStatistics[];
+};
+
+export type CommerceStatisticsResponse = { ok: boolean; statistics: CommerceStatistics };
+
 export type CommerceValidateRedemptionResponse = {
   ok: boolean;
   message?: string;

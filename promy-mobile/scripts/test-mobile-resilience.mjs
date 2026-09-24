@@ -6,6 +6,7 @@ import {
   isTerminalRefreshStatus,
 } from "../src/auth/sessionLifecycle.ts";
 import { resolvePromyLocation } from "../src/services/locationCore.ts";
+import { createPromotionAnalyticsClient } from "../src/services/promotionAnalyticsCore.ts";
 
 const fallback = {
   latitude: -31.392,
@@ -156,6 +157,44 @@ async function testLocationPermissions() {
   assert.equal(timeout.fallbackReason, "timeout");
 }
 
+async function testPromotionAnalytics() {
+  let now = 1_000;
+  const sent = [];
+  const client = createPromotionAnalyticsClient(async (sessionId, events) => {
+    sent.push({ sessionId, events });
+  }, () => now);
+
+  client.track(15, "IMPRESSION");
+  client.track(15, "IMPRESSION");
+  client.track(15, "OPEN");
+  await client.flush();
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].events, [
+    { promotionId: 15, type: "IMPRESSION" },
+    { promotionId: 15, type: "OPEN" },
+  ]);
+
+  const firstSession = sent[0].sessionId;
+  now += 24 * 60 * 60 * 1000;
+  client.track(15, "IMPRESSION");
+  await client.flush();
+  assert.equal(sent.length, 2, "a 24-hour session rotation permits a new measurement");
+  assert.notEqual(sent[1].sessionId, firstSession);
+
+  const batches = [];
+  const batched = createPromotionAnalyticsClient(async (_sessionId, events) => { batches.push(events); });
+  for (let id = 1; id <= 12; id += 1) batched.track(id, "IMPRESSION");
+  await batched.flush();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(batches.every((events) => events.length <= 10), true, "analytics batches stay bounded");
+
+  const failing = createPromotionAnalyticsClient(async () => { throw new Error("offline"); });
+  failing.track(99, "OPEN");
+  await failing.flush();
+  assert.equal(failing.debug().queueSize, 0, "terminal analytics failures are dropped safely");
+}
+
 await testSessionResilience();
 await testLocationPermissions();
+await testPromotionAnalytics();
 console.log("mobile auth and location resilience cases: PASS");

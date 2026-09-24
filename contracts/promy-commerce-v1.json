@@ -49,5 +49,34 @@
   "cursorPagination": {
     "hasMore": "boolean",
     "nextCursor": "number|null"
+  },
+  "promotionAnalytics": {
+    "eventTypes": ["IMPRESSION", "OPEN"],
+    "impression": {
+      "itemVisiblePercentThreshold": 50,
+      "minimumViewTimeMs": 750,
+      "waitForInteraction": false
+    },
+    "session": {
+      "memoryOnly": true,
+      "ttlHours": 24,
+      "dedupe": "promotionId:eventType"
+    },
+    "receipt": {
+      "retentionHours": 48,
+      "storesRawSessionId": false,
+      "storesUserId": false
+    },
+    "commerceStatistics": {
+      "timezone": "PROMOTION_TIMEZONE",
+      "analyticsDataFrom": "YYYY-MM-DD|null",
+      "nullBeforeCoverage": true,
+      "rates": {
+        "openRate": "opens/impressions",
+        "redemptionRate": "generated/opens",
+        "finalConversion": "validated/impressions",
+        "validationRate": "validated/generated"
+      }
+    }
   }
 }

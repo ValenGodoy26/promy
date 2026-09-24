@@ -112,6 +112,7 @@ export const envSchema = z
       .url("PUBLIC_API_BASE_URL debe ser una URL valida")
       .optional(),
     PROMOTION_TIMEZONE: z.string().trim().min(1).default("America/Argentina/Buenos_Aires"),
+    ANALYTICS_HMAC_SECRET: z.string().min(32, "ANALYTICS_HMAC_SECRET debe tener al menos 32 caracteres"),
     SENTRY_DSN: z.preprocess(
       emptyStringToUndefined,
       z.string().trim().url("SENTRY_DSN debe ser una URL valida").optional(),
@@ -237,6 +238,15 @@ export const envSchema = z
             "JWT_REFRESH_SECRET es demasiado debil. Usa un secreto aleatorio de al menos 32 caracteres. Solo puedes permitir secretos debiles en development con ALLOW_WEAK_SECRETS=1.",
         });
       }
+
+      if (isWeakJwtSecret(env.ANALYTICS_HMAC_SECRET)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ANALYTICS_HMAC_SECRET"],
+          message:
+            "ANALYTICS_HMAC_SECRET es demasiado debil. Usa un secreto aleatorio e independiente de al menos 32 caracteres.",
+        });
+      }
     }
 
     if (production) {
@@ -341,6 +351,17 @@ export const envSchema = z
           code: z.ZodIssueCode.custom,
           path: ["JWT_REFRESH_SECRET"],
           message: "JWT_REFRESH_SECRET debe ser independiente de JWT_SECRET en produccion.",
+        });
+      }
+
+      if (
+        env.ANALYTICS_HMAC_SECRET === env.JWT_SECRET ||
+        env.ANALYTICS_HMAC_SECRET === env.JWT_REFRESH_SECRET
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ANALYTICS_HMAC_SECRET"],
+          message: "ANALYTICS_HMAC_SECRET debe ser independiente de los secretos JWT en produccion.",
         });
       }
 
