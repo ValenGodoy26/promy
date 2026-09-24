@@ -103,6 +103,9 @@ async function main() {
     assert(afterCoverage?.impressions === 1 && afterCoverage?.opens === 1, "Dates in coverage must expose real analytics counts");
     const idleRow = coverageRange.data.statistics.promotions.find((item) => item.promotionId === idlePromotionId);
     assert(idleRow?.impressions === 0 && idleRow?.opens === 0 && idleRow?.openRate === null, "Covered promotions without events must expose zero counts and null rates");
+    const baselineGeneratedYesterday = beforeCoverage.generated;
+    const baselineValidatedYesterday = beforeCoverage.validated;
+    const baselineValidatedToday = afterCoverage.validated;
 
     const createRedemption = await mobile.request("/redemptions", { method: "POST", headers: { Authorization: `Bearer ${clientSession.accessToken}` }, body: JSON.stringify({ promotionId }) });
     assert(createRedemption.status === 201, `Analytics smoke redemption failed: ${JSON.stringify(createRedemption.data)}`);
@@ -118,7 +121,7 @@ async function main() {
     assert(rowAfter?.validated === 1, "Validated redemptions must use the real redeemedAt transition");
     const generatedDay = afterValidation.data.statistics.series.find((item) => item.date === yesterday);
     const validatedDay = afterValidation.data.statistics.series.find((item) => item.date === today);
-    assert(generatedDay?.generated === 1 && generatedDay?.validated === 0 && validatedDay?.validated === 1, "Generated and validated redemptions must use createdAt and redeemedAt respectively");
+    assert(generatedDay?.generated === baselineGeneratedYesterday + 1 && generatedDay?.validated === baselineValidatedYesterday && validatedDay?.validated === baselineValidatedToday + 1, "Generated and validated redemptions must use createdAt and redeemedAt respectively");
     console.log(JSON.stringify({ smoke: "promotion-analytics", impressions: 1, opens: 1, generated: 1, validated: 1, concurrency: "PASS", privacy: "PASS", status: "PASS" }));
   } finally {
     const promotionIds = [promotionId, idlePromotionId].filter(Boolean);
