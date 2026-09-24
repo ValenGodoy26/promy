@@ -251,7 +251,7 @@ model Commerce {
   @@index([ownerUserId, status])
   @@index([cityId, status])
   @@index([categoryId, status])
-  @@index([status, isHiddenByAdmin, billingAccessState, isFeatured, featuredRank])
+  @@index([status, isHiddenByAdmin, billingAccessState, isFeatured, featuredRank], map: "Commerce_public_billing_idx")
   @@fulltext([name])
   @@fulltext([shortDescription])
   @@fulltext([description])

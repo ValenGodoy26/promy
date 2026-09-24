@@ -13,7 +13,7 @@ ALTER TABLE `Commerce`
 UPDATE `Commerce` SET `approvedAt` = `createdAt`
 WHERE `status` = 'APPROVED' AND `approvedAt` IS NULL;
 
-ALTER TABLE `Commerce` ADD INDEX `Commerce_status_isHiddenByAdmin_billingAccessState_isFeatured_featuredRank_idx`
+ALTER TABLE `Commerce` ADD INDEX `Commerce_public_billing_idx`
   (`status`, `isHiddenByAdmin`, `billingAccessState`, `isFeatured`, `featuredRank`);
 
 CREATE TABLE `BillingSettings` (
