@@ -92,7 +92,7 @@ async function orchestrate() {
       .map((entry) => entry.name)
       .sort();
     const targetIndex = migrations.indexOf(TARGET_MIGRATION);
-    assert(migrations.length === 27 && targetIndex === 25, "Se esperaban 27 migraciones y SRID en la posición 26");
+    assert(targetIndex === 25 && migrations.length > targetIndex, "La migración SRID debe conservar la posición 26");
     for (const migration of migrations.slice(0, targetIndex)) {
       await fs.cp(path.join(migrationSource, migration), path.join(temporaryPrisma, "migrations", migration), { recursive: true });
     }
