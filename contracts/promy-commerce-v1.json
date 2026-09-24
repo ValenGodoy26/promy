@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "promotionLifecycle": {
+    "admin": {
+      "statuses": [
+        "DRAFT",
+        "PENDING_REVIEW",
+        "APPROVED_VISIBLE",
+        "REJECTED",
+        "EXPIRED"
+      ],
+      "allowedTransitions": {
+        "DRAFT": [],
+        "PENDING_REVIEW": ["APPROVED_VISIBLE", "REJECTED", "EXPIRED"],
+        "APPROVED_VISIBLE": ["PENDING_REVIEW", "REJECTED", "EXPIRED"],
+        "REJECTED": ["PENDING_REVIEW", "APPROVED_VISIBLE"],
+        "EXPIRED": ["PENDING_REVIEW"]
+      }
+    },
+    "commerceEditing": {
+      "ownerEditableStatus": {
+        "DRAFT": "DRAFT",
+        "PENDING_REVIEW": "PENDING_REVIEW",
+        "APPROVED_VISIBLE": "PENDING_REVIEW",
+        "REJECTED": "PENDING_REVIEW",
+        "EXPIRED": "PENDING_REVIEW"
+      },
+      "mobileStatusModes": ["DRAFT", "PENDING_REVIEW"]
+    }
+  },
+  "commerceRedemption": {
+    "user": {
+      "nullable": true,
+      "fields": ["id", "fullName"],
+      "forbiddenFields": ["email", "phone"]
+    },
+    "fields": [
+      "id",
+      "validationMethod",
+      "validationCode",
+      "status",
+      "redeemedAt",
+      "createdAt",
+      "user",
+      "promotion",
+      "commerce"
+    ]
+  },
+  "cursorPagination": {
+    "hasMore": "boolean",
+    "nextCursor": "number|null"
+  }
+}

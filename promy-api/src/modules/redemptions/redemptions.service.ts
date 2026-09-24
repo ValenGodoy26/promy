@@ -88,7 +88,7 @@ const redemptionSelect = Prisma.validator<Prisma.RedemptionSelect>()({
   },
 });
 
-const commerceRedemptionSelect = Prisma.validator<Prisma.RedemptionSelect>()({
+export const commerceRedemptionSelect = Prisma.validator<Prisma.RedemptionSelect>()({
   id: true,
   validationMethod: true,
   validationCode: true,

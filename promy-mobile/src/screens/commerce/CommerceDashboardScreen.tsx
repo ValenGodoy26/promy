@@ -30,6 +30,7 @@ import type {
   CommerceDashboardRedemption,
 } from "../../types/api";
 import { formatAuthError, getPromotionBadgeLabel } from "../../utils/promy";
+import { getCommerceRedemptionUserLabel } from "./redemptionPresentation";
 
 export default function CommerceDashboardScreen() {
   const navigation =
@@ -317,7 +318,7 @@ function RecentRedemptionCard({ item }: { item: CommerceDashboardRedemption }) {
           {item.status}
         </Text>
       </View>
-      <Text style={styles.listCardMeta}>{item.user.fullName}</Text>
+      <Text style={styles.listCardMeta}>{getCommerceRedemptionUserLabel(item.user)}</Text>
       <Text style={styles.redemptionMethod}>{item.validationMethod}</Text>
     </View>
   );

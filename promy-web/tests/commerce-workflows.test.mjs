@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   formatBusinessDate,
@@ -7,6 +8,11 @@ import {
   serializeBusinessDate,
   validateCommerceProfileForm,
 } from "../src/features/commerce/commerceRules.ts";
+import { getAvailablePromotionTransitions } from "../src/features/admin/promotionLifecycle.ts";
+
+const commerceContract = JSON.parse(
+  readFileSync(new URL("../../contracts/promy-commerce-v1.json", import.meta.url), "utf8"),
+);
 
 test("commerce phone policy accepts local and +54 formats and rejects invalid values", () => {
   for (const value of ["", "3454 123456", "3454-123456", "+54 9 3454 123456"]) {
@@ -50,12 +56,21 @@ test("commerce profile blocks required no-op fields and invalid coordinates", ()
   }), {});
 });
 
-test("approved, rejected and expired promotions reopen as pending review", () => {
-  assert.equal(getOwnerEditablePromotionStatus("DRAFT"), "DRAFT");
-  assert.equal(getOwnerEditablePromotionStatus("PENDING_REVIEW"), "PENDING_REVIEW");
-  assert.equal(getOwnerEditablePromotionStatus("APPROVED_VISIBLE"), "PENDING_REVIEW");
-  assert.equal(getOwnerEditablePromotionStatus("REJECTED"), "PENDING_REVIEW");
-  assert.equal(getOwnerEditablePromotionStatus("EXPIRED"), "PENDING_REVIEW");
+test("web promotion lifecycle helpers match the versioned commerce contract", () => {
+  const { promotionLifecycle } = commerceContract;
+
+  for (const status of promotionLifecycle.admin.statuses) {
+    assert.deepEqual(
+      getAvailablePromotionTransitions(status).sort(),
+      [...promotionLifecycle.admin.allowedTransitions[status]].sort(),
+      `admin transitions for ${status}`,
+    );
+    assert.equal(
+      getOwnerEditablePromotionStatus(status),
+      promotionLifecycle.commerceEditing.ownerEditableStatus[status],
+      `owner edit status for ${status}`,
+    );
+  }
 });
 
 test("business dates preserve their calendar day across month and year boundaries", () => {

@@ -32,6 +32,7 @@ import { normalizeValidationCode } from "../../services/deepLinks";
 import { theme } from "../../styles/theme";
 import type { CommerceManagedRedemption } from "../../types/api";
 import { formatAuthError } from "../../utils/promy";
+import { getCommerceRedemptionUserLabel } from "./redemptionPresentation";
 
 type Filter = "all" | "pending" | "success" | "failed";
 type CommerceRedemptionsRoute =
@@ -350,7 +351,7 @@ export default function CommerceRedemptionsScreen() {
 
                   <View style={styles.cardBody}>
                     <Text style={styles.cardTitle}>{item.promotion.title}</Text>
-                    <Text style={styles.cardUser}>{item.user.fullName}</Text>
+                    <Text style={styles.cardUser}>{getCommerceRedemptionUserLabel(item.user)}</Text>
                     <Text style={styles.cardMeta}>
                       {item.validationMethod} -{" "}
                       {new Date(item.createdAt).toLocaleDateString("es-AR")}

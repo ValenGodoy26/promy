@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import type { AdminAuditLogItem } from "../../types/api";
 import { IconAlert, IconCheck, IconSearch } from "../../components/Icons";
+import { getAvailablePromotionTransitions } from "./promotionLifecycle";
 
 export function PageHeader({
   kicker,
@@ -604,29 +605,7 @@ export function getPromotionModalTitle(next?: string) {
     : "Actualizar promoción";
 }
 
-export function getAvailablePromotionTransitions(status: string) {
-  if (status === "DRAFT") {
-    return [];
-  }
-
-  if (status === "PENDING_REVIEW") {
-    return ["APPROVED_VISIBLE", "REJECTED", "EXPIRED"];
-  }
-
-  if (status === "APPROVED_VISIBLE") {
-    return ["PENDING_REVIEW", "REJECTED", "EXPIRED"];
-  }
-
-  if (status === "REJECTED") {
-    return ["PENDING_REVIEW", "APPROVED_VISIBLE"];
-  }
-
-  if (status === "EXPIRED") {
-    return ["PENDING_REVIEW"];
-  }
-
-  return [];
-}
+export { getAvailablePromotionTransitions } from "./promotionLifecycle";
 
 export function getConfirmLabel(next?: string) {
   return next === "APPROVED" || next === "APPROVED_VISIBLE"

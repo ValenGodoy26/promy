@@ -8,6 +8,7 @@ import {
 import prisma from "../../config/prisma";
 import { invalidatePublicCatalogCache } from "../../shared/cache/publicCatalogCache";
 import { sharedTtlCache } from "../../shared/cache/ttlCache";
+import { canTransitionPromotionStatus } from "../../shared/domain/promotionLifecycle";
 import { buildWebPanelPath } from "../../shared/utils/deepLinks";
 import { logOperationalEvent, logger, logWarn } from "../../shared/logging/logger";
 import { sendTransactionalEmail } from "../../shared/services/email.service";
@@ -243,33 +244,6 @@ async function sendCommerceStatusEmail(params: {
       <p>Equipo PROMY</p>
     `,
   });
-}
-
-function canTransitionPromotionStatus(
-  currentStatus: PromotionStatus,
-  nextStatus: PromotionStatus,
-) {
-  if (currentStatus === nextStatus) {
-    return true;
-  }
-
-  const allowedTransitions: Record<PromotionStatus, PromotionStatus[]> = {
-    DRAFT: [],
-    PENDING_REVIEW: [
-      PromotionStatus.APPROVED_VISIBLE,
-      PromotionStatus.REJECTED,
-      PromotionStatus.EXPIRED,
-    ],
-    APPROVED_VISIBLE: [
-      PromotionStatus.PENDING_REVIEW,
-      PromotionStatus.REJECTED,
-      PromotionStatus.EXPIRED,
-    ],
-    REJECTED: [PromotionStatus.PENDING_REVIEW, PromotionStatus.APPROVED_VISIBLE],
-    EXPIRED: [PromotionStatus.PENDING_REVIEW],
-  };
-
-  return allowedTransitions[currentStatus]?.includes(nextStatus) ?? false;
 }
 
 function getMissingFieldWhere(

@@ -36,13 +36,17 @@ import type {
   Weekday,
 } from "../../types/api";
 import { formatAuthError } from "../../utils/promy";
+import {
+  MOBILE_PROMOTION_STATUS_MODES,
+  type MobilePromotionMode,
+} from "./promotionLifecycle";
 
 type EditorRoute = NativeStackScreenProps<
   CommerceStackParamList,
   "CommercePromotionEditor"
 >["route"];
 
-type PromotionMode = "DRAFT" | "PENDING_REVIEW";
+type PromotionMode = MobilePromotionMode;
 
 const promotionTypes: Array<{ id: PromotionType; label: string }> = [
   { id: "PERCENTAGE", label: "Descuento" },
@@ -548,10 +552,10 @@ export default function CommercePromotionEditorScreen() {
               <Segmented<PromotionMode>
                 active={statusMode}
                 onChange={setStatusMode}
-                options={[
-                  { id: "DRAFT", label: "Borrador" },
-                  { id: "PENDING_REVIEW", label: "RevisiÃ³n" },
-                ]}
+                options={MOBILE_PROMOTION_STATUS_MODES.map((id) => ({
+                  id,
+                  label: id === "DRAFT" ? "Borrador" : "RevisiÃ³n",
+                }))}
               />
             </View>
 
