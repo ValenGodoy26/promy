@@ -16,6 +16,7 @@ import {
   startPromotionAnalyticsReceiptCleanupLoop,
   stopPromotionAnalyticsReceiptCleanupLoop,
 } from "./modules/analytics/analytics.service";
+import { startBillingMaintenanceLoop, stopBillingMaintenanceLoop } from "./modules/billing/billing.service";
 
 initApiSentry();
 
@@ -24,6 +25,7 @@ const bootstrap = async () => {
     await prisma.$connect();
     startPromotionExpirationLoop();
     startPromotionAnalyticsReceiptCleanupLoop();
+    startBillingMaintenanceLoop();
 
     const server = app.listen(env.PORT, () => {
       logInfo(undefined, "PROMY API iniciada", {
@@ -38,6 +40,7 @@ const bootstrap = async () => {
       stopBackgroundWork: () => {
         stopPromotionExpirationLoop();
         stopPromotionAnalyticsReceiptCleanupLoop();
+        stopBillingMaintenanceLoop();
       },
       closeRealtime: closeAllRealtimeClients,
       closeCache: () => sharedTtlCache.close(),

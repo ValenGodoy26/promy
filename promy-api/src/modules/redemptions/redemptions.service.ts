@@ -68,6 +68,7 @@ const redemptionSelect = Prisma.validator<Prisma.RedemptionSelect>()({
   promotion: {
     select: {
       id: true,
+      createdAt: true,
       title: true,
       description: true,
       promotionType: true,
@@ -558,6 +559,7 @@ export async function validateCommerceRedemptionByCode(input: {
         },
         select: {
           id: true,
+          createdAt: true,
           status: true,
           validationExpiresAt: true,
           failedValidationAttempts: true,
@@ -577,6 +579,8 @@ export async function validateCommerceRedemptionByCode(input: {
                 select: {
                   status: true,
                   isHiddenByAdmin: true,
+                  billingAccessState: true,
+                  billingSuspendedAt: true,
                 },
               },
             },
@@ -632,7 +636,21 @@ export async function validateCommerceRedemptionByCode(input: {
         };
       }
 
-      if (!isPromotionRedeemableNow(redemption.promotion, now)) {
+      // Billing suspension hides offers and blocks new redemptions, but never
+      // strands a customer who obtained a still-valid code while the commerce
+      // was covered. Admin moderation and normal promotion expiry still apply.
+      const pendingBeforeBillingSuspension = Boolean(
+        redemption.promotion.commerce.billingSuspendedAt &&
+          redemption.createdAt.getTime() < redemption.promotion.commerce.billingSuspendedAt.getTime(),
+      );
+      const redeemablePromotion = pendingBeforeBillingSuspension
+        ? {
+            ...redemption.promotion,
+            commerce: { ...redemption.promotion.commerce, billingAccessState: "COVERED" as const },
+          }
+        : redemption.promotion;
+
+      if (!isPromotionRedeemableNow(redeemablePromotion, now)) {
         await tx.redemption.updateMany({
           where: { id: redemption.id, status: RedemptionStatus.PENDING },
           data: {

@@ -18,6 +18,7 @@ import realtimeRoutes from "../modules/realtime/realtime.routes";
 import betaRoutes from "../modules/beta/beta.routes";
 import statsRoutes from "../modules/stats/stats.routes";
 import analyticsRoutes from "../modules/analytics/analytics.routes";
+import billingCommerceRoutes, { adminBillingRouter } from "../modules/billing/billing.routes";
 
 const router = Router();
 
@@ -30,7 +31,9 @@ router.use("/categories", categoriesRoutes);
 router.use("/commerces", commercesRoutes);
 router.use("/promotions", promotionsRoutes);
 router.use("/commerce", commerceRoutes);
+router.use("/commerce", billingCommerceRoutes);
 router.use("/admin", adminRoutes);
+router.use("/admin", adminBillingRouter);
 router.use("/redemptions", redemptionsRoutes);
 router.use("/uploads", uploadsRoutes);
 router.use("/notifications", notificationsRoutes);

@@ -60,6 +60,7 @@ export async function findNearbyCommerceDistanceRows(
     FROM Commerce FORCE INDEX (Commerce_location_spatial_idx)
     WHERE status = 'APPROVED'
       AND isHiddenByAdmin = false
+      AND billingAccessState = 'COVERED'
       AND latitude IS NOT NULL
       AND longitude IS NOT NULL
       AND MBRWithin(location, ST_GeomFromText(${boundingPolygonWkt}))

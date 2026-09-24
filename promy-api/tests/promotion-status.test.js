@@ -82,6 +82,23 @@ test("filterPublicPromotionsVisibleNow keeps only promos visible right now", () 
   );
 });
 
+test("public visibility rejects promotions from a commerce without billing coverage", () => {
+  const now = new Date("2026-04-28T15:00:00.000Z");
+  assert.equal(
+    isPromotionPubliclyVisibleNow(
+      {
+        status: PUBLIC_PROMOTION_STATUS,
+        isHiddenByAdmin: false,
+        startDate: null,
+        endDate: null,
+        commerce: { status: "APPROVED", isHiddenByAdmin: false, billingAccessState: "NO_COVERAGE" },
+      },
+      now,
+    ),
+    false,
+  );
+});
+
 test("isPromotionPubliclyVisibleNow rejects hidden promotions and hidden commerces", () => {
   const now = new Date("2026-04-28T15:00:00.000Z");
   const visible = {

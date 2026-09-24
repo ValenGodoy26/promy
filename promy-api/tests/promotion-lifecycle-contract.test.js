@@ -63,3 +63,15 @@ test("API promotion analytics semantics match the versioned commerce contract", 
   assert.equal(analytics.receipt.storesRawSessionId, false);
   assert.equal(analytics.receipt.storesUserId, false);
 });
+
+test("API billing semantics expose only the internal coverage contract", () => {
+  const billing = contract.billing;
+  assert.deepEqual(billing.modes, ["OFF", "SCHEDULED", "ON"]);
+  assert.equal(billing.currency, "ARS");
+  assert.equal(billing.rules.graceDays, 5);
+  assert.equal(billing.rules.legacyBetaTransitionDays, 5);
+  assert.equal(billing.rules.browserReturnCannotActivateCoverage, true);
+  assert.equal(billing.admin.privilegedWriteRole, "SUPER_ADMIN");
+  assert.equal(billing.commerceSummary.includes("canCreatePromotion"), true);
+  assert.equal(billing.commerceSummary.includes("needsPayment"), true);
+});

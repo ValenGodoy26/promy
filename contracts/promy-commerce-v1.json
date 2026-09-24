@@ -78,5 +78,28 @@
         "validationRate": "validated/generated"
       }
     }
+  },
+  "billing": {
+    "currency": "ARS",
+    "modes": ["OFF", "SCHEDULED", "ON"],
+    "coverageSources": ["BETA_FREE", "MERCADO_PAGO", "MANUAL", "COMPLIMENTARY"],
+    "subscriptionStatuses": ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE", "SUSPENDED", "CANCELLED"],
+    "commerceSummary": [
+      "billingMode", "billingStartsAt", "monthlyPrice", "currency", "status",
+      "hasCoverage", "coverageSource", "periodStart", "periodEnd", "graceEndsAt",
+      "cancelAtPeriodEnd", "canCreatePromotion", "canPublishPromotion",
+      "canValidateExistingRedemption", "needsPayment"
+    ],
+    "admin": {
+      "settingsReadRoles": ["ADMIN", "SUPER_ADMIN"],
+      "privilegedWriteRole": "SUPER_ADMIN",
+      "operations": ["complimentary", "revoke-complimentary", "manual-payment", "manual-payment-reversal"]
+    },
+    "rules": {
+      "graceDays": 5,
+      "legacyBetaTransitionDays": 5,
+      "manualPaymentsImmutable": true,
+      "browserReturnCannotActivateCoverage": true
+    }
   }
 }

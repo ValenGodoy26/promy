@@ -1,4 +1,4 @@
-import { CommerceStatus, Prisma, PromotionStatus, Weekday } from "@prisma/client";
+import { BillingAccessState, CommerceStatus, Prisma, PromotionStatus, Weekday } from "@prisma/client";
 import { env } from "../../config/env";
 
 export const PUBLIC_PROMOTION_STATUS = PromotionStatus.APPROVED_VISIBLE;
@@ -22,6 +22,7 @@ export type PromotionAvailabilityWindow = {
     [key: string]: unknown;
     status?: CommerceStatus | string | null;
     isHiddenByAdmin?: boolean | null;
+    billingAccessState?: BillingAccessState | string | null;
   } | null;
 };
 
@@ -73,6 +74,7 @@ export function buildPublicCommerceWhere(
     ...additionalWhere,
     status: CommerceStatus.APPROVED,
     isHiddenByAdmin: false,
+    billingAccessState: BillingAccessState.COVERED,
   };
 }
 
@@ -235,6 +237,7 @@ export function isPromotionPubliclyVisibleNow(
     (promotion.commerce?.status === undefined ||
       promotion.commerce.status === CommerceStatus.APPROVED) &&
     promotion.commerce?.isHiddenByAdmin !== true &&
+    (promotion.commerce?.billingAccessState === undefined || promotion.commerce.billingAccessState === BillingAccessState.COVERED) &&
     isPromotionCurrentlyAvailable(promotion, now)
   );
 }

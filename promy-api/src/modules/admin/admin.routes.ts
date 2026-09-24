@@ -23,7 +23,7 @@ import { adminWriteLimiter } from "../../middlewares/rateLimiters";
 
 const router = Router();
 
-router.use(requireAuth, requireActiveSession, requireRole(UserRole.ADMIN));
+router.use(requireAuth, requireActiveSession, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN));
 
 router.get("/dashboard", getAdminDashboard);
 router.get("/audit-logs", getAdminAuditLogs);

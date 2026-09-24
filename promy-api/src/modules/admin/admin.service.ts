@@ -15,6 +15,7 @@ import { sendTransactionalEmail } from "../../shared/services/email.service";
 import { cleanupCommerceImages } from "../../shared/services/uploads.service";
 import { escapeHtmlText } from "../../shared/security/html";
 import { createAppNotification } from "../notifications/notifications.service";
+import { refreshCommerceBillingProjection } from "../billing/billing.service";
 import { publishRealtimeEvent } from "../realtime/realtime.service";
 
 type CommerceReadinessInput = {
@@ -1225,6 +1226,9 @@ export async function updateCommerceStatusByAdmin(input: {
       where: { id: input.commerceId },
       data: {
         status: input.status,
+        ...(input.status === CommerceStatus.APPROVED && existingCommerce.status !== CommerceStatus.APPROVED
+          ? { approvedAt: new Date() }
+          : {}),
         moderationNote: input.note || null,
         ...(input.status === CommerceStatus.INACTIVE ? { isHiddenByAdmin: true } : {}),
         ...(input.status === CommerceStatus.INACTIVE
@@ -1278,6 +1282,8 @@ export async function updateCommerceStatusByAdmin(input: {
         commerceId: input.commerceId,
       },
     });
+
+    await refreshCommerceBillingProjection(tx, input.commerceId);
 
     return commerce;
   });

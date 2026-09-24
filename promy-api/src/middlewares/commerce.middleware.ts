@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { CommerceStatus } from "@prisma/client";
+import { BillingAccessState, CommerceStatus } from "@prisma/client";
 import prisma from "../config/prisma";
 import { AUTH_REQUIRED_MESSAGE } from "../shared/http/auth";
 import { AuthRequest } from "./auth.middleware";
@@ -100,4 +100,25 @@ export const requireOperableCommerce = (
   }
 
   return next();
+};
+
+/** Applies the materialized billing projection. The resolver remains the source
+ * of truth and every Billing mutation refreshes this projection atomically. */
+export const requireBillingPromotionAccess = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const commerceId = req.managedCommerce?.id;
+    if (!commerceId) return res.status(500).json({ ok: false, message: "No pudimos resolver el comercio actual." });
+    const commerce = await prisma.commerce.findUnique({ where: { id: commerceId }, select: { billingAccessState: true } });
+    if (!commerce || commerce.billingAccessState !== BillingAccessState.COVERED) {
+      return res.status(403).json({ ok: false, code: "BILLING_COVERAGE_REQUIRED", message: "Necesitas una suscripción activa para operar promociones." });
+    }
+    return next();
+  } catch (error) {
+    logError(req, error, "Require billing promotion access middleware failed");
+    return res.status(500).json({ ok: false, message: "Error interno al validar la suscripción.", requestId: req.requestId });
+  }
 };

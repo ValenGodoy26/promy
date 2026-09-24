@@ -7,6 +7,7 @@ import {
 } from "../../middlewares/auth.middleware";
 import {
   requireManagedCommerce,
+  requireBillingPromotionAccess,
   requireOperableCommerce,
 } from "../../middlewares/commerce.middleware";
 import {
@@ -40,9 +41,9 @@ router.put("/me", updateMyCommerce);
 router.patch("/me/status", updateMyCommerceStatus);
 
 router.get("/promotions", getMyPromotions);
-router.post("/promotions", requireOperableCommerce, createMyPromotion);
-router.put("/promotions/:id", requireOperableCommerce, updateMyPromotion);
-router.delete("/promotions/:id", requireOperableCommerce, deleteMyPromotion);
+router.post("/promotions", requireOperableCommerce, requireBillingPromotionAccess, createMyPromotion);
+router.put("/promotions/:id", requireOperableCommerce, requireBillingPromotionAccess, updateMyPromotion);
+router.delete("/promotions/:id", requireOperableCommerce, requireBillingPromotionAccess, deleteMyPromotion);
 
 router.get("/redemptions", getMyRedemptions);
 router.get("/statistics", getCommerceStatistics);
