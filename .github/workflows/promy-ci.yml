@@ -82,6 +82,7 @@ jobs:
     env:
       DATABASE_URL: mysql://root:promy_ci_root@127.0.0.1:3306/promy_integration_test
       TEST_DATABASE_URL: mysql://root:promy_ci_root@127.0.0.1:3306/promy_integration_test
+      ANALYTICS_HMAC_SECRET: promy_ci_analytics_hmac_secret_32_chars
     steps:
       - name: Checkout
         uses: actions/checkout@v4
