@@ -46,7 +46,13 @@ async function seedPreMigrationFixtures() {
       ${"APPROVED"}, false, 0, false, false, NOW(), NOW()
     )
   `;
-  const commerce = await prisma.commerce.findUniqueOrThrow({ where: { slug: "block12-commerce" } });
+  // This fixture intentionally runs against migration 24. Do not use the
+  // current Prisma Commerce model here: later schema fields may not exist yet.
+  const commerceRows = await prisma.$queryRawUnsafe(
+    "SELECT id FROM Commerce WHERE slug = 'block12-commerce' LIMIT 1",
+  );
+  const commerce = commerceRows[0];
+  assert(commerce?.id, "No se pudo recuperar el comercio fixture previo a la migración");
   const [globalCap, perUser, secondSuccess, pendingPromo, controlPromo] = await Promise.all([
     prisma.promotion.create({ data: { commerceId: commerce.id, title: "Global cap", description: "Synthetic", promotionType: "BENEFIT", validationMethod: "MANUAL_CODE", maxRedemptions: 1, startDate: yesterday, endDate: tomorrow, status: "APPROVED_VISIBLE" } }),
     prisma.promotion.create({ data: { commerceId: commerce.id, title: "Per user", description: "Synthetic", promotionType: "BENEFIT", validationMethod: "MANUAL_CODE", maxRedemptions: 10, startDate: yesterday, endDate: tomorrow, status: "APPROVED_VISIBLE" } }),
