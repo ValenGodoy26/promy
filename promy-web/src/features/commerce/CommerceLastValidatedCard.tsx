@@ -1,44 +1,24 @@
 import React from "react";
+import { IconCheck } from "../../components/Icons";
 import type { CommerceManagedRedemption } from "../../types/api";
-import { formatDate, getStatusLabel } from "./CommerceShared";
+import { formatDate } from "./CommerceShared";
 
 type CommerceLastValidatedCardProps = {
   redemption: CommerceManagedRedemption;
 };
 
 export function CommerceLastValidatedCard({ redemption }: CommerceLastValidatedCardProps) {
-  return (
-    <section className="panel redeem-detail-panel">
-      <div className="panel-heading">
-        <div className="panel-heading-stack">
-          <h2>Ultimo canje validado</h2>
-          <p>Resumen inmediato para confirmar que el canje correcto quedo registrado.</p>
-        </div>
-      </div>
+  const customerName = redemption.user?.fullName || "el cliente";
 
-      <div className="redeem-detail-grid">
-        <div className="redeem-detail-card">
-          <span className="redeem-detail-label">Promocion</span>
-          <strong>{redemption.promotion.title}</strong>
-        </div>
-        <div className="redeem-detail-card">
-          <span className="redeem-detail-label">Cliente</span>
-          <strong>{redemption.user?.fullName || "Cuenta eliminada"}</strong>
-        </div>
-        <div className="redeem-detail-card">
-          <span className="redeem-detail-label">Codigo</span>
-          <strong className="font-mono">{redemption.validationCode || "-"}</strong>
-        </div>
-        <div className="redeem-detail-card">
-          <span className="redeem-detail-label">Validado</span>
-          <strong>{formatDate(redemption.redeemedAt || redemption.createdAt)}</strong>
-        </div>
-        <div className="redeem-detail-card redeem-detail-card-wide">
-          <span className="redeem-detail-label">Comercio y estado</span>
-          <strong>
-            {redemption.commerce.name} · {getStatusLabel(redemption.status)}
-          </strong>
-        </div>
+  return (
+    <section className="redeem-result redeem-result-success" aria-live="polite">
+      <span className="redeem-result-icon"><IconCheck size={22} /></span>
+      <div className="redeem-result-copy">
+        <strong>Canje aprobado</strong>
+        <span>
+          {redemption.promotion.title} quedó registrado para {customerName}.
+        </span>
+        <small>{formatDate(redemption.redeemedAt || redemption.createdAt)}</small>
       </div>
     </section>
   );

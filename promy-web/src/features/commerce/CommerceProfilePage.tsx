@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../../auth";
@@ -8,22 +8,26 @@ import {
   fetchMyCommerce,
   updateMyCommerce,
   updateMyCommerceStatus,
+  uploadCommerceImage,
 } from "../../lib/api";
 import { buildClientAppRoute, buildCommerceDeepLink } from "../../lib/clientLinks";
 import { useLiveRefresh } from "../../lib/live";
 import type { CommerceManagedProfile, PublicCategory, PublicCity } from "../../types/api";
-import { IconAlert, IconCheck, IconClock } from "../../components/Icons";
+import {
+  IconAlert,
+  IconCheck,
+  IconEye,
+  IconImage,
+  IconMapPin,
+  IconPause,
+} from "../../components/Icons";
 import {
   CommerceOnboardingPanel,
   CommerceProfileFormState,
-  CommerceStatusNotices,
   Field,
-  getCommerceBlockedActionLabel,
   LoadingBlock,
   normalizeCommercePayload,
-  PageHeader,
   SelectField,
-  StatusBadge,
 } from "./CommerceShared";
 import { validateCommerceProfileForm } from "./commerceRules";
 
@@ -51,6 +55,14 @@ function printPoster(html: string) {
   printWindow.print();
 }
 
+function getVisibilityCopy(status?: string) {
+  if (status === "APPROVED") return { label: "Visible en PROMY", tone: "success" };
+  if (status === "INACTIVE") return { label: "Comercio pausado", tone: "neutral" };
+  if (status === "PENDING") return { label: "En revisión", tone: "warning" };
+  if (status === "REJECTED") return { label: "Necesita cambios", tone: "danger" };
+  return { label: "Estado del comercio", tone: "neutral" };
+}
+
 export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: number }) {
   const { session, withSession } = useAuth();
   const [commerce, setCommerce] = useState<CommerceManagedProfile | null>(null);
@@ -73,11 +85,15 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof CommerceProfileFormState, string>>
   >({});
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const canOperate = commerce?.status === "APPROVED";
 
   const clientAppPath = useMemo(() => {
@@ -85,7 +101,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
     return buildClientAppRoute({
       target: buildCommerceDeepLink(commerce.id),
       title: "Abrir vista cliente del comercio",
-      description: "Chequea como se ve este local dentro de la app mobile.",
+      description: "Chequeá cómo se ve este local dentro de la app mobile.",
     });
   }, [commerce]);
 
@@ -96,9 +112,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
 
   const loadProfile = useCallback(
     async (silent = false) => {
-      if (!silent) {
-        setLoading(true);
-      }
+      if (!silent) setLoading(true);
 
       try {
         const [response, citiesResponse, categoriesResponse] = await Promise.all([
@@ -111,8 +125,9 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
         setCategories(categoriesResponse.categories);
         setForm({
           name: response.commerce.name || "",
-          shortDescription: response.commerce.shortDescription || "",
-          description: response.commerce.description || "",
+          shortDescription:
+            response.commerce.shortDescription || response.commerce.description?.slice(0, 160) || "",
+          description: response.commerce.description || response.commerce.shortDescription || "",
           address: response.commerce.address || "",
           phone: response.commerce.phone || "",
           instagram: response.commerce.instagram || "",
@@ -131,9 +146,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
         });
         setError(null);
       } finally {
-        if (!silent) {
-          setLoading(false);
-        }
+        if (!silent) setLoading(false);
       }
     },
     [withSession],
@@ -167,7 +180,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       setFeedback(null);
-      setError("Revisa los campos marcados antes de guardar.");
+      setError("Revisá los campos marcados antes de guardar.");
       return;
     }
 
@@ -178,7 +191,7 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
         updateMyCommerce(s, normalizeCommercePayload(form)),
       );
       setCommerce(response.commerce);
-      setFeedback(response.message || "Comercio actualizado correctamente.");
+      setFeedback(response.message || "Cambios guardados correctamente.");
       setError(null);
       setFormErrors({});
     } catch (saveError) {
@@ -201,14 +214,38 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
       setFeedback(
         response.message ||
           (nextStatus === "INACTIVE"
-            ? "Tu comercio quedo pausado."
-            : "Tu comercio volvio a estar activo."),
+            ? "Tu comercio quedó pausado."
+            : "Tu comercio volvió a estar visible en PROMY."),
       );
       setError(null);
     } catch (toggleError) {
       setError(toggleError instanceof Error ? toggleError.message : "No pudimos cambiar el estado.");
     } finally {
       setTogglingStatus(false);
+    }
+  };
+
+  const handleImageUpload = async (
+    field: "logoUrl" | "coverUrl",
+    file: File | undefined,
+  ) => {
+    if (!file) return;
+    if (!canOperate) {
+      setError("Necesitás tener el comercio aprobado para subir imágenes.");
+      return;
+    }
+
+    const setUploading = field === "logoUrl" ? setUploadingLogo : setUploadingCover;
+    try {
+      setUploading(true);
+      setError(null);
+      const uploaded = await withSession((s) => uploadCommerceImage(s, file));
+      setForm((current) => ({ ...current, [field]: uploaded.file.url }));
+      setFeedback("Imagen cargada. Guardá los cambios para aplicarla al perfil.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir la imagen.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -287,118 +324,69 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
           <div class="poster">
             <div class="kicker">PROMY · CARTEL PARA CAJA</div>
             <h1>${commerce.name}</h1>
-            <p>Escanea este QR para abrir este comercio en PROMY y ver promociones activas.</p>
+            <p>Escaneá este QR para abrir este comercio en PROMY y ver sus promociones activas.</p>
             <div class="qr">${svg.outerHTML}</div>
-            <div class="footer">Tambien puedes abrirlo desde ${commercePosterUrl}</div>
+            <div class="footer">También podés abrirlo desde ${commercePosterUrl}</div>
           </div>
         </body>
       </html>
     `);
   };
 
+  const visibility = getVisibilityCopy(commerce?.status);
+  const hasMapLocation = Boolean(
+    commerce &&
+      Number.isFinite(commerce.latitude) &&
+      Number.isFinite(commerce.longitude),
+  );
+
   return (
     <>
-      <PageHeader
-        kicker="/ Commerce · Perfil"
-        title="Mi comercio"
-        meta={commerce ? <StatusBadge status={commerce.status} /> : null}
-      />
+      <header className="commerce-profile-header">
+        <div className="commerce-profile-header-inner">
+          <div>
+            <div className="commerce-profile-kicker">MI NEGOCIO</div>
+            <h1>Mi negocio</h1>
+            {commerce ? (
+              <p>
+                {commerce.name}
+                {commerce.category?.name ? ` · ${commerce.category.name}` : ""}
+                {commerce.city?.name ? ` · ${commerce.city.name}` : ""}
+              </p>
+            ) : (
+              <p>Administrá cómo se muestra tu comercio en PROMY.</p>
+            )}
+          </div>
+          <div className="commerce-profile-header-actions">
+            {commerce ? (
+              <span className={`commerce-profile-visibility is-${visibility.tone}`}>
+                <span />
+                {visibility.label}
+              </span>
+            ) : null}
+            {commerce ? (
+              <Link to="/commerce/profile/preview" className="commerce-profile-client-link">
+                <IconEye size={15} /> Ver como cliente
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </header>
 
-      <div className="main-content">
+      <div className="commerce-profile-content">
         {loading ? (
           <LoadingBlock title="Cargando perfil" text="Trayendo datos del negocio." />
         ) : (
-          <section className="panel">
-            {commerce ? <CommerceOnboardingPanel commerce={commerce} compact /> : null}
-            {commerce ? (
-              <CommerceStatusNotices
-                commerce={commerce}
-                email={session?.user.email}
-                emailVerifiedAt={session?.user.emailVerifiedAt}
-                showProfileLink={false}
-              />
+          <>
+            {commerce && commerce.status !== "APPROVED" && commerce.status !== "INACTIVE" ? (
+              <CommerceOnboardingPanel commerce={commerce} compact />
             ) : null}
 
-            <div className="panel-heading">
-              <div className="panel-heading-stack">
-                <h2>Informacion del negocio</h2>
-                <p>Actualiza los datos base que operan dentro de PROMY.</p>
+            {!session?.user.emailVerifiedAt ? (
+              <div className="alert alert-warning">
+                <IconAlert size={14} className="alert-icon" />
+                <span>Verificá el email de la cuenta para mantener todas las funciones habilitadas.</span>
               </div>
-            </div>
-
-            {commerce ? (
-              <>
-                <div style={{ marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Link to={clientAppPath || "/client-app"} className="btn btn-secondary btn-sm">
-                    Ver en app
-                  </Link>
-                </div>
-
-                <div
-                  style={{
-                    marginBottom: 20,
-                    padding: 18,
-                    border: "1px solid var(--line)",
-                    borderRadius: 24,
-                    background: "linear-gradient(180deg, #fffdfa 0%, #f8f2e7 100%)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: 18,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ flex: "1 1 280px" }}>
-                      <div className="page-kicker" style={{ marginBottom: 8 }}>
-                        / Cartel para caja
-                      </div>
-                      <h3 style={{ margin: 0, fontSize: 24 }}>QR descargable del comercio</h3>
-                      <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, marginTop: 10 }}>
-                        Imprime este cartel para que los clientes abran tu local en PROMY, vean
-                        tus promociones activas y lleguen directo a la vista correcta.
-                      </p>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-                        <button className="btn btn-primary btn-sm" type="button" onClick={handleDownloadPoster}>
-                          Descargar QR
-                        </button>
-                        <button className="btn btn-ghost btn-sm" type="button" onClick={handlePrintPoster}>
-                          Imprimir cartel
-                        </button>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        width: 220,
-                        minHeight: 220,
-                        borderRadius: 26,
-                        background: "#fff",
-                        border: "1px solid #eadbc0",
-                        boxShadow: "0 14px 30px rgba(28, 22, 12, 0.08)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: 18,
-                      }}
-                    >
-                      {commercePosterUrl ? (
-                        <QRCodeSVG
-                          id={`commerce-poster-qr-${commerce.id}`}
-                          value={commercePosterUrl}
-                          size={180}
-                          bgColor="#ffffff"
-                          fgColor="#111111"
-                          includeMargin
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </>
             ) : null}
 
             {error ? (
@@ -412,142 +400,284 @@ export function CommerceProfilePage({ realtimeVersion }: { realtimeVersion: numb
               </div>
             ) : null}
 
-            {!canOperate ? (
-              <div className="alert alert-info">
-                <IconClock size={14} className="alert-icon" />
-                <span>{getCommerceBlockedActionLabel(commerce?.status)}</span>
-              </div>
-            ) : null}
-
-            {commerce && (commerce.status === "APPROVED" || commerce.status === "INACTIVE") ? (
-              <div className="alert alert-info">
-                <IconClock size={14} className="alert-icon" />
-                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <span>
-                    {commerce.status === "APPROVED"
-                      ? "Si necesitas una pausa, puedes desactivar temporalmente tu comercio sin pedir ayuda al admin."
-                      : "Tu comercio esta pausado. Mientras siga asi no aparecera en el catalogo publico."}
-                  </span>
-                  <button
-                    className="btn btn-subtle btn-sm"
-                    type="button"
-                    disabled={togglingStatus}
-                    onClick={handleToggleStatus}
-                  >
-                    {togglingStatus
-                      ? "Actualizando..."
-                      : commerce.status === "APPROVED"
-                      ? "Pausar comercio"
-                      : "Reactivar comercio"}
-                  </button>
+            <form className="commerce-profile-card" onSubmit={handleSubmit}>
+              <div className="commerce-profile-section-head">
+                <div>
+                  <h2>Información del negocio</h2>
+                  <p>Estos son los datos que ven tus clientes.</p>
                 </div>
               </div>
-            ) : null}
 
-            <form className="form-grid" onSubmit={handleSubmit}>
-              <Field
-                label="Nombre"
-                value={form.name || ""}
-                onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                error={formErrors.name}
-              />
-              <Field
-                label="Telefono"
-                value={form.phone || ""}
-                onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
-                error={formErrors.phone}
-              />
-              <Field
-                label="Direccion"
-                value={form.address || ""}
-                onChange={(value) => setForm((current) => ({ ...current, address: value }))}
-                className="field-wide"
-                error={formErrors.address}
-              />
-              <SelectField
-                label="Ciudad"
-                value={form.cityId || ""}
-                onChange={(value) => setForm((current) => ({ ...current, cityId: value }))}
-                options={[
-                  { value: "", label: "Seleccionar ciudad" },
-                  ...cities.map((city) => ({
-                    value: String(city.id),
-                    label: `${city.name}, ${city.province}`,
-                  })),
-                ]}
-                error={formErrors.cityId}
-              />
-              <SelectField
-                label="Categoria"
-                value={form.categoryId || ""}
-                onChange={(value) => setForm((current) => ({ ...current, categoryId: value }))}
-                options={[
-                  { value: "", label: "Seleccionar categoria" },
-                  ...categories.map((category) => ({
-                    value: String(category.id),
-                    label: category.name,
-                  })),
-                ]}
-                error={formErrors.categoryId}
-              />
-              <Field
-                label="Instagram"
-                value={form.instagram || ""}
-                onChange={(value) => setForm((current) => ({ ...current, instagram: value }))}
-              />
-              <Field
-                label="Logo URL"
-                value={form.logoUrl || ""}
-                onChange={(value) => setForm((current) => ({ ...current, logoUrl: value }))}
-              />
-              <Field
-                label="Descripcion corta"
-                value={form.shortDescription || ""}
-                multiline
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, shortDescription: value }))
-                }
-                className="field-wide"
-              />
-              <Field
-                label="Descripcion completa"
-                value={form.description || ""}
-                multiline
-                onChange={(value) => setForm((current) => ({ ...current, description: value }))}
-                className="field-wide"
-              />
-              <Field
-                label="Cover URL"
-                value={form.coverUrl || ""}
-                onChange={(value) => setForm((current) => ({ ...current, coverUrl: value }))}
-                className="field-wide"
-              />
+              <div className="commerce-profile-form-grid">
+                <Field
+                  label="Nombre"
+                  value={form.name || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                  error={formErrors.name}
+                />
+                <Field
+                  label="Teléfono"
+                  value={form.phone || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
+                  error={formErrors.phone}
+                />
+                <Field
+                  label="Dirección"
+                  value={form.address || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, address: value }))}
+                  className="field-wide"
+                  error={formErrors.address}
+                />
+                <SelectField
+                  label="Ciudad"
+                  value={form.cityId || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, cityId: value }))}
+                  options={[
+                    { value: "", label: "Seleccionar ciudad" },
+                    ...cities.map((city) => ({
+                      value: String(city.id),
+                      label: `${city.name}, ${city.province}`,
+                    })),
+                  ]}
+                  error={formErrors.cityId}
+                />
+                <SelectField
+                  label="Categoría"
+                  value={form.categoryId || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, categoryId: value }))}
+                  options={[
+                    { value: "", label: "Seleccionar categoría" },
+                    ...categories.map((category) => ({
+                      value: String(category.id),
+                      label: category.name,
+                    })),
+                  ]}
+                  error={formErrors.categoryId}
+                />
+                <Field
+                  label="Instagram"
+                  value={form.instagram || ""}
+                  onChange={(value) => setForm((current) => ({ ...current, instagram: value }))}
+                />
+                <div className="commerce-profile-description field-wide">
+                  <label className="field-label" htmlFor="commerce-profile-description">
+                    Descripción
+                  </label>
+                  <textarea
+                    id="commerce-profile-description"
+                    className="field-textarea"
+                    rows={3}
+                    maxLength={160}
+                    value={form.shortDescription || ""}
+                    placeholder="Contales en pocas palabras qué ofrece tu negocio."
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setForm((current) => ({
+                        ...current,
+                        shortDescription: value,
+                        description: value,
+                      }));
+                    }}
+                  />
+                  <span className="field-help">{form.shortDescription.length}/160 · Se muestra en tu perfil y en la app.</span>
+                </div>
+              </div>
 
-              <Field
-                label="Latitud"
-                value={form.latitude || ""}
-                onChange={(value) => setForm((current) => ({ ...current, latitude: value }))}
-                type="number"
-                inputMode="decimal"
-                error={formErrors.latitude}
-              />
-              <Field
-                label="Longitud"
-                value={form.longitude || ""}
-                onChange={(value) => setForm((current) => ({ ...current, longitude: value }))}
-                type="number"
-                inputMode="decimal"
-                error={formErrors.longitude}
-              />
+              <div className="commerce-profile-divider" />
 
-              <div className="form-footer field-wide">
-                <span className="meta">Los cambios se guardan al enviar</span>
+              <div className="commerce-profile-section-head">
+                <div>
+                  <h2>Imágenes del negocio</h2>
+                  <p>Actualizá el logo y la portada sin usar enlaces ni URLs.</p>
+                </div>
+              </div>
+
+              <div className="commerce-profile-media-grid">
+                <article className="commerce-profile-media-card is-logo">
+                  <div className="commerce-profile-media-preview">
+                    {form.logoUrl ? (
+                      <img src={form.logoUrl} alt="Logo del comercio" />
+                    ) : (
+                      <IconImage size={24} />
+                    )}
+                  </div>
+                  <div className="commerce-profile-media-copy">
+                    <strong>Logo</strong>
+                    <span>Imagen cuadrada recomendada.</span>
+                    <div className="commerce-profile-media-actions">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={(event) => void handleImageUpload("logoUrl", event.target.files?.[0])}
+                      />
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        disabled={uploadingLogo || !canOperate}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        {uploadingLogo ? "Subiendo..." : form.logoUrl ? "Cambiar logo" : "Subir logo"}
+                      </button>
+                      {form.logoUrl ? (
+                        <button
+                          className="commerce-profile-remove-media"
+                          type="button"
+                          onClick={() => setForm((current) => ({ ...current, logoUrl: "" }))}
+                        >
+                          Quitar
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+
+                <article className="commerce-profile-media-card is-cover">
+                  <div className="commerce-profile-media-preview">
+                    {form.coverUrl ? (
+                      <img src={form.coverUrl} alt="Portada del comercio" />
+                    ) : (
+                      <IconImage size={24} />
+                    )}
+                  </div>
+                  <div className="commerce-profile-media-copy">
+                    <strong>Portada</strong>
+                    <span>Una foto horizontal funciona mejor.</span>
+                    <div className="commerce-profile-media-actions">
+                      <input
+                        ref={coverInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={(event) => void handleImageUpload("coverUrl", event.target.files?.[0])}
+                      />
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        disabled={uploadingCover || !canOperate}
+                        onClick={() => coverInputRef.current?.click()}
+                      >
+                        {uploadingCover ? "Subiendo..." : form.coverUrl ? "Cambiar portada" : "Subir portada"}
+                      </button>
+                      {form.coverUrl ? (
+                        <button
+                          className="commerce-profile-remove-media"
+                          type="button"
+                          onClick={() => setForm((current) => ({ ...current, coverUrl: "" }))}
+                        >
+                          Quitar
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <div className="commerce-profile-divider" />
+
+              <div className="commerce-profile-location-row">
+                <div className="commerce-profile-location-icon">
+                  <IconMapPin size={18} />
+                </div>
+                <div className="commerce-profile-location-copy">
+                  <strong>Ubicación en PROMY</strong>
+                  <span>{form.address || "Todavía no cargaste una dirección."}</span>
+                  <small>
+                    {hasMapLocation
+                      ? "La ubicación del mapa está configurada."
+                      : "Todavía falta configurar el punto exacto del mapa."}
+                  </small>
+                </div>
+                <details className="commerce-profile-location-advanced">
+                  <summary>Ajuste avanzado</summary>
+                  <div className="commerce-profile-location-fields">
+                    <Field
+                      label="Latitud"
+                      value={form.latitude || ""}
+                      onChange={(value) => setForm((current) => ({ ...current, latitude: value }))}
+                      type="number"
+                      inputMode="decimal"
+                      error={formErrors.latitude}
+                    />
+                    <Field
+                      label="Longitud"
+                      value={form.longitude || ""}
+                      onChange={(value) => setForm((current) => ({ ...current, longitude: value }))}
+                      type="number"
+                      inputMode="decimal"
+                      error={formErrors.longitude}
+                    />
+                  </div>
+                </details>
+              </div>
+
+              <div className="commerce-profile-form-footer">
+                <span>Los cambios se aplican al guardar.</span>
                 <button className="btn btn-primary" disabled={saving} type="submit">
                   {saving ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
             </form>
-          </section>
+
+            {commerce ? (
+              <section className="commerce-profile-tool-card">
+                <div className="commerce-profile-tool-copy">
+                  <span className="commerce-profile-tool-kicker">QR PARA TU LOCAL</span>
+                  <h2>Que tus clientes lleguen directo a tu perfil</h2>
+                  <p>
+                    Podés imprimirlo para la caja o descargarlo y usarlo donde quieras.
+                  </p>
+                  <div className="commerce-profile-tool-actions">
+                    <button className="btn btn-primary btn-sm" type="button" onClick={handleDownloadPoster}>
+                      Descargar QR
+                    </button>
+                    <button className="btn btn-secondary btn-sm" type="button" onClick={handlePrintPoster}>
+                      Imprimir cartel
+                    </button>
+                  </div>
+                </div>
+                <div className="commerce-profile-qr-box">
+                  {commercePosterUrl ? (
+                    <QRCodeSVG
+                      id={`commerce-poster-qr-${commerce.id}`}
+                      value={commercePosterUrl}
+                      size={138}
+                      bgColor="#ffffff"
+                      fgColor="#111111"
+                      includeMargin
+                    />
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {commerce && (commerce.status === "APPROVED" || commerce.status === "INACTIVE") ? (
+              <section className={`commerce-profile-pause-card${commerce.status === "INACTIVE" ? " is-paused" : ""}`}>
+                <div className="commerce-profile-pause-icon">
+                  <IconPause size={18} />
+                </div>
+                <div>
+                  <strong>{commerce.status === "APPROVED" ? "Pausar mi comercio" : "Comercio pausado"}</strong>
+                  <span>
+                    {commerce.status === "APPROVED"
+                      ? "Ocultá temporalmente tu negocio y sus promociones sin borrar nada."
+                      : "Tu negocio no está visible para clientes. Podés reactivarlo cuando quieras."}
+                  </span>
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  disabled={togglingStatus}
+                  onClick={handleToggleStatus}
+                >
+                  {togglingStatus
+                    ? "Actualizando..."
+                    : commerce.status === "APPROVED"
+                    ? "Pausar comercio"
+                    : "Reactivar comercio"}
+                </button>
+              </section>
+            ) : null}
+          </>
         )}
       </div>
     </>

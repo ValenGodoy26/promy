@@ -1,8 +1,7 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { BrandLockup } from "../../components/Logo";
-import { ThemeToggle } from "../../components/ThemeToggle";
 import {
   IconDashboard,
   IconLogout,
@@ -74,7 +73,6 @@ export default function AdminPanel() {
         </div>
 
         <div className="sidebar-foot">
-          <ThemeToggle />
           <div className="sidebar-user">
             <div className="sidebar-user-avatar">{userInitial}</div>
             <div className="sidebar-user-info">

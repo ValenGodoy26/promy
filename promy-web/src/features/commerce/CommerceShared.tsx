@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import {
   IconAlert,
@@ -165,11 +165,13 @@ export function CommerceStatusNotices({
   email,
   emailVerifiedAt,
   showProfileLink = true,
+  compactWhenReady = false,
 }: {
   commerce: CommerceManagedProfile;
   email?: string | null;
   emailVerifiedAt?: string | null;
   showProfileLink?: boolean;
+  compactWhenReady?: boolean;
 }) {
   const isEmailVerified = Boolean(emailVerifiedAt);
   const isMissingCoordinates =
@@ -206,6 +208,21 @@ export function CommerceStatusNotices({
   ];
   const completedItems = checklistItems.filter((item) => item.done).length;
   const checklistReady = completedItems === checklistItems.length;
+
+  if (compactWhenReady && commerce.status === "APPROVED" && checklistReady) {
+    return (
+      <div className="commerce-ready-compact">
+        <span className="commerce-ready-compact-dot" />
+        <div>
+          <strong>Tu negocio está listo y visible en PROMY</strong>
+          <span>La información principal está completa.</span>
+        </div>
+        {showProfileLink ? (
+          <Link to="/commerce/profile">Ver mi negocio</Link>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="commerce-status-notices">

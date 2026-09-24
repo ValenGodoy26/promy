@@ -2,71 +2,89 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { fetchCommercePromotions } from "../../lib/api";
-import { buildClientAppRoute, buildPromotionDeepLink } from "../../lib/clientLinks";
+import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import { useLiveRefresh } from "../../lib/live";
 import type { CommerceManagedProfile, CommerceManagedPromotion } from "../../types/api";
-import { IconAlert, IconClock, IconEdit, IconPlus, IconTag } from "../../components/Icons";
-import {
-  CommerceOnboardingPanel,
-  CommerceStatusNotices,
-  getCommerceBlockedActionLabel,
-  getPromotionTypeLabel,
-  LoadingBlock,
-  PageHeader,
-  StatusBadge,
-  summarizePromotionSchedules,
-  weekdayOptions,
-} from "./CommerceShared";
-import { formatBusinessDate } from "./commerceRules";
+import { IconAlert, IconArrowRight, IconEdit, IconPlus } from "../../components/Icons";
+import { getCommerceBlockedActionLabel, LoadingBlock } from "./CommerceShared";
 
-// ─── helpers locales ──────────────────────────────────────────────────────────
+type PromotionFilter = "all" | "active" | "review" | "draft" | "changes" | "finished";
 
-/**
- * Genera el resumen de vigencia y horario de una promo.
- * Prioriza los schedules por día de semana (nuevo modelo) sobre el
- * rango de fechas/horas fijo (modelo legacy).
- */
-function getPromotionScheduleSummary(promotion: CommerceManagedPromotion) {
-  // Modelo nuevo: schedules por día de semana.
-  const scheduleSummary = summarizePromotionSchedules(promotion.schedules);
-
-  if (scheduleSummary && promotion.startDate && promotion.endDate) {
-    return `${formatBusinessDate(promotion.startDate)} al ${formatBusinessDate(promotion.endDate)} · ${scheduleSummary}`;
+function getPromotionOfferLabel(promotion: CommerceManagedPromotion) {
+  if (promotion.promotionType === "PERCENTAGE" && typeof promotion.discountValue === "number") {
+    return `${promotion.discountValue}% de descuento`;
   }
 
-  if (scheduleSummary) {
-    return scheduleSummary;
+  if (promotion.promotionType === "FIXED_AMOUNT" && typeof promotion.discountValue === "number") {
+    return `$${promotion.discountValue.toLocaleString("es-AR")} de descuento`;
   }
 
-  // Fallback: modelo legacy con rango de fechas y horas fijas.
-  const dateRange =
-    promotion.startDate && promotion.endDate
-      ? `${formatBusinessDate(promotion.startDate)} al ${formatBusinessDate(promotion.endDate)}`
-      : promotion.startDate
-      ? `Desde ${formatBusinessDate(promotion.startDate)}`
-      : promotion.endDate
-      ? `Hasta ${formatBusinessDate(promotion.endDate)}`
-      : null;
+  if (promotion.promotionType === "SPECIAL_COMBO") return "Combo especial";
+  if (promotion.promotionType === "BENEFIT") return "Beneficio especial";
+  if (promotion.promotionType === "TIME_SLOT") return "Promoción por horario";
+  if (promotion.promotionType === "DAY_PROMO") return "Promoción por día";
 
-  const timeRange =
-    promotion.startTime && promotion.endTime
-      ? `${promotion.startTime}-${promotion.endTime}`
-      : promotion.startTime
-      ? `Desde ${promotion.startTime}`
-      : promotion.endTime
-      ? `Hasta ${promotion.endTime}`
-      : null;
-
-  if (dateRange && timeRange) return `${dateRange} · ${timeRange}`;
-  return dateRange || timeRange || "Sin horario";
+  return "Promoción";
 }
 
-function getPromotionCapSummary(promotion: CommerceManagedPromotion) {
-  if (typeof promotion.maxRedemptions !== "number") return "Sin cupo";
-  return `${promotion.successRedemptionsCount}/${promotion.maxRedemptions} canjes`;
+function getPromotionStatusMeta(promotion: CommerceManagedPromotion) {
+  if (promotion.status === "APPROVED_VISIBLE") {
+    return {
+      label: "Activa",
+      tone: "success",
+      message: "Visible en PROMY",
+    } as const;
+  }
+
+  if (promotion.status === "PENDING_REVIEW") {
+    return {
+      label: "En revisión",
+      tone: "warning",
+      message: "La estamos revisando. Te avisaremos cuando esté publicada.",
+    } as const;
+  }
+
+  if (promotion.status === "DRAFT") {
+    return {
+      label: "Borrador",
+      tone: "neutral",
+      message: "Todavía no la ven tus clientes.",
+    } as const;
+  }
+
+  if (promotion.status === "REJECTED") {
+    return {
+      label: "Necesita un cambio",
+      tone: "danger",
+      message:
+        promotion.moderationNote?.trim() ||
+        "Revisá la observación de PROMY, corregila y volvé a enviarla.",
+    } as const;
+  }
+
+  if (promotion.status === "EXPIRED") {
+    return {
+      label: "Finalizada",
+      tone: "neutral",
+      message: "Ya terminó y dejó de mostrarse a clientes.",
+    } as const;
+  }
+
+  return {
+    label: "No disponible",
+    tone: "neutral",
+    message: "Revisá la promoción para ver su estado actual.",
+  } as const;
 }
 
-// ─── componente ──────────────────────────────────────────────────────────────
+function matchesFilter(promotion: CommerceManagedPromotion, filter: PromotionFilter) {
+  if (filter === "active") return promotion.status === "APPROVED_VISIBLE";
+  if (filter === "review") return promotion.status === "PENDING_REVIEW";
+  if (filter === "draft") return promotion.status === "DRAFT";
+  if (filter === "changes") return promotion.status === "REJECTED";
+  if (filter === "finished") return promotion.status === "EXPIRED";
+  return true;
+}
 
 export function CommercePromotionsPage({
   commerce,
@@ -75,241 +93,196 @@ export function CommercePromotionsPage({
   commerce: CommerceManagedProfile | null;
   realtimeVersion: number;
 }) {
-  const { session, withSession } = useAuth();
+  const { withSession } = useAuth();
   const navigate = useNavigate();
   const [promotions, setPromotions] = useState<CommerceManagedPromotion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "visible" | "review" | "draft" | "incidents">(
-    "all",
-  );
+  const [filter, setFilter] = useState<PromotionFilter>("all");
 
   const loadPromotions = useCallback(
     async (silent = false) => {
-      if (!silent) {
-        setLoading(true);
-      }
+      if (!silent) setLoading(true);
 
       try {
-        const response = await withSession((s) => fetchCommercePromotions(s));
+        const response = await withSession((session) => fetchCommercePromotions(session));
         setPromotions(response.promotions);
         setError(null);
+      } catch (loadError) {
+        setError(getUserFacingErrorMessage(loadError, "load"));
+        throw loadError;
       } finally {
-        if (!silent) {
-          setLoading(false);
-        }
+        if (!silent) setLoading(false);
       }
     },
     [withSession],
   );
 
   useEffect(() => {
-    void loadPromotions().catch((loadError) =>
-      setError(loadError instanceof Error ? loadError.message : "No pudimos cargar promociones."),
-    );
+    void loadPromotions().catch(() => undefined);
   }, [loadPromotions, realtimeVersion]);
 
   useLiveRefresh(
-    () =>
-      loadPromotions(true).catch((loadError) =>
-        setError(
-          loadError instanceof Error ? loadError.message : "No pudimos refrescar promociones.",
-        ),
-      ),
+    () => loadPromotions(true).catch(() => undefined),
     { intervalMs: 30000 },
   );
 
-  const visible = useMemo(() => {
-    if (filter === "visible") {
-      return promotions.filter((promotion) => promotion.status === "APPROVED_VISIBLE");
-    }
-    if (filter === "review") {
-      return promotions.filter((promotion) => promotion.status === "PENDING_REVIEW");
-    }
-    if (filter === "draft") {
-      return promotions.filter((promotion) => promotion.status === "DRAFT");
-    }
-    if (filter === "incidents") {
-      return promotions.filter(
-        (promotion) => promotion.status === "REJECTED" || promotion.status === "EXPIRED",
-      );
-    }
-    return promotions;
-  }, [filter, promotions]);
+  const visiblePromotions = useMemo(
+    () => promotions.filter((promotion) => matchesFilter(promotion, filter)),
+    [filter, promotions],
+  );
 
   const canCreate = commerce?.status === "APPROVED";
-  const pendingReviewCount = promotions.filter(
-    (promotion) => promotion.status === "PENDING_REVIEW",
-  ).length;
+  const isEmptyAccount = promotions.length === 0;
+
+  const filters: Array<{ id: PromotionFilter; label: string }> = [
+    { id: "all", label: "Todas" },
+    { id: "active", label: "Activas" },
+    { id: "review", label: "En revisión" },
+    { id: "draft", label: "Borradores" },
+    { id: "changes", label: "Necesitan cambios" },
+    { id: "finished", label: "Finalizadas" },
+  ];
 
   return (
     <>
-      <PageHeader kicker="/ Commerce · Gestión" title="Promociones" titleAccent="del comercio" />
-
-      <div className="main-content">
-        {commerce ? <CommerceOnboardingPanel commerce={commerce} compact /> : null}
-        {commerce ? (
-          <CommerceStatusNotices
-            commerce={commerce}
-            email={session?.user.email}
-            emailVerifiedAt={session?.user.emailVerifiedAt}
-          />
-        ) : null}
-
-        {pendingReviewCount > 0 ? (
-          <div className="alert alert-warning">
-            <IconClock size={14} className="alert-icon" />
-            <span>
-              {pendingReviewCount === 1
-                ? "Tenés 1 promoción en revisión. Todavía no se muestra en la app, el mapa ni la búsqueda hasta que el equipo la apruebe."
-                : `Tenes ${pendingReviewCount} promociones en revision. Todavia no se muestran en la app, el mapa ni la busqueda hasta que el equipo las apruebe.`}
-            </span>
+      <header className="commerce-promotions-header">
+        <div className="commerce-promotions-header-inner">
+          <div>
+            <div className="commerce-simple-eyebrow">Promociones</div>
+            <h1>Tus promociones</h1>
+            <p>Creá y administrá las ofertas que ven tus clientes.</p>
           </div>
-        ) : null}
-
-        <div className="toolbar">
-          <div className="chip-row">
+          {!isEmptyAccount && canCreate ? (
             <button
-              type="button"
-              className={filter === "all" ? "chip is-active" : "chip"}
-              onClick={() => setFilter("all")}
-            >
-              Todas ({promotions.length})
-            </button>
-            <button
-              type="button"
-              className={filter === "visible" ? "chip is-active" : "chip"}
-              onClick={() => setFilter("visible")}
-            >
-              Visibles
-            </button>
-            <button
-              type="button"
-              className={filter === "review" ? "chip is-active" : "chip"}
-              onClick={() => setFilter("review")}
-            >
-              Revision
-            </button>
-            <button
-              type="button"
-              className={filter === "draft" ? "chip is-active" : "chip"}
-              onClick={() => setFilter("draft")}
-            >
-              Borradores
-            </button>
-            <button
-              type="button"
-              className={filter === "incidents" ? "chip is-active" : "chip"}
-              onClick={() => setFilter("incidents")}
-            >
-              Observadas
-            </button>
-          </div>
-          <div className="toolbar-end">
-            {!canCreate ? (
-              <span className="summary-count">
-                {getCommerceBlockedActionLabel(commerce?.status)}
-              </span>
-            ) : null}
-            <button
-              className="btn btn-primary"
+              className="commerce-promotions-new"
               onClick={() => navigate("/commerce/promotions/new")}
               type="button"
-              disabled={!canCreate}
-              title={canCreate ? undefined : "Tu comercio debe estar aprobado para crear promos."}
             >
-              <IconPlus size={14} /> Nueva promo
+              <IconPlus size={16} /> Nueva promoción
             </button>
-          </div>
+          ) : null}
         </div>
+      </header>
 
-        {error ? (
-          <div className="alert alert-danger">
-            <IconAlert size={14} className="alert-icon" /> <span>{error}</span>
-          </div>
+      <div className="main-content commerce-promotions-content">
+        {!canCreate && commerce ? (
+          <section className="commerce-promotions-account-notice">
+            <div>
+              <strong>Las promociones están temporalmente bloqueadas.</strong>
+              <span>{getCommerceBlockedActionLabel(commerce.status)}</span>
+            </div>
+            <Link to="/commerce/profile">Ver mi negocio</Link>
+          </section>
         ) : null}
 
-        {loading ? (
-          <LoadingBlock title="Cargando promociones" text="Trayendo tus promos activas." />
-        ) : visible.length === 0 ? (
-          <div className="panel" style={{ textAlign: "center", padding: 48 }}>
-            <h3 style={{ fontSize: 18, marginBottom: 6 }}>Todavia no hay promociones</h3>
-            <p className="muted" style={{ fontSize: 13 }}>
-              Cuando publiques tu primera promo, va a aparecer aca con su estado, horario y cupos.
-            </p>
-            {canCreate && (
+        {error ? (
+          <section className="commerce-promotions-load-error" role="alert">
+            <div className="commerce-promotions-load-error-icon">
+              <IconAlert size={18} />
+            </div>
+            <div>
+              <strong>No pudimos cargar tus promociones</strong>
+              <span>{error}</span>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => void loadPromotions().catch(() => undefined)}
+            >
+              Reintentar
+            </button>
+          </section>
+        ) : loading ? (
+          <LoadingBlock title="Cargando" text="Un momento, estamos buscando tus promociones." />
+        ) : isEmptyAccount ? (
+          <section className="commerce-promotions-first-empty">
+            <div className="commerce-promotions-first-icon">
+              <IconPlus size={22} />
+            </div>
+            <h2>Creá tu primera promoción</h2>
+            <p>Ofrecé un beneficio para empezar a llegar a clientes en PROMY.</p>
+            {canCreate ? (
               <button
                 className="btn btn-primary"
                 onClick={() => navigate("/commerce/promotions/new")}
                 type="button"
-                style={{ marginTop: 20 }}
               >
-                <IconPlus size={14} /> Crear primera promo
+                <IconPlus size={15} /> Nueva promoción
               </button>
-            )}
-          </div>
+            ) : null}
+          </section>
         ) : (
-          <div className="promo-grid">
-            {visible.map((promotion) => (
-              <article className="promo-card" key={promotion.id}>
-                <div className="promo-card-head">
-                  <StatusBadge status={promotion.status} />
-                  <span className="promo-card-type">
-                    {getPromotionTypeLabel(promotion.promotionType)}
-                  </span>
-                </div>
-                <div>
-                  <div className="promo-card-title">{promotion.title}</div>
-                  <p className="promo-card-desc">{promotion.description}</p>
-                </div>
-                <div className="promo-card-meta">
-                  <span className="promo-card-meta-item">
-                    <IconTag size={12} />
-                    <span className="promo-card-meta-value">
-                      {promotion.discountValue != null
-                        ? promotion.promotionType === "FIXED_AMOUNT"
-                          ? `$${promotion.discountValue.toLocaleString("es-AR")}`
-                          : `${promotion.discountValue}%`
-                        : "Sin dto."}
-                    </span>
-                  </span>
-                  <span className="promo-card-meta-item">
-                    <IconClock size={12} />
-                    <span className="promo-card-meta-value">
-                      {getPromotionScheduleSummary(promotion)}
-                    </span>
-                  </span>
-                  <span className="promo-card-meta-item">
-                    <IconTag size={12} />
-                    <span className="promo-card-meta-value">
-                      {getPromotionCapSummary(promotion)}
-                    </span>
-                  </span>
-                </div>
-                <div className="promo-card-actions">
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => navigate(`/commerce/promotions/${promotion.id}`)}
-                    type="button"
-                    style={{ width: "100%" }}
-                  >
-                    <IconEdit size={12} /> Editar
-                  </button>
-                  <Link
-                    to={buildClientAppRoute({
-                      target: buildPromotionDeepLink(promotion.id),
-                      title: "Abrir promo en la app",
-                      description: `Vista cliente de ${promotion.title}.`,
-                    })}
-                    className="btn btn-ghost btn-sm"
-                    style={{ width: "100%", justifyContent: "center", textDecoration: "none" }}
-                  >
-                    Ver en app
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+          <>
+            <nav className="commerce-promotions-filters" aria-label="Filtrar promociones">
+              {filters.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={filter === item.id ? "is-active" : ""}
+                  onClick={() => setFilter(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+
+            {visiblePromotions.length === 0 ? (
+              <section className="commerce-promotions-filter-empty">
+                <strong>No hay promociones en esta sección.</strong>
+                <span>Probá con otro filtro para ver el resto.</span>
+              </section>
+            ) : (
+              <section className="commerce-promotions-list" aria-label="Tus promociones">
+                {visiblePromotions.map((promotion) => {
+                  const status = getPromotionStatusMeta(promotion);
+                  const redemptionCount = promotion.successRedemptionsCount || 0;
+
+                  return (
+                    <article className="commerce-promotion-row" key={promotion.id}>
+                      <div className="commerce-promotion-row-main">
+                        <div className="commerce-promotion-row-head">
+                          <h2>{promotion.title}</h2>
+                          <span className={`commerce-promotion-friendly-status is-${status.tone}`}>
+                            <span />
+                            {status.label}
+                          </span>
+                        </div>
+
+                        <div className="commerce-promotion-row-offer">
+                          {getPromotionOfferLabel(promotion)}
+                          {redemptionCount > 0 ? (
+                            <span>
+                              · {redemptionCount} {redemptionCount === 1 ? "canje" : "canjes"}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <p className="commerce-promotion-row-message">{status.message}</p>
+                      </div>
+
+                      <div className="commerce-promotion-row-actions">
+                        <Link
+                          to={`/commerce/promotions/${promotion.id}/preview`}
+                          className="commerce-promotion-link"
+                        >
+                          Ver como cliente <IconArrowRight size={14} />
+                        </Link>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => navigate(`/commerce/promotions/${promotion.id}`)}
+                          type="button"
+                        >
+                          <IconEdit size={13} />
+                          {promotion.status === "REJECTED" ? "Corregir" : "Editar"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+          </>
         )}
       </div>
     </>

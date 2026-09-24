@@ -1,10 +1,9 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { BrandLockup } from "../../components/Logo";
-import { ThemeToggle } from "../../components/ThemeToggle";
-import { IconDashboard, IconLogout, IconReceipt, IconStore, IconTag } from "../../components/Icons";
+import { IconDashboard, IconLogout, IconReceipt, IconStore, IconTag, IconTrending } from "../../components/Icons";
 import { fetchMyCommerce } from "../../lib/api";
 import { useLiveRefresh } from "../../lib/live";
 import { useRealtimeVersion } from "../../lib/realtime";
@@ -12,9 +11,12 @@ import type { CommerceManagedProfile } from "../../types/api";
 import {
   CommerceDashboardPage,
   CommerceProfilePage,
+  CommerceProfilePreviewPage,
   CommercePromotionEditorPage,
+  CommercePromotionPreviewPage,
   CommercePromotionsPage,
   CommerceRedemptionsPage,
+  CommerceStatisticsPage,
   type CommerceTab,
 } from "./CommerceSections";
 
@@ -29,10 +31,11 @@ export default function CommercePanel() {
   });
 
   const navLinks: Array<CommerceTab & { icon: ReactNode }> = [
-    { to: "/commerce", label: "Dashboard", icon: <IconDashboard size={16} />, end: true },
-    { to: "/commerce/profile", label: "Mi comercio", icon: <IconStore size={16} /> },
-    { to: "/commerce/promotions", label: "Promociones", icon: <IconTag size={16} /> },
+    { to: "/commerce", label: "Inicio", icon: <IconDashboard size={16} />, end: true },
     { to: "/commerce/redemptions", label: "Canjes", icon: <IconReceipt size={16} /> },
+    { to: "/commerce/promotions", label: "Promociones", icon: <IconTag size={16} /> },
+    { to: "/commerce/statistics", label: "Estadísticas", icon: <IconTrending size={16} /> },
+    { to: "/commerce/profile", label: "Mi negocio", icon: <IconStore size={16} /> },
   ];
 
   const loadCommerce = useCallback(async () => {
@@ -59,17 +62,12 @@ export default function CommercePanel() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className="sidebar commerce-sidebar">
         <div className="sidebar-head">
           <BrandLockup size="sm" />
-          <div className="sidebar-role">
-            <span className="sidebar-role-dot" />
-            <span>Comercio</span>
-          </div>
         </div>
 
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">Gestion</div>
+        <div className="sidebar-section commerce-sidebar-nav-wrap">
           <nav className="sidebar-nav">
             {navLinks.map((link) => (
               <NavLink
@@ -88,7 +86,6 @@ export default function CommercePanel() {
         </div>
 
         <div className="sidebar-foot">
-          <ThemeToggle />
           <div className="sidebar-user">
             <div className="sidebar-user-avatar">{userInitial}</div>
             <div className="sidebar-user-info">
@@ -121,6 +118,7 @@ export default function CommercePanel() {
             }
           />
           <Route path="profile" element={<CommerceProfilePage realtimeVersion={realtimeVersion} />} />
+          <Route path="profile/preview" element={<CommerceProfilePreviewPage />} />
           <Route
             path="promotions"
             element={<CommercePromotionsPage commerce={commerce} realtimeVersion={realtimeVersion} />}
@@ -130,10 +128,15 @@ export default function CommercePanel() {
             element={<CommercePromotionEditorPage commerce={commerce} realtimeVersion={realtimeVersion} />}
           />
           <Route
+            path="promotions/:promotionId/preview"
+            element={<CommercePromotionPreviewPage />}
+          />
+          <Route
             path="promotions/:promotionId"
             element={<CommercePromotionEditorPage commerce={commerce} realtimeVersion={realtimeVersion} />}
           />
           <Route path="redemptions" element={<CommerceRedemptionsPage realtimeVersion={realtimeVersion} />} />
+          <Route path="statistics" element={<CommerceStatisticsPage realtimeVersion={realtimeVersion} />} />
           <Route path="*" element={<Navigate to="/commerce" replace />} />
         </Routes>
       </div>

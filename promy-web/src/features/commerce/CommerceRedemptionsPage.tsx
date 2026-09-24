@@ -1,30 +1,78 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth";
+import { IconAlert } from "../../components/Icons";
 import { fetchCommerceRedemptions, validateCommerceRedemption } from "../../lib/api";
-import type { CommerceManagedRedemption } from "../../types/api";
 import { useLiveRefresh } from "../../lib/live";
-import { IconAlert, IconCheck, IconReceipt } from "../../components/Icons";
-import { LoadingBlock, normalizeValidationCode, PageHeader } from "./CommerceShared";
-import { CommerceLastValidatedCard } from "./CommerceLastValidatedCard";
-import { CommerceRedemptionsHistoryTable } from "./CommerceRedemptionsHistoryTable";
-import { CommerceRedemptionValidator } from "./CommerceRedemptionValidator";
+import type { CommerceManagedRedemption } from "../../types/api";
 import {
   getCameraStartupErrorMessage,
   stopMediaStream,
   stopMediaStreamIfLate,
   withCameraStartupTimeout,
 } from "./camera";
+import { CommerceLastValidatedCard } from "./CommerceLastValidatedCard";
+import { CommerceRedemptionsHistoryTable } from "./CommerceRedemptionsHistoryTable";
+import { CommerceRedemptionValidator } from "./CommerceRedemptionValidator";
+import { LoadingBlock, normalizeValidationCode } from "./CommerceShared";
+
+type ValidationErrorPresentation = {
+  title: string;
+  text: string;
+};
+
+function getValidationErrorPresentation(message: string): ValidationErrorPresentation {
+  const normalized = message.toLowerCase();
+
+  if (/ya (fue|est[aá])|ya se (us[oó]|canje[oó]|valid[oó])|already/.test(normalized)) {
+    return {
+      title: "Este canje ya fue utilizado",
+      text: "No hace falta volver a validarlo.",
+    };
+  }
+
+  if (/vencid|expir|fuera de vigencia/.test(normalized)) {
+    return {
+      title: "La promoción ya venció",
+      text: "Este beneficio ya no está disponible para canjear.",
+    };
+  }
+
+  if (/otro comercio|no corresponde|comercio distinto|propietario/.test(normalized)) {
+    return {
+      title: "Este canje no corresponde a tu negocio",
+      text: "Pedile al cliente que revise la promoción antes de intentarlo nuevamente.",
+    };
+  }
+
+  if (/conexi[oó]n|network|timeout|tard[oó]|fetch/.test(normalized)) {
+    return {
+      title: "No pudimos conectarnos",
+      text: "Revisá tu conexión e intentá nuevamente.",
+    };
+  }
+
+  if (/inv[aá]lid|no encontr|c[oó]digo|code/.test(normalized)) {
+    return {
+      title: "Código inválido",
+      text: "Revisá el código del cliente e intentá nuevamente.",
+    };
+  }
+
+  return {
+    title: "No pudimos validar el canje",
+    text: "Revisá el código e intentá nuevamente.",
+  };
+}
 
 export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: number }) {
   const { withSession } = useAuth();
   const [redemptions, setRedemptions] = useState<CommerceManagedRedemption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<ValidationErrorPresentation | null>(null);
   const [lastValidated, setLastValidated] = useState<CommerceManagedRedemption | null>(null);
   const [validationCode, setValidationCode] = useState("");
   const [validating, setValidating] = useState(false);
-  const [readingClipboard, setReadingClipboard] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerStarting, setScannerStarting] = useState(false);
   const [scannerActive, setScannerActive] = useState(false);
@@ -33,51 +81,41 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-
-  // Referencia al objeto de control de @zxing/browser — permite detener el scanner limpiamente.
   const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
-  // Flag para evitar que el callback de zxing dispare validación múltiple si detecta el mismo QR
-  // en varios frames antes de que stop() termine de correr.
   const scanningActiveRef = useRef(false);
 
   const loadRedemptions = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true);
-    }
+    if (!silent) setLoading(true);
 
     try {
       const response = await withSession((s) => fetchCommerceRedemptions(s));
       setRedemptions(response.redemptions);
-      setLastValidated(response.redemptions.find((item) => item.status === "SUCCESS") || null);
-      setError(null);
+      setLoadError(null);
     } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+      if (!silent) setLoading(false);
     }
   }, [withSession]);
 
   useEffect(() => {
-    void loadRedemptions().catch((loadError) =>
-      setError(loadError instanceof Error ? loadError.message : "No pudimos cargar canjes."),
+    void loadRedemptions().catch((loadRedemptionsError) =>
+      setLoadError(
+        loadRedemptionsError instanceof Error
+          ? loadRedemptionsError.message
+          : "No pudimos cargar los canjes.",
+      ),
     );
   }, [loadRedemptions, realtimeVersion]);
 
   useLiveRefresh(
     () =>
-      loadRedemptions(true).catch((loadError) =>
-        setError(loadError instanceof Error ? loadError.message : "No pudimos refrescar canjes."),
+      loadRedemptions(true).catch((refreshError) =>
+        setLoadError(
+          refreshError instanceof Error
+            ? refreshError.message
+            : "No pudimos actualizar los canjes.",
+        ),
       ),
     { intervalMs: 15000 },
-  );
-
-  const pendingCount = useMemo(
-    () => redemptions.filter((item) => item.status === "PENDING").length,
-    [redemptions],
-  );
-  const successCount = useMemo(
-    () => redemptions.filter((item) => item.status === "SUCCESS").length,
-    [redemptions],
   );
 
   const focusValidationInput = () => {
@@ -87,29 +125,32 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
 
   const handleValidationCodeChange = (rawValue: string) => {
     setValidationCode(normalizeValidationCode(rawValue));
+    if (validationError) setValidationError(null);
   };
 
-  const applyValidatedRedemption = (redemption: CommerceManagedRedemption, message?: string) => {
+  const applyValidatedRedemption = (redemption: CommerceManagedRedemption) => {
     setRedemptions((current) => {
       const next = current.filter((item) => item.id !== redemption.id);
       return [redemption, ...next];
     });
     setLastValidated(redemption);
+    setValidationError(null);
     setValidationCode("");
-    setFeedback(message || "Canje validado correctamente.");
-    window.setTimeout(() => focusValidationInput(), 30);
   };
 
   const executeValidation = async (rawCode: string) => {
     const normalized = normalizeValidationCode(rawCode);
 
     if (!normalized) {
-      setError("Ingresá un código para validar.");
+      setValidationError({
+        title: "Ingresá un código",
+        text: "Usá el código que aparece en el teléfono del cliente.",
+      });
       return false;
     }
 
     const response = await withSession((s) => validateCommerceRedemption(s, normalized));
-    applyValidatedRedemption(response.redemption, response.message);
+    applyValidatedRedemption(response.redemption);
     return true;
   };
 
@@ -118,35 +159,18 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
 
     try {
       setValidating(true);
-      setError(null);
-      setFeedback(null);
+      setValidationError(null);
+      setLastValidated(null);
       await executeValidation(validationCode);
-    } catch (validationError) {
-      setError(validationError instanceof Error ? validationError.message : "No pudimos validar el canje.");
+    } catch (validationFailure) {
+      const message =
+        validationFailure instanceof Error
+          ? validationFailure.message
+          : "No pudimos validar el canje.";
+      setValidationError(getValidationErrorPresentation(message));
     } finally {
       setValidating(false);
-    }
-  };
-
-  const handlePasteAndValidate = async () => {
-    if (!navigator.clipboard) {
-      setError("Tu navegador no permite leer el portapapeles desde este panel.");
-      return;
-    }
-
-    try {
-      setReadingClipboard(true);
-      setError(null);
-      const clipboardText = await navigator.clipboard.readText();
-      if (!normalizeValidationCode(clipboardText)) {
-        setError("No encontramos un código válido en el portapapeles.");
-        return;
-      }
-      await executeValidation(clipboardText);
-    } catch (clipboardError) {
-      setError(clipboardError instanceof Error ? clipboardError.message : "No pudimos leer o validar el código.");
-    } finally {
-      setReadingClipboard(false);
+      window.setTimeout(() => focusValidationInput(), 30);
     }
   };
 
@@ -159,7 +183,6 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
     setScannerActive(false);
   };
 
-  // Cleanup al desmontar el componente.
   useEffect(() => {
     return () => {
       stopScanner();
@@ -186,8 +209,6 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
         setScannerError(null);
         scanningActiveRef.current = true;
 
-        // Import dinámico: @zxing/browser (~200KB) solo carga cuando el usuario
-        // abre el scanner, no al cargar la página.
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
 
         if (cancelled) return;
@@ -224,11 +245,8 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
           stream,
           videoRef.current!,
           (result, _error) => {
-            // El callback se llama en cada frame. Solo procesamos si hay resultado
-            // y el scanner sigue activo (evita doble validación en frames consecutivos).
             if (!result || !scanningActiveRef.current) return;
 
-            // Marcar como inactivo inmediatamente para ignorar frames siguientes.
             scanningActiveRef.current = false;
 
             const scannedCode = result.getText();
@@ -239,19 +257,20 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
             setScannerActive(false);
             setValidationCode(normalizeValidationCode(scannedCode));
             setValidating(true);
-            setError(null);
-            setFeedback(null);
+            setValidationError(null);
+            setLastValidated(null);
 
             void executeValidation(scannedCode)
-              .catch((validationError) => {
-                setError(
-                  validationError instanceof Error
-                    ? validationError.message
-                    : "No pudimos validar el canje escaneado.",
-                );
+              .catch((validationFailure) => {
+                const message =
+                  validationFailure instanceof Error
+                    ? validationFailure.message
+                    : "No pudimos validar el canje escaneado.";
+                setValidationError(getValidationErrorPresentation(message));
               })
               .finally(() => {
                 setValidating(false);
+                window.setTimeout(() => focusValidationInput(), 30);
               });
           },
         ));
@@ -285,25 +304,11 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
   }, [scannerOpen, scannerAttempt]);
 
   return (
-    <>
-      <PageHeader
-        kicker="/ Commerce · Actividad"
-        title="Canjes"
-        titleAccent="recibidos"
-        meta={
-          <span className="page-meta-item">
-            <IconReceipt size={12} /> {redemptions.length} registros
-          </span>
-        }
-      />
-
-      <div className="main-content">
+    <div className="commerce-redemptions-simple-page">
+      <div className="main-content commerce-redemptions-simple-content">
         <CommerceRedemptionValidator
           validationCode={validationCode}
-          pendingCount={pendingCount}
-          successCount={successCount}
           validating={validating}
-          readingClipboard={readingClipboard}
           scannerOpen={scannerOpen}
           scannerStarting={scannerStarting}
           scannerActive={scannerActive}
@@ -312,7 +317,6 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
           inputRef={inputRef}
           onValidationCodeChange={handleValidationCodeChange}
           onSubmit={handleValidateRedemption}
-          onPasteAndValidate={() => void handlePasteAndValidate()}
           onOpenScanner={() => setScannerOpen(true)}
           onCloseScanner={() => setScannerOpen(false)}
           onRetryScanner={() => {
@@ -326,33 +330,46 @@ export function CommerceRedemptionsPage({ realtimeVersion }: { realtimeVersion: 
           }}
         />
 
-        {error ? (
-          <div className="alert alert-danger">
-            <IconAlert size={14} className="alert-icon" /> <span>{error}</span>
-          </div>
-        ) : null}
-
-        {feedback ? (
-          <div className="alert alert-success">
-            <IconCheck size={14} className="alert-icon" /> <span>{feedback}</span>
-          </div>
+        {validationError ? (
+          <section className="redeem-result redeem-result-error" role="alert" aria-live="assertive">
+            <span className="redeem-result-icon"><IconAlert size={21} /></span>
+            <div className="redeem-result-copy">
+              <strong>{validationError.title}</strong>
+              <span>{validationError.text}</span>
+            </div>
+          </section>
         ) : null}
 
         {lastValidated ? <CommerceLastValidatedCard redemption={lastValidated} /> : null}
 
-        {loading ? (
-          <LoadingBlock title="Cargando canjes" text="Trayendo actividad del comercio." />
-        ) : redemptions.length === 0 ? (
-          <div className="panel" style={{ textAlign: "center", padding: 48 }}>
-            <h3 style={{ fontSize: 18, marginBottom: 6 }}>Todavia no hay canjes</h3>
-            <p className="muted" style={{ fontSize: 13 }}>
-              Cuando tus clientes empiecen a usar promociones, la actividad validada va a aparecer aca.
-            </p>
+        {loadError ? (
+          <div className="redeem-load-error">
+            <div className="alert alert-danger">
+              <IconAlert size={14} className="alert-icon" /> <span>{loadError}</span>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => void loadRedemptions().catch(() => undefined)}
+            >
+              Reintentar
+            </button>
           </div>
+        ) : null}
+
+        {loading ? (
+          <LoadingBlock title="Cargando canjes" text="Un momento, estamos buscando tu actividad reciente." />
+        ) : redemptions.length === 0 ? (
+          <section className="redeem-history-empty" aria-labelledby="redeem-history-empty-title">
+            <span className="redeem-history-eyebrow">Actividad</span>
+            <h2 id="redeem-history-empty-title">Canjes recientes</h2>
+            <strong>Todavía no hubo canjes.</strong>
+            <p>Cuando valides el primero, va a aparecer acá.</p>
+          </section>
         ) : (
           <CommerceRedemptionsHistoryTable redemptions={redemptions} />
         )}
       </div>
-    </>
+    </div>
   );
 }

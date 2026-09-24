@@ -4,8 +4,11 @@
 
 export { CommerceDashboardPage } from "./CommerceDashboardPage";
 export { CommerceProfilePage } from "./CommerceProfilePage";
+export { CommerceProfilePreviewPage } from "./CommerceProfilePreviewPage";
 export { CommercePromotionsPage } from "./CommercePromotionsPage";
 export { CommercePromotionEditorPage } from "./CommercePromotionEditorPage";
+export { CommercePromotionPreviewPage } from "./CommercePromotionPreviewPage";
 export { CommerceRedemptionsPage } from "./CommerceRedemptionsPage";
+export { CommerceStatisticsPage } from "./CommerceStatisticsPage";
 
 export type CommerceTab = { to: string; label: string; end?: boolean };

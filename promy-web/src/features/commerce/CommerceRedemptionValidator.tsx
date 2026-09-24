@@ -1,12 +1,9 @@
 import React from "react";
-import { IconAlert, IconCheck, IconClock, IconEye, IconHash } from "../../components/Icons";
+import { IconAlert, IconClock, IconEye, IconReceipt } from "../../components/Icons";
 
 type CommerceRedemptionValidatorProps = {
   validationCode: string;
-  pendingCount: number;
-  successCount: number;
   validating: boolean;
-  readingClipboard: boolean;
   scannerOpen: boolean;
   scannerStarting: boolean;
   scannerActive: boolean;
@@ -15,7 +12,6 @@ type CommerceRedemptionValidatorProps = {
   inputRef: React.RefObject<HTMLInputElement | null>;
   onValidationCodeChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
-  onPasteAndValidate: () => void;
   onOpenScanner: () => void;
   onCloseScanner: () => void;
   onRetryScanner: () => void;
@@ -24,10 +20,7 @@ type CommerceRedemptionValidatorProps = {
 
 export function CommerceRedemptionValidator({
   validationCode,
-  pendingCount,
-  successCount,
   validating,
-  readingClipboard,
   scannerOpen,
   scannerStarting,
   scannerActive,
@@ -36,7 +29,6 @@ export function CommerceRedemptionValidator({
   inputRef,
   onValidationCodeChange,
   onSubmit,
-  onPasteAndValidate,
   onOpenScanner,
   onCloseScanner,
   onRetryScanner,
@@ -53,60 +45,49 @@ export function CommerceRedemptionValidator({
 
   return (
     <>
-      <section className="panel" style={{ marginBottom: 20 }}>
-        <div className="panel-heading">
-          <div className="panel-heading-stack">
-            <h2>Validar canje en mostrador</h2>
-            <p>
-              Ingresá, pegá o escaneá el código que te muestra el cliente para confirmar el canje.
-            </p>
-          </div>
+      <section className="redeem-simple-workspace" aria-labelledby="redeem-simple-title">
+        <div className="redeem-simple-intro">
+          <span className="redeem-simple-eyebrow">Canjes</span>
+          <h1 id="redeem-simple-title">Validá un canje</h1>
+          <p>Escaneá el QR del cliente o ingresá el código que aparece en su teléfono.</p>
         </div>
 
-        <div className="redeem-validate-tips">
-          <span className="summary-count">
-            <IconClock size={12} /> {pendingCount} pendientes
+        <button
+          className="redeem-scan-action"
+          type="button"
+          disabled={validating}
+          onClick={onOpenScanner}
+        >
+          <span className="redeem-scan-action-icon"><IconEye size={20} /></span>
+          <span className="redeem-scan-action-copy">
+            <strong>Escanear QR</strong>
+            <small>Usá la cámara para validarlo en el momento</small>
           </span>
-          <span className="summary-count">
-            <IconCheck size={12} /> {successCount} confirmados
-          </span>
-          <span className="summary-count">
-            <IconHash size={12} /> Compatible con lector y Enter automático
-          </span>
+          <span className="redeem-scan-action-arrow">→</span>
+        </button>
+
+        <div className="redeem-simple-divider" aria-hidden="true">
+          <span>o ingresá el código</span>
         </div>
 
-        <form className="redeem-validate-form" onSubmit={onSubmit}>
+        <form className="redeem-manual-form" onSubmit={onSubmit}>
+          <label className="sr-only" htmlFor="redemption-code">Código del cliente</label>
           <input
             id="redemption-code"
             name="redemptionCode"
-            aria-label="Código de canje"
+            aria-label="Código del cliente"
             ref={inputRef}
-            className="field-input redeem-validate-input redeem-validate-input-hero"
+            className="field-input redeem-manual-input"
             value={validationCode}
             onChange={(event) => onValidationCodeChange(event.target.value)}
-            placeholder="PROMY-ABCD1234"
+            placeholder="Código del cliente"
             autoFocus
             autoComplete="off"
             spellCheck={false}
           />
-          <button className="btn btn-primary btn-xl" type="submit" disabled={validating}>
-            {validating ? "Validando..." : "Validar código"}
-          </button>
-          <button
-            className="btn btn-ghost btn-lg"
-            type="button"
-            disabled={readingClipboard || validating}
-            onClick={onPasteAndValidate}
-          >
-            {readingClipboard ? "Leyendo..." : "Pegar y validar"}
-          </button>
-          <button
-            className="btn btn-ghost btn-lg"
-            type="button"
-            disabled={validating || readingClipboard}
-            onClick={onOpenScanner}
-          >
-            <IconEye size={14} /> Escanear con cámara
+          <button className="btn btn-primary redeem-manual-submit" type="submit" disabled={validating}>
+            <IconReceipt size={16} />
+            {validating ? "Validando..." : "Validar canje"}
           </button>
         </form>
       </section>
@@ -122,8 +103,8 @@ export function CommerceRedemptionValidator({
           >
             <div className="panel-heading">
               <div className="panel-heading-stack">
-                <h2 id="scanner-modal-title">Escanear código</h2>
-                <p>Apuntá la cámara al QR o código del cliente. Se valida automáticamente al detectarlo.</p>
+                <h2 id="scanner-modal-title">Escanear QR</h2>
+                <p>Apuntá la cámara al código del cliente. PROMY lo valida automáticamente.</p>
               </div>
             </div>
 
@@ -143,7 +124,7 @@ export function CommerceRedemptionValidator({
 
               {scannerActive ? (
                 <div className="scanner-help">
-                  Cuando PROMY detecte el código, lo valida y te devuelve el foco al mostrador.
+                  Mantené el QR dentro del recuadro hasta que PROMY lo detecte.
                 </div>
               ) : null}
 

@@ -1,6 +1,7 @@
 import React from "react";
+import { IconCheck, IconClock, IconReceipt } from "../../components/Icons";
 import type { CommerceManagedRedemption } from "../../types/api";
-import { formatDate, StatusBadge } from "./CommerceShared";
+import { formatDate, getStatusLabel } from "./CommerceShared";
 import { escapeCSVCell } from "./csv";
 
 export function buildCSVContent(redemptions: CommerceManagedRedemption[]) {
@@ -53,6 +54,12 @@ function buildExportFilename() {
   return `canjes-${date}.csv`;
 }
 
+function getHistoryTone(status: string) {
+  if (status === "SUCCESS") return "success";
+  if (status === "PENDING") return "pending";
+  return "neutral";
+}
+
 type CommerceRedemptionsHistoryTableProps = {
   redemptions: CommerceManagedRedemption[];
 };
@@ -67,65 +74,43 @@ export function CommerceRedemptionsHistoryTable({
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 10,
-          gap: 12,
-        }}
-      >
-        <span className="summary-count">{redemptions.length} registros</span>
-
+    <section className="redeem-history" aria-labelledby="redeem-history-title">
+      <div className="redeem-history-head">
+        <div>
+          <span className="redeem-history-eyebrow">Actividad</span>
+          <h2 id="redeem-history-title">Canjes recientes</h2>
+        </div>
         <button
-          className="btn btn-ghost btn-sm"
+          className="redeem-history-export"
           type="button"
           onClick={handleExport}
-          disabled={redemptions.length === 0}
-          title="Exportar todos los canjes a un archivo CSV compatible con Excel"
+          title="Descargar el historial de canjes"
         >
-          ↓ Exportar CSV
+          Exportar
         </button>
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Promocion</th>
-              <th>Metodo</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {redemptions.map((redemption) => (
-              <tr key={redemption.id}>
-                <td>
-                  <div className="cell-primary">{redemption.user?.fullName || "Cuenta eliminada"}</div>
-                </td>
-                <td>{redemption.promotion.title}</td>
-                <td>
-                  <span className="font-mono" style={{ fontSize: 12 }}>
-                    {redemption.validationMethod === "MANUAL_CODE" ? "Codigo manual" : "QR"}
-                  </span>
-                </td>
-                <td>
-                  <StatusBadge status={redemption.status} />
-                </td>
-                <td>
-                  <span className="font-mono" style={{ fontSize: 12, color: "var(--text-3)" }}>
-                    {formatDate(redemption.redeemedAt || redemption.createdAt)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="redeem-history-list">
+        {redemptions.map((redemption) => {
+          const isSuccess = redemption.status === "SUCCESS";
+          return (
+            <article className="redeem-history-row" key={redemption.id}>
+              <span className={`redeem-history-icon is-${getHistoryTone(redemption.status)}`}>
+                {isSuccess ? <IconCheck size={15} /> : redemption.status === "PENDING" ? <IconClock size={15} /> : <IconReceipt size={15} />}
+              </span>
+              <div className="redeem-history-main">
+                <strong>{redemption.promotion.title}</strong>
+                <span>
+                  {redemption.user?.fullName || "Cuenta eliminada"} · {formatDate(redemption.redeemedAt || redemption.createdAt)}
+                </span>
+              </div>
+              <span className={`redeem-history-status is-${getHistoryTone(redemption.status)}`}>
+                {getStatusLabel(redemption.status)}
+              </span>
+            </article>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }

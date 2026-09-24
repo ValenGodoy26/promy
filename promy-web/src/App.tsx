@@ -433,7 +433,6 @@ function LoginPage() {
           <Link to="/" className="auth-back-link">
             ← Volver al inicio
           </Link>
-          <PromyWordmark />
         </div>
 
         <div className="auth-brand-content">
@@ -445,7 +444,7 @@ function LoginPage() {
             Entrá al <em>panel operativo</em>
           </h2>
           <p className="auth-brand-copy">
-            El centro de control de PROMY. Todo lo que pasa en la app mobile se gestiona desde acá.
+            Gestioná tu comercio, promociones y canjes desde un solo lugar.
           </p>
 
           <div className="auth-brand-highlights">
@@ -453,7 +452,7 @@ function LoginPage() {
               <div className="auth-brand-highlight-icon">
                 <IconActivity size={14} />
               </div>
-              <span>Seguimiento operativo</span>
+              <span>Tu actividad en un solo lugar</span>
             </div>
             <div className="auth-brand-highlight">
               <div className="auth-brand-highlight-icon">
@@ -471,7 +470,7 @@ function LoginPage() {
         </div>
 
         <div className="auth-brand-footer">
-          PROMY · CONCORDIA · v0.1
+          PROMY · CONCORDIA
         </div>
 
         <div className="auth-brand-decor auth-brand-decor-1" />
@@ -530,7 +529,7 @@ function LoginPage() {
                 Olvidé mi contraseña
               </Link>
               <Link
-                className="auth-text-link"
+                className="auth-text-link auth-text-link-muted"
                 to={
                   email.trim()
                     ? `/verify-email?email=${encodeURIComponent(email.trim())}`
@@ -580,7 +579,7 @@ function LoginPage() {
             <div className="auth-secondary-cta-content">
               <div className="auth-secondary-cta-title">Sumá tu comercio</div>
               <div className="auth-secondary-cta-copy">
-                Registro gratuito · verificación por email y revisión del equipo
+                Creá tu cuenta · verificación por email · revisión del equipo
               </div>
             </div>
             <IconArrowRight size={16} />

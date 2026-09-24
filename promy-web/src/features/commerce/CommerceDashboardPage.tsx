@@ -1,22 +1,39 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { fetchCommerceDashboard } from "../../lib/api";
 import type { CommerceDashboardResponse, CommerceManagedProfile } from "../../types/api";
-import { buildClientAppRoute, buildCommerceDeepLink } from "../../lib/clientLinks";
 import { useLiveRefresh } from "../../lib/live";
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
-import { IconActivity, IconAlert } from "../../components/Icons";
 import {
-  CommerceOnboardingPanel,
-  CommerceStatusNotices,
-  DataCard,
-  getStatusLabel,
-  LoadingBlock,
-  PageHeader,
-  StatCard,
-  StatusBadge,
-} from "./CommerceShared";
+  IconAlert,
+  IconArrowRight,
+  IconCheck,
+  IconPlus,
+  IconReceipt,
+} from "../../components/Icons";
+import { LoadingBlock, getStatusLabel } from "./CommerceShared";
+
+function formatActivityDate(value?: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function getFriendlyCommerceStatus(status?: string | null) {
+  if (status === "APPROVED") return "Visible en PROMY";
+  if (status === "PENDING") return "En revisión";
+  if (status === "REJECTED") return "Necesita cambios";
+  if (status === "INACTIVE") return "Pausado";
+  return getStatusLabel(status || "");
+}
 
 export function CommerceDashboardPage({
   commerce,
@@ -30,6 +47,7 @@ export function CommerceDashboardPage({
   const { session, withSession } = useAuth();
   const [data, setData] = useState<CommerceDashboardResponse["dashboard"] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
   const missingCoordinates =
     commerce?.latitude == null ||
     commerce?.longitude == null ||
@@ -44,74 +62,90 @@ export function CommerceDashboardPage({
 
   useEffect(() => {
     void loadDashboard().catch((loadDashboardError) =>
-      setLoadError(
-        getUserFacingErrorMessage(loadDashboardError, "load"),
-      ),
+      setLoadError(getUserFacingErrorMessage(loadDashboardError, "load")),
     );
   }, [loadDashboard, realtimeVersion]);
 
   useLiveRefresh(
     () =>
       loadDashboard().catch((loadDashboardError) =>
-        setLoadError(
-          getUserFacingErrorMessage(loadDashboardError, "load"),
-        ),
+        setLoadError(getUserFacingErrorMessage(loadDashboardError, "load")),
       ),
     { intervalMs: 30000 },
   );
 
+  const activePromotion = useMemo(
+    () => data?.recentPromotions.find((promotion) => promotion.status === "APPROVED_VISIBLE") ?? null,
+    [data],
+  );
+
+  const shortCommerceName = useMemo(() => {
+    const source = commerce?.name?.trim() || session?.user.fullName?.trim() || "tu negocio";
+    return source.split(/\s+/)[0] || source;
+  }, [commerce?.name, session?.user.fullName]);
+
+  const attentionNotice = useMemo(() => {
+    if (commerce?.status === "PENDING") {
+      return {
+        title: "Estamos revisando tu negocio",
+        text: "Podés revisar tus datos mientras termina la aprobación.",
+        action: "Ver mi negocio",
+        to: "/commerce/profile",
+        tone: "pending",
+      };
+    }
+
+    if (commerce?.status === "REJECTED") {
+      return {
+        title: "Hay información para corregir",
+        text: "Revisá la observación de PROMY y actualizá los datos necesarios.",
+        action: "Ver qué corregir",
+        to: "/commerce/profile",
+        tone: "danger",
+      };
+    }
+
+    if (commerce?.status === "INACTIVE") {
+      return {
+        title: "Tu negocio está pausado",
+        text: "Revisá tu información para saber cómo volver a activarlo.",
+        action: "Ver mi negocio",
+        to: "/commerce/profile",
+        tone: "pending",
+      };
+    }
+
+    if (commerce?.status === "APPROVED" && missingCoordinates) {
+      return {
+        title: "Falta ubicar tu negocio",
+        text: "Completá la ubicación para que tus clientes puedan encontrarte mejor.",
+        action: "Completar ubicación",
+        to: "/commerce/profile",
+        tone: "pending",
+      };
+    }
+
+    return null;
+  }, [commerce?.status, missingCoordinates]);
+
   return (
     <>
-      <PageHeader
-        kicker="/ Commerce · Panel principal"
-        title="Dashboard"
-        meta={
-          <span className="page-meta-item">
-            <IconActivity size={12} /> En tiempo real
-          </span>
-        }
-      />
-
-      <div className="main-content">
-        {commerce ? (
-          <div className="commerce-strip">
-            <div className="commerce-strip-main">
-              <div className="commerce-strip-icon">
-                {commerce.name?.[0]?.toUpperCase() || "C"}
-              </div>
-              <div className="commerce-strip-text">
-                <h3>{commerce.name}</h3>
-                <p>
-                  {(commerce.category?.name || "Comercio") + " · " + (commerce.city?.name || "Ciudad")}
-                </p>
-              </div>
-            </div>
-            <div className="commerce-strip-meta">
-              <StatusBadge status={commerce.status} />
-              <span className="commerce-strip-slug">/{commerce.slug}</span>
-              <Link
-                to={buildClientAppRoute({
-                  target: buildCommerceDeepLink(commerce.id),
-                  title: "Abrir comercio en la app",
-                  description: "Vista cliente del local para validar como se ve en mobile.",
-                })}
-                className="btn btn-secondary btn-sm"
-              >
-                Ver en app
-              </Link>
-            </div>
+      <header className="commerce-simple-header">
+        <div className="commerce-simple-header-inner">
+          <div>
+            <div className="commerce-simple-eyebrow">Inicio</div>
+            <h1>Hola, {shortCommerceName}</h1>
           </div>
-        ) : null}
+          {commerce ? (
+            <div className={`commerce-simple-status status-${commerce.status.toLowerCase()}`}>
+              <span className="commerce-simple-status-dot" />
+              {getFriendlyCommerceStatus(commerce.status)}
+            </div>
+          ) : null}
+        </div>
+      </header>
 
-        {commerce ? <CommerceOnboardingPanel commerce={commerce} /> : null}
-        {commerce ? (
-          <CommerceStatusNotices
-            commerce={commerce}
-            email={session?.user.email}
-            emailVerifiedAt={session?.user.emailVerifiedAt}
-          />
-        ) : null}
-
+      <div className="main-content commerce-simple-content">
         {error ? (
           <div className="alert alert-danger">
             <IconAlert size={14} className="alert-icon" /> <span>{error}</span>
@@ -119,118 +153,111 @@ export function CommerceDashboardPage({
         ) : null}
 
         {loadError ? (
-          <>
+          <div className="commerce-simple-retry">
             <div className="alert alert-danger">
               <IconAlert size={14} className="alert-icon" /> <span>{loadError}</span>
             </div>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadDashboard().catch((loadDashboardError) => setLoadError(getUserFacingErrorMessage(loadDashboardError, "load")))}>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() =>
+                void loadDashboard().catch((loadDashboardError) =>
+                  setLoadError(getUserFacingErrorMessage(loadDashboardError, "load")),
+                )
+              }
+            >
               Reintentar
             </button>
-          </>
+          </div>
         ) : null}
 
         {!data && !loadError ? (
-          <LoadingBlock title="Cargando dashboard" text="Trayendo métricas del comercio." />
+          <LoadingBlock title="Cargando" text="Un momento, estamos preparando tu inicio." />
         ) : null}
 
         {data ? (
           <>
-            <section className="commerce-next-step panel">
-              <div className="panel-heading">
-                <div className="panel-heading-stack">
-                  <h2>Tu siguiente paso</h2>
-                  <p className="muted">
-                    {commerce?.status === "PENDING"
-                      ? "Completa el perfil y deja todo listo para acelerar la aprobacion del comercio."
-                      : commerce?.status === "REJECTED"
-                      ? "Corrige los datos marcados por el equipo antes de volver a operar con normalidad."
-                      : commerce?.status === "INACTIVE"
-                      ? "El comercio esta pausado. Revisa el perfil y validalo con admin antes de retomar actividad."
-                      : missingCoordinates
-                      ? "Tu local ya puede operar, pero sin coordenadas no entra bien en el mapa ni en el descubrimiento de clientes."
-                      : data.metrics.promotions.approvedVisible === 0
-                      ? "El siguiente paso es dejar al menos una promo visible para que el comercio ya se vea vivo en la app."
-                      : data.metrics.redemptions.success === 0
-                      ? "Tus promos ya estan visibles. Ahora conviene probar un canje real para validar la operacion completa."
-                      : "Ya estas operativo. Mantene promos activas, revisa canjes y usa el panel para detectar que ajustar."}
-                  </p>
+            {attentionNotice ? (
+              <section className={`commerce-simple-notice is-${attentionNotice.tone}`}>
+                <div>
+                  <strong>{attentionNotice.title}</strong>
+                  <span>{attentionNotice.text}</span>
                 </div>
-              </div>
+                <Link to={attentionNotice.to}>
+                  {attentionNotice.action} <IconArrowRight size={14} />
+                </Link>
+              </section>
+            ) : null}
 
-              <div className="commerce-next-step-actions">
-                {(commerce?.status === "PENDING" ||
-                  commerce?.status === "REJECTED" ||
-                  commerce?.status === "INACTIVE" ||
-                  missingCoordinates) && (
-                  <Link className="btn btn-primary btn-sm" to="/commerce/profile">
-                    Completar perfil
-                  </Link>
-                )}
-                {commerce?.status === "APPROVED" && data.metrics.promotions.approvedVisible === 0 ? (
-                  <Link className="btn btn-primary btn-sm" to="/commerce/promotions/new">
-                    Crear promo visible
-                  </Link>
-                ) : null}
-                {commerce?.status === "APPROVED" && data.metrics.promotions.total > 0 ? (
-                  <Link className="btn btn-secondary btn-sm" to="/commerce/promotions">
-                    Revisar promociones
-                  </Link>
-                ) : null}
-                {commerce?.status === "APPROVED" && data.metrics.redemptions.total > 0 ? (
-                  <Link className="btn btn-secondary btn-sm" to="/commerce/redemptions">
-                    Ver canjes
-                  </Link>
-                ) : null}
-              </div>
+            <section className="commerce-simple-actions" aria-label="Acciones principales">
+              <Link className="commerce-simple-action is-primary" to="/commerce/redemptions">
+                <span className="commerce-simple-action-icon"><IconReceipt size={18} /></span>
+                <strong>Validar canje</strong>
+                <IconArrowRight size={16} />
+              </Link>
+              <Link className="commerce-simple-action" to="/commerce/promotions/new">
+                <span className="commerce-simple-action-icon"><IconPlus size={18} /></span>
+                <strong>Nueva promoción</strong>
+                <IconArrowRight size={16} />
+              </Link>
             </section>
 
-            <div className="stats-grid">
-              <StatCard
-                label="Comercios"
-                value={data.metrics.commerces.total}
-                sub={`${data.metrics.commerces.approved} aprobados`}
-              />
-              <StatCard
-                label="Promos visibles"
-                value={data.metrics.promotions.approvedVisible}
-                sub={`${data.metrics.promotions.total} totales`}
-              />
-              <StatCard
-                label="Canjes exitosos"
-                value={data.metrics.redemptions.success}
-                sub={`${data.metrics.redemptions.total} totales`}
-              />
-              <StatCard
-                label="En revision"
-                value={data.metrics.promotions.pendingReview}
-                sub={`${data.metrics.promotions.draft} borradores · ${data.metrics.promotions.rejected} rechazadas`}
-                accentRed={data.metrics.promotions.pendingReview > 0 || data.metrics.promotions.rejected > 0}
-              />
-            </div>
+            <section className="commerce-simple-grid">
+              <article className="commerce-simple-block">
+                <div className="commerce-simple-block-head">
+                  <h2>Promoción activa</h2>
+                  <Link to="/commerce/promotions">Ver promociones</Link>
+                </div>
 
-            <div className="content-grid">
-              <DataCard
-                title="Comercios asociados"
-                items={data.commerces.map((managedCommerce) => ({
-                  title: managedCommerce.name,
-                  meta: `${managedCommerce.city?.name || "Ciudad"} · ${getStatusLabel(managedCommerce.status)}`,
-                }))}
-              />
-              <DataCard
-                title="Promociones recientes"
-                items={data.recentPromotions.map((promotion) => ({
-                  title: promotion.title,
-                  meta: `${getStatusLabel(promotion.status)} · ${promotion.commerce.name}`,
-                }))}
-              />
-              <DataCard
-                title="Canjes recientes"
-                items={data.recentRedemptions.map((redemption) => ({
-                  title: redemption.promotion.title,
-                  meta: `${redemption.user?.fullName || "Cuenta eliminada"} · ${getStatusLabel(redemption.status)}`,
-                }))}
-              />
-            </div>
+                {activePromotion ? (
+                  <Link
+                    className="commerce-simple-promo-row"
+                    to={`/commerce/promotions/${activePromotion.id}`}
+                  >
+                    <div>
+                      <strong>{activePromotion.title}</strong>
+                    </div>
+                    <IconArrowRight size={16} />
+                  </Link>
+                ) : (
+                  <div className="commerce-simple-empty">
+                    <strong>No tenés una promoción activa.</strong>
+                    <Link to="/commerce/promotions/new">Crear una promoción</Link>
+                  </div>
+                )}
+              </article>
+
+              <article className="commerce-simple-block">
+                <div className="commerce-simple-block-head">
+                  <h2>Actividad reciente</h2>
+                  <Link to="/commerce/redemptions">Ver canjes</Link>
+                </div>
+
+                {data.recentRedemptions.length ? (
+                  <div className="commerce-simple-activity-list">
+                    {data.recentRedemptions.slice(0, 3).map((redemption) => (
+                      <div className="commerce-simple-activity-row" key={redemption.id}>
+                        <span className="commerce-simple-activity-icon"><IconCheck size={14} /></span>
+                        <div>
+                          <strong>{redemption.promotion.title}</strong>
+                          <span>
+                            {redemption.user?.fullName || "Cliente"}
+                            {formatActivityDate(redemption.redeemedAt || redemption.createdAt)
+                              ? ` · ${formatActivityDate(redemption.redeemedAt || redemption.createdAt)}`
+                              : ""}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="commerce-simple-empty">
+                    <strong>Todavía no hubo canjes.</strong>
+                    <span>Cuando llegue el primero, va a aparecer acá.</span>
+                  </div>
+                )}
+              </article>
+            </section>
           </>
         ) : null}
       </div>
