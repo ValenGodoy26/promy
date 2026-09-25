@@ -6,7 +6,7 @@ const SECRET = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
 async function main() {
   await assertCurrentTestDatabase(prisma, "Mercado Pago billing smoke");
   const commerce = await prisma.commerce.findFirstOrThrow({ where: { owner: { email: "comercio@promy.com" } }, select: { id: true } });
-  await prisma.billingSettings.update({ where: { id: 1 }, data: { mode: "ON", monthlyPrice: 1000, currency: "ARS", mercadoPagoPlanId: "plan_fake_0001" } });
+  await prisma.billingSettings.update({ where: { id: 1 }, data: { monthlyPrice: 1000, currency: "ARS", mercadoPagoPlanId: "plan_fake_0001" } });
   await prisma.billingSubscription.deleteMany({ where: { commerceId: commerce.id } });
   const web = createWebClient(); const session = await loginWeb(web, "comercio@promy.com", "demo1234");
   const first = await web.request("/commerce/subscription/enroll", { method: "POST", headers: { Authorization: `Bearer ${session.accessToken}` }, body: JSON.stringify({ cardToken: "token-only-for-fake-provider" }) });
