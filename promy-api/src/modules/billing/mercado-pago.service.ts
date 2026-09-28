@@ -16,7 +16,8 @@ function nextReconciliation(status: BillingSubscriptionStatus) { const hours = s
 export async function ensureMercadoPagoPlan(actorUserId: number) {
   const settings = await prisma.billingSettings.findUniqueOrThrow({ where: { id: 1 } });
   if (!settings.monthlyPrice || Number(settings.monthlyPrice) <= 0) throw new BillingServiceError("Configurá un precio mensual antes de crear el plan.", 400);
-  let plan; try { plan = await getBillingProvider().ensurePlan({ existingPlanId: settings.mercadoPagoPlanId, amount: Number(settings.monthlyPrice), currency: settings.currency, reason: "Suscripción mensual PROMY" }); } catch (error) { return providerError(error); }
+  if (!settings.mercadoPagoPlanId && !env.MERCADO_PAGO_BACK_URL) throw new BillingServiceError("Falta configurar la URL de retorno de Mercado Pago.", 409);
+  let plan; try { plan = await getBillingProvider().ensurePlan({ existingPlanId: settings.mercadoPagoPlanId, amount: Number(settings.monthlyPrice), currency: settings.currency, reason: "Suscripción mensual PROMY", backUrl: env.MERCADO_PAGO_BACK_URL }); } catch (error) { return providerError(error); }
   return prisma.$transaction(async (tx) => { const saved = await tx.billingSettings.update({ where: { id: 1 }, data: { mercadoPagoPlanId: plan.id } }); await tx.adminActionLog.create({ data: { adminUserId: actorUserId, action: "MERCADO_PAGO_PLAN_ENSURED", targetType: "BILLING_SETTINGS", targetId: 1, metadata: JSON.stringify({ providerPlanId: plan.id, amount: plan.amount, currency: plan.currency }) } }); return saved; });
 }
 

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { createHmac } = require("node:crypto");
 const { FakeBillingProvider } = require("../dist/modules/billing/providers/fake-billing.provider.js");
 const { BillingProviderError } = require("../dist/modules/billing/providers/billing-provider.js");
+const { MercadoPagoBillingProvider } = require("../dist/modules/billing/providers/mercado-pago.provider.js");
 const { verifyMercadoPagoWebhookSignature } = require("../dist/modules/billing/mercado-pago.webhook.js");
 const { mapMercadoPagoSubscriptionStatus, isMercadoPagoApprovedPayment, webhookFingerprint } = require("../dist/modules/billing/mercado-pago.service.js");
 
@@ -18,6 +19,17 @@ test("fake provider exposes bounded provider failures without network", async ()
   const provider = new FakeBillingProvider(); provider.failure = new BillingProviderError("timeout", "timeout");
   await assert.rejects(() => provider.getPlan("missing"), { name: "BillingProviderError" });
 });
+test("Mercado Pago plan creation carries back_url and cancellation uses canceled", async (t) => {
+  const originalFetch = global.fetch; const requests = [];
+  global.fetch = async (url, init) => { requests.push({ url: String(url), init }); const path = new URL(String(url)).pathname; const body = path === "/preapproval_plan" ? { id: "plan_test_1", status: "active", auto_recurring: { transaction_amount: 2000, currency_id: "ARS" } } : { id: "preapproval_test_1", status: "canceled", preapproval_plan_id: "plan_test_1", external_reference: "opaque-reference" }; return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }); };
+  t.after(() => { global.fetch = originalFetch; });
+  const provider = new MercadoPagoBillingProvider("test-token");
+  await provider.ensurePlan({ amount: 2000, currency: "ARS", reason: "PROMY Sandbox", backUrl: "https://sandbox.example.test/return" });
+  const cancelled = await provider.cancelSubscription("preapproval_test_1");
+  assert.equal(JSON.parse(requests[0].init.body).back_url, "https://sandbox.example.test/return");
+  assert.deepEqual(JSON.parse(requests[1].init.body), { status: "canceled" });
+  assert.equal(cancelled.status, "canceled");
+});
 test("Mercado Pago webhook HMAC uses the official id/request-id/ts manifest", () => {
   const secret = "a-strong-test-webhook-secret"; const dataId = "PREAPPROVALABC"; const requestId = "request-123"; const ts = "1704908010";
   const signature = createHmac("sha256", secret).update(`id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`).digest("hex");
@@ -25,7 +37,7 @@ test("Mercado Pago webhook HMAC uses the official id/request-id/ts manifest", ()
   assert.equal(verifyMercadoPagoWebhookSignature({ signature: `ts=${ts},v1=${signature}`, requestId: "other", dataId, secret }), false);
 });
 test("provider status mapping is explicit and unknown statuses preserve the last safe domain state", () => {
-  assert.equal(mapMercadoPagoSubscriptionStatus("authorized"), "ACTIVE"); assert.equal(mapMercadoPagoSubscriptionStatus("pending"), "PENDING_PAYMENT"); assert.equal(mapMercadoPagoSubscriptionStatus("cancelled"), "CANCELLED"); assert.equal(mapMercadoPagoSubscriptionStatus("unexpected"), null);
+  assert.equal(mapMercadoPagoSubscriptionStatus("authorized"), "ACTIVE"); assert.equal(mapMercadoPagoSubscriptionStatus("pending"), "PENDING_PAYMENT"); assert.equal(mapMercadoPagoSubscriptionStatus("canceled"), "CANCELLED"); assert.equal(mapMercadoPagoSubscriptionStatus("cancelled"), "CANCELLED"); assert.equal(mapMercadoPagoSubscriptionStatus("unexpected"), null);
   assert.equal(isMercadoPagoApprovedPayment("approved"), true); assert.equal(isMercadoPagoApprovedPayment("rejected"), false);
   assert.equal(webhookFingerprint("subscription_preapproval", "id-1"), webhookFingerprint("subscription_preapproval", "id-1"));
 });
