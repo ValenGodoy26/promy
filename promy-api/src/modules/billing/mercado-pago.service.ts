@@ -5,12 +5,15 @@ import { env } from "../../config/env";
 import { BillingServiceError, addBillingMonthPreservingAnchor, refreshCommerceBillingProjection } from "./billing.service";
 import { BillingProviderError, ProviderAuthorizedPayment, ProviderSubscription } from "./providers/billing-provider";
 import { getBillingProvider } from "./providers/provider-factory";
+import { logWarn } from "../../shared/logging/logger";
 
 export function mapMercadoPagoSubscriptionStatus(status: string): BillingSubscriptionStatus | null {
   switch (status.toLowerCase()) { case "authorized": case "active": return BillingSubscriptionStatus.ACTIVE; case "pending": return BillingSubscriptionStatus.PENDING_PAYMENT; case "cancelled": case "canceled": return BillingSubscriptionStatus.CANCELLED; case "paused": return BillingSubscriptionStatus.PAST_DUE; default: return null; }
 }
 export function isMercadoPagoApprovedPayment(status: string) { return status.toLowerCase() === "approved"; }
-function providerError(error: unknown): never { if (error instanceof BillingProviderError) throw new BillingServiceError(error.code === "disabled" ? "Mercado Pago no está habilitado." : "No pudimos confirmar Mercado Pago. Intentá nuevamente.", error.code === "not_found" ? 404 : error.code === "disabled" ? 409 : 502); throw error; }
+function providerError(error: unknown): never { if (error instanceof BillingProviderError) { logWarn(undefined, "billing.mp.provider_request_failed", { providerCode: error.code, ...(error.metadata ? { provider: error.metadata } : {}) }); throw new BillingServiceError(error.code === "disabled" ? "Mercado Pago no está habilitado." : "No pudimos confirmar Mercado Pago. Intentá nuevamente.", error.code === "not_found" ? 404 : error.code === "disabled" ? 409 : 502); } throw error; }
+export function resolveMercadoPagoPayerEmail(input: { mode: "disabled" | "sandbox" | "production"; ownerEmail: string; sandboxPayerEmail?: string }) { return input.mode === "sandbox" ? input.sandboxPayerEmail ?? input.ownerEmail : input.ownerEmail; }
+export function shouldClearEnrollmentReservation(error: unknown) { return error instanceof BillingProviderError && [400, 401, 403, 404].includes(error.metadata?.httpStatus ?? 0); }
 function nextReconciliation(status: BillingSubscriptionStatus) { const hours = status === BillingSubscriptionStatus.PAST_DUE || status === BillingSubscriptionStatus.PENDING_PAYMENT ? 6 : 24; return new Date(Date.now() + hours * 3600_000); }
 
 export async function ensureMercadoPagoPlan(actorUserId: number) {
@@ -28,17 +31,17 @@ export async function startMercadoPagoEnrollment(commerceId: number, cardToken: 
     if (commerce.status !== CommerceStatus.APPROVED) throw new BillingServiceError("Tu comercio debe estar aprobado para suscribirse.", 409);
     if (!settings.mercadoPagoPlanId || !settings.monthlyPrice) throw new BillingServiceError("El plan de suscripción todavía no está disponible.", 409);
     const subscription = await tx.billingSubscription.upsert({ where: { commerceId }, update: {}, create: { commerceId, status: BillingSubscriptionStatus.PENDING_PAYMENT } });
-    if (subscription.providerSubscriptionId) return { duplicate: true, subscription, settings, email: commerce.owner.email };
+    if (subscription.providerSubscriptionId) return { duplicate: true, subscription, settings, payerEmail: commerce.owner.email };
     // A timeout after POST may mean Mercado Pago created the resource. Do not
     // automatically issue a second non-idempotent enrollment request.
-    if (subscription.enrollmentStartedAt) return { duplicate: true, subscription, settings, email: commerce.owner.email };
+    if (subscription.enrollmentStartedAt) return { duplicate: true, subscription, settings, payerEmail: commerce.owner.email };
     const externalReference = subscription.providerExternalReference ?? randomUUID();
     const updated = await tx.billingSubscription.update({ where: { id: subscription.id }, data: { provider: "mercado_pago", providerPlanId: settings.mercadoPagoPlanId, providerExternalReference: externalReference, enrollmentStartedAt: new Date(), status: BillingSubscriptionStatus.PENDING_PAYMENT } });
-    return { duplicate: false, subscription: updated, settings, email: commerce.owner.email };
+    return { duplicate: false, subscription: updated, settings, payerEmail: resolveMercadoPagoPayerEmail({ mode: env.MERCADO_PAGO_MODE, ownerEmail: commerce.owner.email, sandboxPayerEmail: env.MERCADO_PAGO_SANDBOX_PAYER_EMAIL }) };
   });
   if (reservation.duplicate) return { duplicate: true, status: reservation.subscription.status, initPoint: null };
   if (!env.MERCADO_PAGO_BACK_URL) throw new BillingServiceError("Falta configurar la URL de retorno de Mercado Pago.", 409);
-  let remote; try { remote = await getBillingProvider().createEnrollment({ planId: reservation.settings.mercadoPagoPlanId!, externalReference: reservation.subscription.providerExternalReference!, payerEmail: reservation.email, cardToken, backUrl: env.MERCADO_PAGO_BACK_URL, amount: Number(reservation.settings.monthlyPrice), currency: reservation.settings.currency }); } catch (error) { return providerError(error); }
+  let remote; try { remote = await getBillingProvider().createEnrollment({ planId: reservation.settings.mercadoPagoPlanId!, externalReference: reservation.subscription.providerExternalReference!, payerEmail: reservation.payerEmail, cardToken, backUrl: env.MERCADO_PAGO_BACK_URL, amount: Number(reservation.settings.monthlyPrice), currency: reservation.settings.currency }); } catch (error) { if (shouldClearEnrollmentReservation(error)) { await prisma.billingSubscription.updateMany({ where: { id: reservation.subscription.id, providerSubscriptionId: null }, data: { enrollmentStartedAt: null } }); } return providerError(error); }
   if (remote.externalReference !== reservation.subscription.providerExternalReference) throw new BillingServiceError("Mercado Pago devolvió una referencia no asociada al comercio.", 502);
   await applyMercadoPagoSubscription(remote, commerceId);
   return { duplicate: false, status: mapMercadoPagoSubscriptionStatus(remote.status) ?? BillingSubscriptionStatus.PENDING_PAYMENT, initPoint: remote.initPoint };

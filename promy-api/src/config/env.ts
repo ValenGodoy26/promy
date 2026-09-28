@@ -148,6 +148,7 @@ export const envSchema = z
     S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
     S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
     MERCADO_PAGO_MODE: z.enum(["disabled", "sandbox", "production"]).default("disabled"),
+    MERCADO_PAGO_SANDBOX_PAYER_EMAIL: z.preprocess(emptyStringToUndefined, z.string().trim().email().optional()),
     MERCADO_PAGO_ACCESS_TOKEN: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
     MERCADO_PAGO_WEBHOOK_SECRET: z.preprocess(emptyStringToUndefined, z.string().trim().min(16).optional()),
     MERCADO_PAGO_PUBLIC_KEY: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
