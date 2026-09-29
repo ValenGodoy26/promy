@@ -1,4 +1,22 @@
-export type UserRole = "ADMIN" | "CLIENT" | "COMMERCE";
+export type UserRole = "ADMIN" | "SUPER_ADMIN" | "CLIENT" | "COMMERCE";
+
+export type BillingMode = "OFF" | "SCHEDULED" | "ON";
+
+export type AdminBillingSettings = {
+  id: number;
+  mode: BillingMode;
+  billingStartsAt: string | null;
+  monthlyPrice: string | null;
+  currency: string;
+  mercadoPagoPlanId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminBillingSettingsResponse = {
+  ok: boolean;
+  settings: AdminBillingSettings;
+};
 export type UserStatus = "ACTIVE" | "BLOCKED" | "PENDING" | string;
 
 export type AuthUser = {

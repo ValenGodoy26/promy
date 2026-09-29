@@ -46,8 +46,13 @@ async function main() {
 
     const adminHttp = createWebClient({ forwardedIp: "198.18.72.1" });
     const adminSession = await loginWeb(adminHttp, admin.email, "demo1234");
-    const forbiddenAdmin = await adminHttp.request("/admin/billing/settings", { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
-    assert(forbiddenAdmin.status === 200, "SUPER_ADMIN debe leer settings Billing");
+    const superAdminSettings = await adminHttp.request("/admin/billing/settings", { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
+    assert(superAdminSettings.status === 200, "SUPER_ADMIN debe leer settings Billing");
+    await prisma.user.update({ where: { id: admin.id }, data: { role: originalRole } });
+    const standardAdminSession = await loginWeb(adminHttp, admin.email, "demo1234");
+    const forbiddenAdmin = await adminHttp.request("/admin/billing/settings", { method: "GET", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` } });
+    assert(forbiddenAdmin.status === 403, "ADMIN no debe leer settings Billing");
+    await prisma.user.update({ where: { id: admin.id }, data: { role: "SUPER_ADMIN" } });
 
     const payment = await registerManualPayment({ actorUserId: admin.id, commerceId: commerce.id, amount: 1000, months: 2, idempotencyKey: `billing-manual-${stamp}` });
     assert(!payment.duplicate, "Primer manual payment no puede ser duplicado");

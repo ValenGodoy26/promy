@@ -18,7 +18,7 @@ import {
   getAdminBillingSubscriptions, patchAdminBillingSettings, provisionMercadoPagoPlan, reconcileAdminBillingSubscription, reverseManualPayment, revokeComplimentary,
 } from "./billing.controller";
 adminBillingRouter.use(requireAuth, requireActiveSession, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN));
-adminBillingRouter.get("/billing/settings", getAdminBillingSettings);
+adminBillingRouter.get("/billing/settings", requireRole(UserRole.SUPER_ADMIN), getAdminBillingSettings);
 adminBillingRouter.get("/subscriptions", getAdminBillingSubscriptions);
 adminBillingRouter.get("/subscriptions/:commerceId", getAdminBillingSubscription);
 adminBillingRouter.patch("/billing/settings", adminWriteLimiter, requireRole(UserRole.SUPER_ADMIN), patchAdminBillingSettings);

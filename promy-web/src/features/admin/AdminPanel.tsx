@@ -10,6 +10,7 @@ import {
   IconShield,
   IconStore,
   IconTag,
+  IconSettings,
 } from "../../components/Icons";
 import { useRealtimeVersion } from "../../lib/realtime";
 import {
@@ -19,6 +20,7 @@ import {
   AdminDashboardPage,
   AdminPromotionsPage,
   AdminBetaRequestsPage,
+  AdminBillingPage,
   type AdminTab,
 } from "./AdminSections";
 
@@ -27,8 +29,10 @@ export default function AdminPanel() {
   const realtimeVersion = useRealtimeVersion({
     session,
     withSession,
-    enabled: session?.user.role === "ADMIN",
+    enabled: session?.user.role === "ADMIN" || session?.user.role === "SUPER_ADMIN",
   });
+
+  const isSuperAdmin = session?.user.role === "SUPER_ADMIN";
 
   const navLinks: Array<AdminTab & { icon: ReactNode }> = [
     { to: "/admin", label: "Dashboard", icon: <IconDashboard size={16} />, end: true },
@@ -36,6 +40,7 @@ export default function AdminPanel() {
     { to: "/admin/categories", label: "Categorías", icon: <IconMapPin size={16} /> },
     { to: "/admin/promotions", label: "Promociones", icon: <IconTag size={16} /> },
     { to: "/admin/beta", label: "Solicitudes", icon: <IconReceipt size={16} /> },
+    ...(isSuperAdmin ? [{ to: "/admin/billing", label: "Billing", icon: <IconSettings size={16} /> }] : []),
     { to: "/admin/audit", label: "Auditoría", icon: <IconShield size={16} /> },
   ];
   const headerTabs: AdminTab[] = navLinks.map(({ to, label, end }) => ({ to, label, end }));
@@ -113,6 +118,10 @@ export default function AdminPanel() {
           <Route
             path="beta"
             element={<AdminBetaRequestsPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+          />
+          <Route
+            path="billing"
+            element={isSuperAdmin ? <AdminBillingPage tabs={headerTabs} /> : <Navigate to="/admin" replace />}
           />
           <Route
             path="audit"

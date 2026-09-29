@@ -1,6 +1,7 @@
 import type {
   AdminBetaAccessRequestsResponse,
   AdminAuditLogsResponse,
+  AdminBillingSettingsResponse,
   AdminCategoriesResponse,
   AdminCategoryResponse,
   AdminCommercesResponse,
@@ -369,6 +370,35 @@ export async function validateCommerceRedemption(
 export async function fetchAdminDashboard(session: AuthSession) {
   return request<AdminDashboardResponse>("/admin/dashboard", {
     method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSettings(session: AuthSession) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/settings", {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function updateAdminBillingSettings(
+  session: AuthSession,
+  body: {
+    mode: "OFF" | "SCHEDULED" | "ON";
+    monthlyPrice?: number | null;
+    billingStartsAt?: string | null;
+  },
+) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/settings", {
+    method: "PATCH",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function ensureAdminMercadoPagoPlan(session: AuthSession) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/mercado-pago/plan", {
+    method: "POST",
     accessToken: session.accessToken,
   });
 }

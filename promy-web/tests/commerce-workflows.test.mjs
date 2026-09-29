@@ -11,6 +11,7 @@ import {
 import { getAvailablePromotionTransitions } from "../src/features/admin/promotionLifecycle.ts";
 import { formatBillingDate, formatMoneyARS, getSubscriptionPaymentAction, getSubscriptionPresentation, hasSubscriptionPrice, isBetaSubscriptionAccess, shouldShowSubscriptionActionPanel } from "../src/features/commerce/commerceSubscription.ts";
 import { getSubscriptionConfirmation, pollSubscriptionConfirmation, submitSubscriptionEnrollment, SubscriptionPaymentAttempt } from "../src/features/commerce/subscriptionPayment.ts";
+import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPresentation, parseMonthlyPrice } from "../src/features/admin/adminBilling.ts";
 
 const commerceContract = JSON.parse(
   readFileSync(new URL("../../contracts/promy-commerce-v1.json", import.meta.url), "utf8"),
@@ -244,4 +245,31 @@ test("subscription payment source never persists payment tokens or exposes provi
   const source = readFileSync(new URL("../src/features/commerce/SubscriptionPaymentDialog.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /localStorage|sessionStorage|console\.log|providerCode|causeCodes|Authorization/);
   assert.match(source, /No pudimos completar la activación/);
+});
+
+test("super admin billing presentation is safe, human-readable and validates prices before writes", () => {
+  assert.equal(getBillingModePresentation("OFF").label, "Desactivado");
+  assert.match(getBillingModePresentation("OFF").description, /no se realizan cobros/i);
+  assert.equal(formatBillingMoney("1000", "ARS"), "$ 1.000");
+  assert.equal(formatBillingMoney(null, "ARS"), "No configurado");
+  assert.equal(parseMonthlyPrice("1000").value, 1000);
+  assert.ok(parseMonthlyPrice("-1").error);
+  assert.ok(parseMonthlyPrice("NaN").error);
+  assert.equal(getMercadoPagoPlanPresentation({ mercadoPagoPlanId: "09503fb65eff4a37a1c26314ef65e593" }).planId, "09503f…e593");
+});
+
+test("billing configuration is super-admin only and uses the existing global settings contract", () => {
+  const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const panelSource = readFileSync(new URL("../src/features/admin/AdminPanel.tsx", import.meta.url), "utf8");
+  const apiSource = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("../src/features/admin/AdminBillingPage.tsx", import.meta.url), "utf8");
+  assert.match(appSource, /roles=\{\["ADMIN", "SUPER_ADMIN"\]\}/u);
+  assert.match(panelSource, /const isSuperAdmin = session\?\.user\.role === "SUPER_ADMIN"/u);
+  assert.match(panelSource, /isSuperAdmin \? <AdminBillingPage/u);
+  assert.match(apiSource, /"\/admin\/billing\/settings"[\s\S]*method: "PATCH"/u);
+  assert.match(pageSource, /setShowActivationConfirm\(true\)/u);
+  assert.match(pageSource, /Precio mensual/u);
+  assert.match(pageSource, /Fecha efectiva/u);
+  assert.match(pageSource, /No pudimos cargar la configuración de Billing/u);
+  assert.doesNotMatch(pageSource, /MERCADO_PAGO_ACCESS_TOKEN|APP_USR-|Authorization|webhook secret/u);
 });

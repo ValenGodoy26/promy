@@ -660,6 +660,7 @@ export function ConfirmDialog({
   open,
   title,
   description,
+  children,
   confirmLabel = "Confirmar",
   tone = "danger",
   onClose,
@@ -668,6 +669,7 @@ export function ConfirmDialog({
   open: boolean;
   title: string;
   description: string;
+  children?: React.ReactNode;
   confirmLabel?: string;
   tone?: "danger" | "primary";
   onClose: () => void;
@@ -689,6 +691,7 @@ export function ConfirmDialog({
         <p className="muted" style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.55 }}>
           {description}
         </p>
+        {children}
 
         <div className="modal-footer" style={{ marginTop: 24 }}>
           <button className="btn btn-ghost" type="button" onClick={onClose}>

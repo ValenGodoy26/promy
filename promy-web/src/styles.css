@@ -1703,6 +1703,9 @@ h1, h2, h3, h4 {
   animation: fadeIn 180ms var(--ease-out);
 }
 
+/* A modal belongs to .main, which otherwise sits below the sticky sidebar's stacking context. */
+body:has(.modal-backdrop) .main { z-index: 11; }
+
 .modal {
   width: 100%;
   max-width: 520px;
@@ -11812,6 +11815,29 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .commerce-subscription-payment-result strong { color: #2d2115; font-size: 15px; }
 .commerce-subscription-payment-result p { margin-bottom: 0; }
 .commerce-subscription-payment-result .btn { justify-self: start; }
+.admin-billing-page { display: grid; gap: 16px; }
+.admin-billing-heading > p { max-width: 660px; margin: 0; color: var(--text-3); font-size: 13px; line-height: 1.55; }
+.admin-billing-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.admin-billing-card { display: grid; gap: 14px; min-width: 0; }
+.admin-billing-status-card { border-color: #e5ce86; background: linear-gradient(135deg, #fffdf8, #fff8e4); }
+.admin-billing-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; color: #8b6a36; }
+.admin-billing-card-heading h2 { margin: 5px 0 0; color: var(--text); font-size: 19px; }
+.admin-billing-card > .muted { margin: -5px 0 0; font-size: 12.5px; line-height: 1.55; }
+.admin-billing-actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.admin-billing-summary { display: grid; gap: 0; margin: 0; }
+.admin-billing-summary > div { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-top: 1px solid rgba(126, 97, 52, .13); }
+.admin-billing-summary dt { color: var(--text-3); font-size: 12px; }
+.admin-billing-summary dd { margin: 0; color: var(--text); font-size: 12px; font-weight: 700; text-align: right; }
+.admin-billing-plan-id { font-family: var(--font-mono); letter-spacing: .02em; }
+.admin-billing-price-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-panel); }
+.admin-billing-price-input:focus-within { border-color: #d6a500; box-shadow: 0 0 0 3px rgba(255, 190, 0, .16); }
+.admin-billing-price-input > span { padding-left: 12px; color: var(--text-3); font-weight: 750; }
+.admin-billing-price-input .field-input { min-width: 0; border: 0; box-shadow: none; }
+.modal-confirmation-summary { display: grid; gap: 0; margin: 18px 0 0; }
+.modal-confirmation-summary > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid rgba(126, 97, 52, .13); }
+.modal-confirmation-summary dt { color: var(--text-3); font-size: 12px; }
+.modal-confirmation-summary dd { margin: 0; color: var(--text); font-size: 12px; font-weight: 700; text-align: right; }
+.form-hint { margin: -7px 0 0; color: var(--text-4); font-size: 11px; line-height: 1.45; }
 .commerce-subscription-skeleton { display: grid; gap: 14px; }
 .commerce-subscription-skeleton > div, .commerce-subscription-skeleton-grid > div { border-radius: 17px; background: linear-gradient(100deg, #f3eee5 20%, #faf7f1 40%, #f3eee5 60%); background-size: 200% 100%; animation: commerce-subscription-shimmer 1.4s infinite; }
 .commerce-subscription-skeleton-head { width: 36%; height: 82px; }
@@ -11819,8 +11845,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .commerce-subscription-skeleton-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; }
 .commerce-subscription-skeleton-grid > div { height: 180px; }
 @keyframes commerce-subscription-shimmer { to { background-position: -200% 0; } }
-@media (max-width: 780px) { .commerce-subscription-page { padding: 24px 20px 48px; } .commerce-subscription-hero, .commerce-subscription-actions { flex-direction: column; align-items: stretch; } .commerce-subscription-price { min-width: 0; padding: 16px 0 0; border-top: 1px solid rgba(118, 90, 42, .15); border-left: 0; } .commerce-subscription-actions-buttons { justify-content: flex-start; } .commerce-subscription-grid, .commerce-subscription-skeleton-grid { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .commerce-subscription-details dl > div { align-items: flex-start; flex-direction: column; gap: 3px; } .commerce-subscription-details dd { text-align: left; } }
+@media (max-width: 780px) { .commerce-subscription-page { padding: 24px 20px 48px; } .commerce-subscription-hero, .commerce-subscription-actions { flex-direction: column; align-items: stretch; } .commerce-subscription-price { min-width: 0; padding: 16px 0 0; border-top: 1px solid rgba(118, 90, 42, .15); border-left: 0; } .commerce-subscription-actions-buttons { justify-content: flex-start; } .commerce-subscription-grid, .commerce-subscription-skeleton-grid, .admin-billing-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .commerce-subscription-details dl > div, .admin-billing-summary > div, .modal-confirmation-summary > div { align-items: flex-start; flex-direction: column; gap: 3px; } .commerce-subscription-details dd, .admin-billing-summary dd, .modal-confirmation-summary dd { text-align: left; } }
 @media (max-width: 480px) { .commerce-subscription-page { padding: 20px 14px 40px; } .commerce-subscription-hero, .commerce-subscription-card, .commerce-subscription-actions { padding: 17px; border-radius: 15px; } .commerce-subscription-hero-main { gap: 11px; } .commerce-subscription-plan-mark { width: 34px; height: 34px; } .commerce-subscription-actions-buttons > .btn, .commerce-subscription-cancel { width: 100%; min-height: 40px; text-align: center; } .commerce-subscription-payment-row { grid-template-columns: 1fr; } .commerce-subscription-payment-buttons { display: grid; grid-template-columns: 1fr; } .commerce-subscription-payment-buttons .btn { width: 100%; } }
 
 /* ============================================
