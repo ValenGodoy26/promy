@@ -2,12 +2,18 @@ import type { CommerceSubscription } from "../../types/api";
 
 type SubscriptionSnapshot = Pick<
   CommerceSubscription,
-  "billingMode" | "coverageSource" | "status" | "hasCoverage" | "cancelAtPeriodEnd" | "graceEndsAt"
+  "billingMode" | "coverageSource" | "status" | "hasCoverage" | "cancelAtPeriodEnd" | "graceEndsAt" | "needsPayment" | "monthlyPrice" | "currency"
 >;
 
 export type SubscriptionPresentation = {
   label: string;
   tone: "beta" | "success" | "warning" | "danger" | "neutral";
+  heading: string;
+  description: string;
+};
+
+export type SubscriptionPaymentAction = {
+  label: "Activar suscripción" | "Regularizar pago";
   heading: string;
   description: string;
 };
@@ -20,6 +26,29 @@ export function isBetaSubscriptionAccess(subscription: SubscriptionSnapshot) {
 
 export function shouldShowSubscriptionActionPanel(subscription: SubscriptionSnapshot) {
   return !isBetaSubscriptionAccess(subscription);
+}
+
+export function getSubscriptionPaymentAction(subscription: SubscriptionSnapshot): SubscriptionPaymentAction | null {
+  if (subscription.billingMode === "OFF") return null;
+  if (subscription.status === "PAST_DUE" || subscription.status === "SUSPENDED") {
+    return {
+      label: "Regularizar pago",
+      heading: "Regularizá el acceso de tu negocio",
+      description: "Actualizá el medio de pago para mantener las funciones de PROMY habilitadas.",
+    };
+  }
+  if (subscription.needsPayment) {
+    return {
+      label: "Activar suscripción",
+      heading: "Activá el acceso de tu negocio",
+      description: "Completá el pago seguro para habilitar todas las funciones de PROMY.",
+    };
+  }
+  return null;
+}
+
+export function hasSubscriptionPrice(subscription: SubscriptionSnapshot) {
+  return Boolean(subscription.currency && subscription.monthlyPrice && Number(subscription.monthlyPrice) > 0);
 }
 
 export function formatMoneyARS(value?: string | null, currency?: string | null) {

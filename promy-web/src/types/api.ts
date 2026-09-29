@@ -440,6 +440,15 @@ export type CommerceSubscriptionResponse = {
   subscription: CommerceSubscription;
 };
 
+export type CommerceSubscriptionEnrollmentResponse = {
+  ok: boolean;
+  enrollment: {
+    duplicate: boolean;
+    status: string;
+    initPoint: string | null;
+  };
+};
+
 export type CommerceValidateRedemptionResponse = {
   ok: boolean;
   message?: string;

@@ -9,7 +9,8 @@ import {
   validateCommerceProfileForm,
 } from "../src/features/commerce/commerceRules.ts";
 import { getAvailablePromotionTransitions } from "../src/features/admin/promotionLifecycle.ts";
-import { formatBillingDate, formatMoneyARS, getSubscriptionPresentation, isBetaSubscriptionAccess, shouldShowSubscriptionActionPanel } from "../src/features/commerce/commerceSubscription.ts";
+import { formatBillingDate, formatMoneyARS, getSubscriptionPaymentAction, getSubscriptionPresentation, hasSubscriptionPrice, isBetaSubscriptionAccess, shouldShowSubscriptionActionPanel } from "../src/features/commerce/commerceSubscription.ts";
+import { getSubscriptionConfirmation, pollSubscriptionConfirmation, submitSubscriptionEnrollment, SubscriptionPaymentAttempt } from "../src/features/commerce/subscriptionPayment.ts";
 
 const commerceContract = JSON.parse(
   readFileSync(new URL("../../contracts/promy-commerce-v1.json", import.meta.url), "utf8"),
@@ -155,4 +156,92 @@ test("commerce subscription presentation keeps beta and payment states human-rea
   }
   assert.equal(formatMoneyARS("1000", "ARS"), "$ 1.000");
   assert.match(formatBillingDate("2026-12-31T12:00:00.000Z"), /^31\/12\/2026$/);
+});
+
+function subscriptionForPayment(overrides = {}) {
+  return {
+    billingMode: "ON",
+    monthlyPrice: "1000",
+    currency: "ARS",
+    status: "PENDING_PAYMENT",
+    hasCoverage: false,
+    coverageSource: null,
+    periodStart: null,
+    periodEnd: null,
+    graceEndsAt: null,
+    cancelAtPeriodEnd: false,
+    canCreatePromotion: false,
+    canPublishPromotion: false,
+    canValidateExistingRedemption: true,
+    needsPayment: true,
+    ...overrides,
+  };
+}
+
+test("subscription payment actions stay off during beta and use the real billing state", () => {
+  const beta = subscriptionForPayment({ billingMode: "OFF", status: "BETA_FREE", coverageSource: "BETA_FREE", hasCoverage: true, needsPayment: false });
+  assert.equal(getSubscriptionPaymentAction(beta), null);
+
+  assert.equal(getSubscriptionPaymentAction(subscriptionForPayment())?.label, "Activar suscripción");
+  assert.equal(getSubscriptionPaymentAction(subscriptionForPayment({ status: "PAST_DUE", hasCoverage: true, needsPayment: false }))?.label, "Regularizar pago");
+  assert.equal(getSubscriptionPaymentAction(subscriptionForPayment({ status: "SUSPENDED" }))?.label, "Regularizar pago");
+  assert.equal(hasSubscriptionPrice(subscriptionForPayment()), true);
+  assert.equal(hasSubscriptionPrice(subscriptionForPayment({ monthlyPrice: null })), false);
+});
+
+test("subscription enrollment never submits without a token or more than once per attempt", async () => {
+  let enrollCalls = 0;
+  const missingTokenAttempt = new SubscriptionPaymentAttempt();
+  missingTokenAttempt.markReady();
+  const missingToken = await submitSubscriptionEnrollment({
+    attempt: missingTokenAttempt,
+    tokenize: async () => null,
+    enroll: async () => { enrollCalls += 1; },
+  });
+  assert.equal(missingToken.outcome, "tokenization_error");
+  assert.equal(enrollCalls, 0);
+
+  const attempt = new SubscriptionPaymentAttempt();
+  attempt.markReady();
+  const accepted = await submitSubscriptionEnrollment({
+    attempt,
+    tokenize: async () => "token-only-in-memory",
+    enroll: async () => { enrollCalls += 1; },
+  });
+  const repeated = await submitSubscriptionEnrollment({
+    attempt,
+    tokenize: async () => "another-token",
+    enroll: async () => { enrollCalls += 1; },
+  });
+  assert.equal(accepted.outcome, "accepted");
+  assert.equal(repeated.outcome, "blocked");
+  assert.equal(enrollCalls, 1);
+});
+
+test("subscription enrollment treats network uncertainty as status-only confirmation and polls without false success", async () => {
+  const ambiguousAttempt = new SubscriptionPaymentAttempt();
+  ambiguousAttempt.markReady();
+  const ambiguous = await submitSubscriptionEnrollment({
+    attempt: ambiguousAttempt,
+    tokenize: async () => "token-only-in-memory",
+    enroll: async () => { throw { kind: "network" }; },
+  });
+  assert.equal(ambiguous.outcome, "ambiguous");
+
+  const pending = subscriptionForPayment();
+  const active = subscriptionForPayment({ status: "ACTIVE", hasCoverage: true, needsPayment: false, coverageSource: "MERCADO_PAGO" });
+  let reads = 0;
+  const confirmed = await pollSubscriptionConfirmation(async () => {
+    reads += 1;
+    return reads === 1 ? pending : active;
+  }, { attempts: 4, delay: async () => undefined });
+  assert.equal(reads, 2);
+  assert.equal(getSubscriptionConfirmation(pending).state, "pending");
+  assert.equal(getSubscriptionConfirmation(confirmed).state, "success");
+});
+
+test("subscription payment source never persists payment tokens or exposes provider diagnostics", () => {
+  const source = readFileSync(new URL("../src/features/commerce/SubscriptionPaymentDialog.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /localStorage|sessionStorage|console\.log|providerCode|causeCodes|Authorization/);
+  assert.match(source, /No pudimos completar la activación/);
 });

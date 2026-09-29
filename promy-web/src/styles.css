@@ -11782,6 +11782,8 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .commerce-subscription-actions { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 14px; padding: 20px; }
 .commerce-subscription-actions p { max-width: 570px; margin: 6px 0 0; color: #766954; font-size: 12px; line-height: 1.5; }
 .commerce-subscription-actions-buttons { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; }
+.commerce-subscription-payment-action { display: grid; gap: 5px; }
+.commerce-subscription-payment-action > span { max-width: 220px; color: #8d604f; font-size: 10px; line-height: 1.4; }
 .commerce-subscription-cancel { border: 0; background: transparent; color: #9c5045; font: inherit; font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .commerce-subscription-dialog-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(33, 25, 15, .36); }
 .commerce-subscription-dialog { position: relative; width: min(100%, 430px); padding: 25px; border: 1px solid #e4d8c4; border-radius: 19px; background: #fffdf9; box-shadow: 0 20px 70px rgba(31, 21, 9, .24); }
@@ -11789,6 +11791,27 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 .commerce-subscription-dialog p { margin: 11px 0 20px; color: #6c5e49; font-size: 13px; line-height: 1.55; }
 .commerce-subscription-dialog-close { position: absolute; top: 12px; right: 12px; display: grid; width: 31px; height: 31px; place-items: center; border: 0; border-radius: 9px; background: #f4eee4; color: #5e513f; }
 .commerce-subscription-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.commerce-subscription-payment-dialog { width: min(100%, 560px); max-height: min(760px, calc(100vh - 40px)); overflow-y: auto; }
+.commerce-subscription-payment-kicker { display: block; margin-bottom: 7px; color: #94734a; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.commerce-subscription-payment-intro { margin: 8px 0 0 !important; max-width: 470px; color: #6c5e49 !important; font-size: 13px !important; line-height: 1.55; }
+.commerce-subscription-payment-price { margin: 8px 0 17px !important; color: #786750 !important; font-size: 12px !important; }
+.commerce-subscription-payment-price strong { color: #2c2115; }
+.commerce-subscription-payment-form { display: grid; gap: 14px; }
+.commerce-subscription-payment-status { min-height: 18px; color: #6e5d48; font-size: 12px; line-height: 1.45; }
+.commerce-subscription-payment-fields { display: grid; gap: 11px; }
+.commerce-subscription-payment-fields label { display: grid; gap: 6px; color: #5d4d3b; font-size: 11px; font-weight: 700; }
+.commerce-subscription-payment-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.commerce-subscription-secure-field { box-sizing: border-box; width: 100%; height: 42px; min-height: 42px; padding: 0; overflow: hidden; border: 1px solid #d9cdbd; border-radius: 9px; background: #fff; }
+.commerce-subscription-secure-field:focus-within { border-color: #d6a500; box-shadow: 0 0 0 3px rgba(255, 190, 0, .16); }
+.commerce-subscription-secure-field iframe { display: block; width: 100%; height: 100%; border: 0; }
+.commerce-subscription-payment-fields .field-input, .commerce-subscription-payment-fields .field-select { min-height: 42px; background: #fff; }
+.commerce-subscription-payment-error { display: flex; gap: 8px; align-items: flex-start; color: #9a453b; font-size: 12px; line-height: 1.45; }
+.commerce-subscription-payment-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.commerce-subscription-payment-result { display: grid; gap: 12px; }
+.commerce-subscription-payment-result > span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #fff4cf; color: #9c7500; }
+.commerce-subscription-payment-result strong { color: #2d2115; font-size: 15px; }
+.commerce-subscription-payment-result p { margin-bottom: 0; }
+.commerce-subscription-payment-result .btn { justify-self: start; }
 .commerce-subscription-skeleton { display: grid; gap: 14px; }
 .commerce-subscription-skeleton > div, .commerce-subscription-skeleton-grid > div { border-radius: 17px; background: linear-gradient(100deg, #f3eee5 20%, #faf7f1 40%, #f3eee5 60%); background-size: 200% 100%; animation: commerce-subscription-shimmer 1.4s infinite; }
 .commerce-subscription-skeleton-head { width: 36%; height: 82px; }
@@ -11798,7 +11821,7 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 @keyframes commerce-subscription-shimmer { to { background-position: -200% 0; } }
 @media (max-width: 780px) { .commerce-subscription-page { padding: 24px 20px 48px; } .commerce-subscription-hero, .commerce-subscription-actions { flex-direction: column; align-items: stretch; } .commerce-subscription-price { min-width: 0; padding: 16px 0 0; border-top: 1px solid rgba(118, 90, 42, .15); border-left: 0; } .commerce-subscription-actions-buttons { justify-content: flex-start; } .commerce-subscription-grid, .commerce-subscription-skeleton-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .commerce-subscription-details dl > div { align-items: flex-start; flex-direction: column; gap: 3px; } .commerce-subscription-details dd { text-align: left; } }
-@media (max-width: 480px) { .commerce-subscription-page { padding: 20px 14px 40px; } .commerce-subscription-hero, .commerce-subscription-card, .commerce-subscription-actions { padding: 17px; border-radius: 15px; } .commerce-subscription-hero-main { gap: 11px; } .commerce-subscription-plan-mark { width: 34px; height: 34px; } .commerce-subscription-actions-buttons > .btn, .commerce-subscription-cancel { width: 100%; min-height: 40px; text-align: center; } }
+@media (max-width: 480px) { .commerce-subscription-page { padding: 20px 14px 40px; } .commerce-subscription-hero, .commerce-subscription-card, .commerce-subscription-actions { padding: 17px; border-radius: 15px; } .commerce-subscription-hero-main { gap: 11px; } .commerce-subscription-plan-mark { width: 34px; height: 34px; } .commerce-subscription-actions-buttons > .btn, .commerce-subscription-cancel { width: 100%; min-height: 40px; text-align: center; } .commerce-subscription-payment-row { grid-template-columns: 1fr; } .commerce-subscription-payment-buttons { display: grid; grid-template-columns: 1fr; } .commerce-subscription-payment-buttons .btn { width: 100%; } }
 
 /* ============================================
    COMMERCE · MI NEGOCIO — FINAL POLISH + CLIENT PREVIEW

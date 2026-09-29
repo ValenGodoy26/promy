@@ -14,6 +14,7 @@ import type {
   CommerceManagedPromotionResponse,
   CommerceManagedPromotionsResponse,
   CommerceManagedRedemptionsResponse,
+  CommerceSubscriptionEnrollmentResponse,
   CommerceSubscriptionResponse,
   CommerceStatisticsResponse,
   CommerceValidateRedemptionResponse,
@@ -327,6 +328,14 @@ export async function fetchCommerceSubscription(session: AuthSession) {
   return request<CommerceSubscriptionResponse>("/commerce/subscription", {
     method: "GET",
     accessToken: session.accessToken,
+  });
+}
+
+export async function enrollCommerceSubscription(session: AuthSession, cardToken: string) {
+  return request<CommerceSubscriptionEnrollmentResponse>("/commerce/subscription/enroll", {
+    method: "POST",
+    accessToken: session.accessToken,
+    body: { cardToken },
   });
 }
 
