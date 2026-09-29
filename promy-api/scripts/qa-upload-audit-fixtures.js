@@ -22,6 +22,7 @@ function runAudit(deleteExplicitly = false) {
     cwd: ROOT,
     env: { ...process.env, UPLOADS_DRIVER: "local" },
     encoding: "utf8",
+    shell: process.platform === "win32" && NPM.toLowerCase().endsWith(".cmd"),
   });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || "uploads:audit falló");
   const marker = result.stdout.lastIndexOf("{\n  \"mode\"");

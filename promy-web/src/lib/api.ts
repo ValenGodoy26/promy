@@ -1,6 +1,9 @@
 import type {
   AdminBetaAccessRequestsResponse,
   AdminAuditLogsResponse,
+  AdminBillingSubscriptionDetailResponse,
+  AdminBillingSubscriptionFilter,
+  AdminBillingSubscriptionsResponse,
   AdminBillingSettingsResponse,
   AdminCategoriesResponse,
   AdminCategoryResponse,
@@ -376,6 +379,29 @@ export async function fetchAdminDashboard(session: AuthSession) {
 
 export async function fetchAdminBillingSettings(session: AuthSession) {
   return request<AdminBillingSettingsResponse>("/admin/billing/settings", {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSubscriptions(
+  session: AuthSession,
+  filters?: { page?: number; limit?: number; filter?: AdminBillingSubscriptionFilter; search?: string },
+) {
+  const search = new URLSearchParams();
+  if (filters?.page) search.set("page", String(filters.page));
+  if (filters?.limit) search.set("limit", String(filters.limit));
+  if (filters?.filter && filters.filter !== "ALL") search.set("filter", filters.filter);
+  if (filters?.search?.trim()) search.set("search", filters.search.trim());
+  const suffix = search.size ? `?${search.toString()}` : "";
+  return request<AdminBillingSubscriptionsResponse>(`/admin/subscriptions${suffix}`, {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSubscription(session: AuthSession, commerceId: number) {
+  return request<AdminBillingSubscriptionDetailResponse>(`/admin/subscriptions/${commerceId}`, {
     method: "GET",
     accessToken: session.accessToken,
   });

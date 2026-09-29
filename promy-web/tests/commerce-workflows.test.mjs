@@ -12,6 +12,7 @@ import { getAvailablePromotionTransitions } from "../src/features/admin/promotio
 import { formatBillingDate, formatMoneyARS, getSubscriptionPaymentAction, getSubscriptionPresentation, hasSubscriptionPrice, isBetaSubscriptionAccess, shouldShowSubscriptionActionPanel } from "../src/features/commerce/commerceSubscription.ts";
 import { getSubscriptionConfirmation, pollSubscriptionConfirmation, submitSubscriptionEnrollment, SubscriptionPaymentAttempt } from "../src/features/commerce/subscriptionPayment.ts";
 import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPresentation, parseMonthlyPrice } from "../src/features/admin/adminBilling.ts";
+import { adminBillingSubscriptionFilters, formatAdminBillingDate, getAdminBillingCoverageLabel, getAdminBillingSubscriptionPresentation, truncateOperationalId } from "../src/features/admin/adminBillingSubscriptions.ts";
 
 const commerceContract = JSON.parse(
   readFileSync(new URL("../../contracts/promy-commerce-v1.json", import.meta.url), "utf8"),
@@ -157,6 +158,38 @@ test("commerce subscription presentation keeps beta and payment states human-rea
   }
   assert.equal(formatMoneyARS("1000", "ARS"), "$ 1.000");
   assert.match(formatBillingDate("2026-12-31T12:00:00.000Z"), /^31\/12\/2026$/);
+});
+
+test("admin billing subscriptions keep beta coverage and cancellation status human", () => {
+  const beta = { status: "BETA_FREE", coverageSource: "BETA_FREE", hasCoverage: true, cancelAtPeriodEnd: false };
+  assert.equal(getAdminBillingSubscriptionPresentation(beta).statusLabel, "Beta");
+  assert.equal(getAdminBillingCoverageLabel(beta), "Acceso completo");
+  const cancelled = { status: "ACTIVE", coverageSource: "MERCADO_PAGO", hasCoverage: true, cancelAtPeriodEnd: true };
+  assert.equal(getAdminBillingSubscriptionPresentation(cancelled).statusLabel, "Activa");
+  assert.equal(getAdminBillingSubscriptionPresentation(cancelled).cancellationLabel, "Cancelación programada");
+  assert.equal(getAdminBillingSubscriptionPresentation({ status: "PAST_DUE", coverageSource: "MERCADO_PAGO", cancelAtPeriodEnd: false }).statusLabel, "Pago pendiente");
+  assert.equal(getAdminBillingSubscriptionPresentation({ status: "SUSPENDED", coverageSource: null, cancelAtPeriodEnd: false }).statusLabel, "Suspendida");
+  assert.equal(getAdminBillingSubscriptionPresentation({ status: "CANCELLED", coverageSource: null, cancelAtPeriodEnd: false }).statusLabel, "Cancelada");
+  assert.equal(getAdminBillingSubscriptionPresentation({ status: "ACTIVE", coverageSource: "MANUAL", cancelAtPeriodEnd: false }).statusLabel, "Cobertura registrada");
+});
+
+test("admin billing subscription helpers are safe with absent optional values", () => {
+  assert.equal(formatAdminBillingDate(null), "No disponible");
+  assert.equal(truncateOperationalId(null), "No disponible");
+  assert.equal(truncateOperationalId("abcdefghijklmnop"), "abcdef…mnop");
+});
+
+test("admin subscription list keeps the SUPER_ADMIN guard, filters, search and detail UI wired", () => {
+  const panelSource = readFileSync(new URL("../src/features/admin/AdminPanel.tsx", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("../src/features/admin/AdminBillingPage.tsx", import.meta.url), "utf8");
+  const apiSource = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
+  assert.match(panelSource, /isSuperAdmin \? <AdminBillingPage/u);
+  assert.deepEqual(adminBillingSubscriptionFilters.map((filter) => filter.value), ["ALL", "BETA", "ACTIVE", "PENDING_PAYMENT", "PAST_DUE", "SUSPENDED", "COMPLIMENTARY", "CANCELLED"]);
+  assert.match(apiSource, /\/admin\/subscriptions\$\{suffix\}/u);
+  assert.match(apiSource, /\/admin\/subscriptions\/\$\{commerceId\}/u);
+  assert.match(pageSource, /No encontramos suscripciones para este criterio/u);
+  assert.match(pageSource, /Reintentar/u);
+  assert.match(pageSource, /Ver detalle/u);
 });
 
 function subscriptionForPayment(overrides = {}) {

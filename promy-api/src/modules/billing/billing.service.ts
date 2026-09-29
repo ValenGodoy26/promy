@@ -50,6 +50,135 @@ export type BillingCoverage = {
   reason: string;
 };
 
+export const ADMIN_BILLING_SUBSCRIPTION_FILTERS = ["ALL", "BETA", "ACTIVE", "PENDING_PAYMENT", "PAST_DUE", "SUSPENDED", "COMPLIMENTARY", "CANCELLED"] as const;
+export type AdminBillingSubscriptionFilter = typeof ADMIN_BILLING_SUBSCRIPTION_FILTERS[number];
+
+type AdminBillingCommerceSnapshot = {
+  id: number;
+  name: string;
+  status: CommerceStatus;
+  approvedAt: Date | null;
+  billingSubscription: {
+    status: BillingSubscriptionStatus;
+    provider: string | null;
+    providerSubscriptionId: string | null;
+    providerExternalReference: string | null;
+    providerStatus: string | null;
+    currentPeriodStart: Date | null;
+    currentPeriodEnd: Date | null;
+    graceEndsAt: Date | null;
+    cancelAtPeriodEnd: boolean;
+    cancelRequestedAt: Date | null;
+    cancelledAt: Date | null;
+    updatedAt: Date;
+  } | null;
+  billingPayments: Array<{ source: BillingPaymentSource; status: BillingPaymentStatus; periodStart: Date; periodEnd: Date; reversalOf: { id: number } | null }>;
+  billingCoverageGrants: Array<{ source: BillingCoverageSource; startsAt: Date; endsAt: Date | null; revokedAt: Date | null }>;
+};
+
+const adminBillingCommerceSelect = {
+  id: true,
+  name: true,
+  status: true,
+  approvedAt: true,
+  owner: { select: { email: true } },
+  billingSubscription: { select: {
+    status: true, provider: true, providerSubscriptionId: true, providerExternalReference: true, providerStatus: true,
+    currentPeriodStart: true, currentPeriodEnd: true, graceEndsAt: true, cancelAtPeriodEnd: true,
+    cancelRequestedAt: true, cancelledAt: true, updatedAt: true,
+  } },
+  billingPayments: { select: { source: true, status: true, periodStart: true, periodEnd: true, reversalOf: { select: { id: true } } } },
+  billingCoverageGrants: { select: { source: true, startsAt: true, endsAt: true, revokedAt: true } },
+} satisfies Prisma.CommerceSelect;
+
+function readOnlyBillingSettings(settings: { mode: BillingMode; billingStartsAt: Date | null; monthlyPrice: Prisma.Decimal | null; currency: string } | null) {
+  return settings ?? { mode: BillingMode.OFF, billingStartsAt: null, monthlyPrice: null, currency: "ARS" };
+}
+
+function resolveSnapshotCoverage(commerce: AdminBillingCommerceSnapshot, settings: { mode: BillingMode; billingStartsAt: Date | null }) {
+  return resolveBillingCoverage({
+    settings,
+    commerce: { status: commerce.status, approvedAt: commerce.approvedAt },
+    subscription: commerce.billingSubscription ? {
+      status: commerce.billingSubscription.status,
+      currentPeriodStart: commerce.billingSubscription.currentPeriodStart,
+      currentPeriodEnd: commerce.billingSubscription.currentPeriodEnd,
+      paymentFailedAt: null,
+      graceEndsAt: commerce.billingSubscription.graceEndsAt,
+      cancelAtPeriodEnd: commerce.billingSubscription.cancelAtPeriodEnd,
+    } : null,
+    payments: commerce.billingPayments.map((payment) => ({ ...payment, reversed: Boolean(payment.reversalOf) })),
+    grants: commerce.billingCoverageGrants,
+  });
+}
+
+function toAdminBillingSubscription(commerce: AdminBillingCommerceSnapshot, settings: { mode: BillingMode; billingStartsAt: Date | null }) {
+  const coverage = resolveSnapshotCoverage(commerce, settings);
+  const subscription = commerce.billingSubscription;
+  const status = coverage.hasCoverage || !subscription ? coverage.status : subscription.status;
+  return {
+    commerce: { id: commerce.id, name: commerce.name },
+    status,
+    hasCoverage: coverage.hasCoverage,
+    coverageSource: coverage.source,
+    periodStart: coverage.periodStart,
+    periodEnd: coverage.periodEnd,
+    graceEndsAt: coverage.graceEndsAt,
+    cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
+    provider: subscription?.provider ?? null,
+    providerStatus: subscription?.providerStatus ?? null,
+    updatedAt: subscription?.updatedAt ?? null,
+  };
+}
+
+function activeCoverageWhere(now: Date) {
+  const grant: Prisma.BillingCoverageGrantWhereInput = { source: BillingCoverageSource.COMPLIMENTARY, revokedAt: null, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] };
+  const manual: Prisma.BillingPaymentWhereInput = { source: BillingPaymentSource.MANUAL, status: BillingPaymentStatus.APPROVED, periodStart: { lte: now }, periodEnd: { gt: now }, reversalOf: { is: null } };
+  const provider: Prisma.BillingSubscriptionWhereInput = {
+    OR: [
+      { status: BillingSubscriptionStatus.ACTIVE, currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } },
+      { status: BillingSubscriptionStatus.PAST_DUE, graceEndsAt: { gt: now } },
+      { status: BillingSubscriptionStatus.PAST_DUE, cancelAtPeriodEnd: true, currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } },
+    ],
+  };
+  return {
+    grant,
+    manual,
+    provider,
+    withoutOverrides: { NOT: [{ billingCoverageGrants: { some: grant } }, { billingPayments: { some: manual } }] } satisfies Prisma.CommerceWhereInput,
+  };
+}
+
+function billingFilterWhere(filter: AdminBillingSubscriptionFilter, settings: { mode: BillingMode; billingStartsAt: Date | null }, now: Date): Prisma.CommerceWhereInput {
+  if (filter === "ALL") return {};
+  const { grant, manual, provider, withoutOverrides } = activeCoverageWhere(now);
+  const hasActiveProvider = { billingSubscription: { is: provider } } satisfies Prisma.CommerceWhereInput;
+  const noActiveProvider = { NOT: [hasActiveProvider] } satisfies Prisma.CommerceWhereInput;
+  const isBetaMode = settings.mode === BillingMode.OFF || (settings.mode === BillingMode.SCHEDULED && (!settings.billingStartsAt || settings.billingStartsAt > now));
+  if (filter === "COMPLIMENTARY") return { billingCoverageGrants: { some: grant } };
+  if (filter === "ACTIVE") return { OR: [{ billingCoverageGrants: { some: grant } }, { billingPayments: { some: manual } }, hasActiveProvider] };
+  if (filter === "BETA") {
+    if (isBetaMode) return { AND: [withoutOverrides, noActiveProvider] };
+    if (settings.billingStartsAt) {
+      const transitionEnd = new Date(settings.billingStartsAt.getTime() + BILLING_GRACE_DAYS * 24 * 60 * 60 * 1000);
+      if (now.getTime() < transitionEnd.getTime()) return { AND: [withoutOverrides, noActiveProvider, { approvedAt: { lt: settings.billingStartsAt } }] };
+    }
+    return { id: -1 };
+  }
+  if (filter === "PENDING_PAYMENT") {
+    if (isBetaMode) return { id: -1 };
+    return { AND: [withoutOverrides, noActiveProvider, { OR: [{ billingSubscription: { is: null } }, { billingSubscription: { is: { status: BillingSubscriptionStatus.PENDING_PAYMENT } } }] }] };
+  }
+  if (filter === "PAST_DUE") {
+    return isBetaMode
+      ? { AND: [withoutOverrides, hasActiveProvider, { billingSubscription: { is: { status: BillingSubscriptionStatus.PAST_DUE } } }] }
+      : { AND: [withoutOverrides, { billingSubscription: { is: { status: BillingSubscriptionStatus.PAST_DUE } } }] };
+  }
+  if (isBetaMode) return { id: -1 };
+  const status = filter === "SUSPENDED" ? BillingSubscriptionStatus.SUSPENDED : BillingSubscriptionStatus.CANCELLED;
+  return { AND: [withoutOverrides, noActiveProvider, { billingSubscription: { is: { status } } }] };
+}
+
 function isActivePeriod(start: Date, end: Date | null, now: Date) {
   return start.getTime() <= now.getTime() && (!end || end.getTime() > now.getTime());
 }
@@ -277,18 +406,74 @@ export async function reverseManualPayment(input: { actorUserId: number; commerc
   });
 }
 
-export async function listBillingSubscriptions() {
-  return prisma.commerce.findMany({ where: { status: CommerceStatus.APPROVED }, select: { id: true, name: true, slug: true, billingAccessState: true, billingCoverageUntil: true, billingSubscription: { select: { status: true, currentPeriodEnd: true, graceEndsAt: true, cancelAtPeriodEnd: true } } }, orderBy: { id: "asc" } });
+export async function listBillingSubscriptions(input: {
+  page?: number;
+  limit?: number;
+  filter?: AdminBillingSubscriptionFilter;
+  search?: string;
+} = {}) {
+  const page = input.page ?? 1;
+  const limit = input.limit ?? 25;
+  const filter = input.filter ?? "ALL";
+  const search = input.search?.trim();
+  const searchWhere: Prisma.CommerceWhereInput[] = [];
+
+  if (search) {
+    if (/^\d+$/u.test(search)) searchWhere.push({ id: Number(search) });
+    else searchWhere.push({ name: { contains: search } }, { owner: { is: { email: { contains: search } } } });
+  }
+
+  const settings = readOnlyBillingSettings(await prisma.billingSettings.findUnique({ where: { id: 1 } }));
+  const where: Prisma.CommerceWhereInput = {
+    status: CommerceStatus.APPROVED,
+    AND: [billingFilterWhere(filter, settings, new Date())],
+    ...(searchWhere.length ? { OR: searchWhere } : {}),
+  };
+  const [total, commerces] = await Promise.all([
+    prisma.commerce.count({ where }),
+    prisma.commerce.findMany({
+      where,
+      select: adminBillingCommerceSelect,
+      orderBy: { id: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+  ]);
+  const subscriptions = commerces.map((commerce) => toAdminBillingSubscription(commerce as AdminBillingCommerceSnapshot, settings));
+
+  return { subscriptions, page, limit, total };
 }
 
 export async function getAdminBillingSubscription(commerceId: number) {
-  const summary = await getCommerceBillingSummary(commerceId);
-  const [subscription, payments, grants] = await Promise.all([
-    prisma.billingSubscription.findUnique({ where: { commerceId } }),
-    prisma.billingPayment.findMany({ where: { commerceId }, orderBy: { createdAt: "desc" } }),
-    prisma.billingCoverageGrant.findMany({ where: { commerceId }, orderBy: { createdAt: "desc" } }),
+  const [settingsRecord, commerce] = await Promise.all([
+    prisma.billingSettings.findUnique({ where: { id: 1 } }),
+    prisma.commerce.findUnique({ where: { id: commerceId }, select: adminBillingCommerceSelect }),
   ]);
-  return { summary, subscription, payments, grants };
+  if (!commerce) throw new BillingServiceError("Comercio no encontrado.", 404);
+
+  const settings = readOnlyBillingSettings(settingsRecord);
+  const snapshot = commerce as AdminBillingCommerceSnapshot;
+  const summary = toAdminBillingSubscription(snapshot, settings);
+  const subscription = snapshot.billingSubscription;
+
+  return {
+    commerce: summary.commerce,
+    summary,
+    subscription: subscription ? {
+      status: subscription.status,
+      provider: subscription.provider,
+      providerStatus: subscription.providerStatus,
+      providerSubscriptionId: subscription.providerSubscriptionId,
+      providerExternalReference: subscription.providerExternalReference,
+      currentPeriodStart: subscription.currentPeriodStart,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      graceEndsAt: subscription.graceEndsAt,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      cancelRequestedAt: subscription.cancelRequestedAt,
+      cancelledAt: subscription.cancelledAt,
+      updatedAt: subscription.updatedAt,
+    } : null,
+  };
 }
 
 export async function markPaymentFailed(commerceId: number, failedAt = new Date()) {

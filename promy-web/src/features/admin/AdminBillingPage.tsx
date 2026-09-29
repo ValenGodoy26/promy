@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth";
-import { IconAlert, IconCalendar, IconCheck, IconReceipt } from "../../components/Icons";
-import { ensureAdminMercadoPagoPlan, fetchAdminBillingSettings, updateAdminBillingSettings } from "../../lib/api";
+import { IconAlert, IconCalendar, IconCheck, IconReceipt, IconX } from "../../components/Icons";
+import { ensureAdminMercadoPagoPlan, fetchAdminBillingSubscription, fetchAdminBillingSubscriptions, fetchAdminBillingSettings, updateAdminBillingSettings } from "../../lib/api";
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
-import type { AdminBillingSettings, BillingMode } from "../../types/api";
+import type { AdminBillingCommerceSubscription, AdminBillingSubscriptionDetailResponse, AdminBillingSubscriptionFilter, AdminBillingSubscriptionsResponse, AdminBillingSettings, BillingMode } from "../../types/api";
 import { Alert, ConfirmDialog, LoadingBlock, PageHeader } from "./AdminShared";
 import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPresentation, parseMonthlyPrice, toLocalDateTimeInput } from "./adminBilling";
+import { adminBillingSubscriptionFilters, formatAdminBillingDate, formatAdminBillingProvider, getAdminBillingCoverageLabel, getAdminBillingSubscriptionPresentation, truncateOperationalId } from "./adminBillingSubscriptions";
 
 type AdminTab = { to: string; label: string; end?: boolean };
 
@@ -19,6 +20,16 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showActivationConfirm, setShowActivationConfirm] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<AdminBillingSubscriptionsResponse | null>(null);
+  const [subscriptionFilter, setSubscriptionFilter] = useState<AdminBillingSubscriptionFilter>("ALL");
+  const [subscriptionSearch, setSubscriptionSearch] = useState("");
+  const [appliedSubscriptionSearch, setAppliedSubscriptionSearch] = useState("");
+  const [subscriptionPage, setSubscriptionPage] = useState(1);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+  const [subscriptionDetail, setSubscriptionDetail] = useState<AdminBillingSubscriptionDetailResponse["subscription"] | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +47,40 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
   }, [withSession]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const loadSubscriptions = useCallback(async () => {
+    try {
+      setSubscriptionsLoading(true);
+      const response = await withSession((session) => fetchAdminBillingSubscriptions(session, {
+        page: subscriptionPage,
+        limit: 25,
+        filter: subscriptionFilter,
+        search: appliedSubscriptionSearch,
+      }));
+      setSubscriptions(response);
+      setSubscriptionsError(null);
+    } catch (loadError) {
+      setSubscriptionsError(getUserFacingErrorMessage(loadError, "load"));
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  }, [appliedSubscriptionSearch, subscriptionFilter, subscriptionPage, withSession]);
+
+  useEffect(() => { void loadSubscriptions(); }, [loadSubscriptions]);
+
+  const openSubscriptionDetail = async (commerceId: number) => {
+    try {
+      setDetailLoading(true);
+      setDetailError(null);
+      setSubscriptionDetail(null);
+      const response = await withSession((session) => fetchAdminBillingSubscription(session, commerceId));
+      setSubscriptionDetail(response.subscription);
+    } catch (loadError) {
+      setDetailError(getUserFacingErrorMessage(loadError, "load"));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const presentation = settings ? getBillingModePresentation(settings.mode) : null;
   const plan = settings ? getMercadoPagoPlanPresentation(settings) : null;
@@ -151,7 +196,29 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
           <button className="btn btn-secondary" type="button" disabled={saving !== null || !settings.monthlyPrice} onClick={verifyPlan}>{saving === "plan" ? "Verificando..." : settings.mercadoPagoPlanId ? "Verificar plan de Mercado Pago" : "Configurar plan de Mercado Pago"}</button>
         </section>
       </div> : null}
+      <section className="panel admin-billing-subscriptions" aria-labelledby="admin-billing-subscriptions-title">
+        <div className="admin-billing-subscriptions-heading">
+          <div><span className="page-kicker">Solo lectura</span><h2 id="admin-billing-subscriptions-title">Suscripciones por comercio</h2><p className="muted">Consultá el estado y la cobertura actual de cada comercio. Esta vista no modifica suscripciones.</p></div>
+        </div>
+        <form className="admin-billing-subscriptions-search" onSubmit={(event) => { event.preventDefault(); setSubscriptionPage(1); setAppliedSubscriptionSearch(subscriptionSearch); }}>
+          <label className="field-label" htmlFor="admin-billing-subscription-search">Buscar comercio</label>
+          <div><input id="admin-billing-subscription-search" className="field-input" value={subscriptionSearch} onChange={(event) => setSubscriptionSearch(event.target.value)} placeholder="Nombre, email del responsable o ID" /><button className="btn btn-secondary btn-sm" type="submit">Buscar</button></div>
+        </form>
+        <div className="admin-billing-subscription-filters" aria-label="Filtrar suscripciones">
+          {adminBillingSubscriptionFilters.map((option) => <button key={option.value} className={`btn btn-sm ${subscriptionFilter === option.value ? "btn-primary" : "btn-ghost"}`} type="button" onClick={() => { setSubscriptionFilter(option.value); setSubscriptionPage(1); }}>{option.label}</button>)}
+        </div>
+        {subscriptionsLoading ? <div className="admin-billing-subscription-loading" role="status">Cargando suscripciones…</div> : null}
+        {subscriptionsError ? <div className="admin-billing-subscription-error"><Alert tone="danger" message={subscriptionsError} /><button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadSubscriptions()}>Reintentar</button></div> : null}
+        {!subscriptionsLoading && !subscriptionsError && subscriptions ? <>
+          {subscriptions.subscriptions.length === 0 ? <div className="admin-billing-subscription-empty"><strong>No encontramos suscripciones para este criterio.</strong><span>Probá otro filtro o modificá la búsqueda.</span></div> : <div className="admin-billing-subscription-table" role="table" aria-label="Suscripciones por comercio">
+            <div className="admin-billing-subscription-table-head" role="row"><span>Comercio</span><span>Estado</span><span>Cobertura</span><span>Próximo fin</span><span>Origen</span><span /></div>
+            {subscriptions.subscriptions.map((subscription) => <SubscriptionRow key={subscription.commerce.id} subscription={subscription} onOpen={openSubscriptionDetail} />)}
+          </div>}
+          {subscriptions.total > subscriptions.limit ? <div className="admin-billing-subscription-pagination"><span>Página {subscriptions.page} de {Math.max(1, Math.ceil(subscriptions.total / subscriptions.limit))} · {subscriptions.total} comercios</span><div><button className="btn btn-ghost btn-sm" type="button" disabled={subscriptions.page <= 1} onClick={() => setSubscriptionPage((current) => Math.max(1, current - 1))}>Anterior</button><button className="btn btn-secondary btn-sm" type="button" disabled={subscriptions.page >= Math.ceil(subscriptions.total / subscriptions.limit)} onClick={() => setSubscriptionPage((current) => current + 1)}>Siguiente</button></div></div> : null}
+        </> : null}
+      </section>
     </main>
+    <AdminBillingSubscriptionDetailDialog subscription={subscriptionDetail} loading={detailLoading} error={detailError} onClose={() => { setSubscriptionDetail(null); setDetailError(null); }} />
     <ConfirmDialog open={showActivationConfirm} title="Activar cobros" description="Al activar Billing, los comercios alcanzados por la política vigente podrán comenzar el proceso de suscripción." confirmLabel={saving === "mode" ? "Activando..." : "Confirmar activación"} tone="danger" onClose={() => setShowActivationConfirm(false)} onConfirm={activateBilling}>
       <dl className="modal-confirmation-summary">
         <div><dt>Precio mensual</dt><dd>{formatBillingMoney(parseMonthlyPrice(priceInput).value ?? settings?.monthlyPrice, settings?.currency)}</dd></div>
@@ -159,6 +226,56 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
       </dl>
     </ConfirmDialog>
   </>;
+}
+
+function SubscriptionRow({ subscription, onOpen }: { subscription: AdminBillingCommerceSubscription; onOpen: (commerceId: number) => void }) {
+  const presentation = getAdminBillingSubscriptionPresentation(subscription);
+  return <div className="admin-billing-subscription-row" role="row">
+    <div data-label="Comercio"><strong>{subscription.commerce.name}</strong><span>ID {subscription.commerce.id}</span></div>
+    <div data-label="Estado"><strong>{presentation.statusLabel}</strong>{presentation.cancellationLabel ? <span>{presentation.cancellationLabel}</span> : null}</div>
+    <div data-label="Cobertura">{getAdminBillingCoverageLabel(subscription)}</div>
+    <div data-label="Próximo fin">{formatAdminBillingDate(subscription.periodEnd)}</div>
+    <div data-label="Origen">{presentation.sourceLabel ?? "No disponible"}</div>
+    <div className="admin-billing-subscription-row-action"><button className="btn btn-secondary btn-sm" type="button" onClick={() => void onOpen(subscription.commerce.id)}>Ver detalle</button></div>
+  </div>;
+}
+
+function AdminBillingSubscriptionDetailDialog({
+  subscription,
+  loading,
+  error,
+  onClose,
+}: {
+  subscription: AdminBillingSubscriptionDetailResponse["subscription"] | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  if (!subscription && !loading && !error) return null;
+  const summary = subscription?.summary;
+  const presentation = summary ? getAdminBillingSubscriptionPresentation(summary) : null;
+  const remote = subscription?.subscription;
+  return <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <section className="modal admin-billing-subscription-detail" role="dialog" aria-modal="true" aria-labelledby="admin-billing-subscription-detail-title" onClick={(event) => event.stopPropagation()}>
+      <button className="commerce-subscription-dialog-close" type="button" aria-label="Cerrar detalle" onClick={onClose}><IconX size={17} /></button>
+      <span className="page-kicker">Solo lectura</span>
+      <h2 id="admin-billing-subscription-detail-title">{subscription ? subscription.commerce.name : "Suscripción"}</h2>
+      {loading ? <p className="muted">Cargando detalle…</p> : null}
+      {error ? <Alert tone="danger" message={error} /> : null}
+      {subscription && summary && presentation ? <dl className="admin-billing-subscription-detail-list">
+        <div><dt>Commerce ID</dt><dd>{subscription.commerce.id}</dd></div>
+        <div><dt>Estado</dt><dd>{presentation.statusLabel}</dd></div>
+        <div><dt>Cobertura</dt><dd>{getAdminBillingCoverageLabel(summary)}</dd></div>
+        <div><dt>Origen</dt><dd>{presentation.sourceLabel ?? "No disponible"}</dd></div>
+        <div><dt>Inicio de período</dt><dd>{formatAdminBillingDate(summary.periodStart)}</dd></div>
+        <div><dt>Fin de período</dt><dd>{formatAdminBillingDate(summary.periodEnd)}</dd></div>
+        {summary.graceEndsAt ? <div><dt>Fin de gracia</dt><dd>{formatAdminBillingDate(summary.graceEndsAt)}</dd></div> : null}
+        {presentation.cancellationLabel ? <div><dt>Cancelación</dt><dd>{presentation.cancellationLabel}</dd></div> : null}
+        {remote ? <><div><dt>Proveedor</dt><dd>{formatAdminBillingProvider(remote.provider)}</dd></div><div><dt>Estado del proveedor</dt><dd>{remote.providerStatus ?? "No disponible"}</dd></div><div><dt>ID de suscripción</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerSubscriptionId)}</dd></div><div><dt>Referencia externa</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerExternalReference)}</dd></div><div><dt>Actualizado</dt><dd>{formatAdminBillingDate(remote.updatedAt)}</dd></div></> : null}
+      </dl> : null}
+      <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
+    </section>
+  </div>;
 }
 
 function currencySymbol(currency: string) { return currency === "ARS" ? "$" : currency; }

@@ -39,20 +39,32 @@ async function main() {
     `;
     commerce = await prisma.commerce.findUnique({ where: { ownerUserId: owner.id } });
     assert(commerce, "No se creó Commerce Billing");
-    await updateBillingSettings({ actorUserId: admin.id, mode: "ON", billingStartsAt: new Date("2026-02-01T12:00:00.000Z"), monthlyPrice: 1000 });
-    await expireBillingCoverage(new Date("2026-03-10T12:00:00.000Z"));
-    const suspended = await getCommerceBillingSummary(commerce.id);
-    assert(!suspended.hasCoverage && suspended.needsPayment, "Billing ON debe requerir cobertura para un Commerce beta vencido");
+    await updateBillingSettings({ actorUserId: admin.id, mode: "OFF", billingStartsAt: null });
 
     const adminHttp = createWebClient({ forwardedIp: "198.18.72.1" });
     const adminSession = await loginWeb(adminHttp, admin.email, "demo1234");
     const superAdminSettings = await adminHttp.request("/admin/billing/settings", { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
     assert(superAdminSettings.status === 200, "SUPER_ADMIN debe leer settings Billing");
+    const betaList = await adminHttp.request(`/admin/subscriptions?filter=BETA&search=${commerce.id}`, { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
+    assert(betaList.status === 200 && betaList.data?.total === 1, "Billing OFF debe listar el Commerce como beta");
+    assert(betaList.data.subscriptions[0].status === "BETA_FREE" && betaList.data.subscriptions[0].coverageSource === "BETA_FREE", "La vista beta debe conservar cobertura y origen humanos");
+    assert(!JSON.stringify(betaList.data).includes(owner.email), "La lista no debe exponer el email del responsable");
+    const betaDetail = await adminHttp.request(`/admin/subscriptions/${commerce.id}`, { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
+    assert(betaDetail.status === 200 && betaDetail.data?.subscription?.commerce?.id === commerce.id, "SUPER_ADMIN debe leer el detalle de una suscripción");
+    const missingDetail = await adminHttp.request("/admin/subscriptions/999999999", { method: "GET", headers: { Authorization: `Bearer ${adminSession.accessToken}` } });
+    assert(missingDetail.status === 404, "El detalle de un Commerce inexistente debe responder 404");
+    await updateBillingSettings({ actorUserId: admin.id, mode: "ON", billingStartsAt: new Date("2026-02-01T12:00:00.000Z"), monthlyPrice: 1000 });
+    await expireBillingCoverage(new Date("2026-03-10T12:00:00.000Z"));
+    const suspended = await getCommerceBillingSummary(commerce.id);
+    assert(!suspended.hasCoverage && suspended.needsPayment, "Billing ON debe requerir cobertura para un Commerce beta vencido");
     await prisma.user.update({ where: { id: admin.id }, data: { role: originalRole } });
     const standardAdminSession = await loginWeb(adminHttp, admin.email, "demo1234");
     const forbiddenAdmin = await adminHttp.request("/admin/billing/settings", { method: "GET", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` } });
     assert(forbiddenAdmin.status === 403, "ADMIN no debe leer settings Billing");
+    const forbiddenSubscriptions = await adminHttp.request("/admin/subscriptions?page=1&limit=25", { method: "GET", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` } });
+    assert(forbiddenSubscriptions.status === 403, "ADMIN no debe leer suscripciones de comercios");
     await prisma.user.update({ where: { id: admin.id }, data: { role: "SUPER_ADMIN" } });
+    const restoredSuperAdminSession = await loginWeb(adminHttp, admin.email, "demo1234");
 
     const payment = await registerManualPayment({ actorUserId: admin.id, commerceId: commerce.id, amount: 1000, months: 2, idempotencyKey: `billing-manual-${stamp}` });
     assert(!payment.duplicate, "Primer manual payment no puede ser duplicado");
@@ -68,7 +80,11 @@ async function main() {
     const afterRevoke = await getCommerceBillingSummary(commerce.id);
     assert(afterRevoke.coverageSource === "MANUAL", "Revocar bonificación debe restaurar la siguiente cobertura válida");
 
-    console.log(JSON.stringify({ ok: true, commerceId: commerce.id, paymentId: payment.payment.id, grantId: grant.id, contracts: ["billing-settings", "super-admin", "manual-idempotency", "complimentary-priority", "projection"] }, null, 2));
+    const activeList = await adminHttp.request(`/admin/subscriptions?filter=ACTIVE&search=${commerce.id}&page=1&limit=25`, { method: "GET", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` } });
+    assert(activeList.status === 200 && activeList.data?.page === 1 && activeList.data?.limit === 25 && activeList.data?.total === 1, "La lista debe aplicar búsqueda, filtro y paginación");
+    assert(activeList.data.subscriptions[0].coverageSource === "MANUAL", "La vista debe conservar el origen de cobertura registrado");
+
+    console.log(JSON.stringify({ ok: true, commerceId: commerce.id, paymentId: payment.payment.id, grantId: grant.id, contracts: ["billing-settings", "super-admin", "subscriptions-read-only", "manual-idempotency", "complimentary-priority", "projection"] }, null, 2));
   } finally {
     if (commerce) await prisma.commerce.delete({ where: { id: commerce.id } }).catch(() => undefined);
     if (owner) await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);

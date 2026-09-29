@@ -19,8 +19,8 @@ import {
 } from "./billing.controller";
 adminBillingRouter.use(requireAuth, requireActiveSession, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN));
 adminBillingRouter.get("/billing/settings", requireRole(UserRole.SUPER_ADMIN), getAdminBillingSettings);
-adminBillingRouter.get("/subscriptions", getAdminBillingSubscriptions);
-adminBillingRouter.get("/subscriptions/:commerceId", getAdminBillingSubscription);
+adminBillingRouter.get("/subscriptions", requireRole(UserRole.SUPER_ADMIN), getAdminBillingSubscriptions);
+adminBillingRouter.get("/subscriptions/:commerceId", requireRole(UserRole.SUPER_ADMIN), getAdminBillingSubscription);
 adminBillingRouter.patch("/billing/settings", adminWriteLimiter, requireRole(UserRole.SUPER_ADMIN), patchAdminBillingSettings);
 adminBillingRouter.post("/billing/mercado-pago/plan", adminWriteLimiter, requireRole(UserRole.SUPER_ADMIN), provisionMercadoPagoPlan);
 adminBillingRouter.post("/billing/:commerceId/reconcile", adminWriteLimiter, requireRole(UserRole.SUPER_ADMIN), reconcileAdminBillingSubscription);

@@ -23,6 +23,12 @@ const complimentarySchema = z.object({ startsAt: dateSchema.optional(), endsAt: 
 const manualPaymentSchema = z.object({ amount: z.number().positive().finite(), months: z.number().int().min(1).max(24).optional(), reference: z.string().trim().max(190).optional(), note: z.string().trim().max(2000).optional(), idempotencyKey: z.string().trim().min(8).max(190).optional() });
 const reverseSchema = z.object({ note: z.string().trim().max(2000).optional() });
 const enrollmentSchema = z.object({ cardToken: z.string().trim().min(8).max(512) });
+const adminSubscriptionsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(25),
+  filter: z.enum(["ALL", "BETA", "ACTIVE", "PENDING_PAYMENT", "PAST_DUE", "SUSPENDED", "COMPLIMENTARY", "CANCELLED"]).default("ALL"),
+  search: z.string().trim().max(120).optional(),
+});
 
 function sendError(req: AuthRequest, res: Response, label: string, error: unknown) {
   if (isBillingServiceError(error)) return res.status(error.statusCode).json({ ok: false, message: error.message, ...(error.details ?? {}) });
@@ -69,7 +75,11 @@ export async function reconcileAdminBillingSubscription(req: AuthRequest, res: R
 }
 
 export async function getAdminBillingSubscriptions(req: AuthRequest, res: Response) {
-  try { return res.json({ ok: true, subscriptions: await listBillingSubscriptions() }); }
+  try {
+    const parsed = adminSubscriptionsQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ ok: false, message: "Filtros de suscripciones inválidos." });
+    return res.json({ ok: true, ...(await listBillingSubscriptions(parsed.data)) });
+  }
   catch (error) { return sendError(req, res, "List billing subscriptions error", error); }
 }
 

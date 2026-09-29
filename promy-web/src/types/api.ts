@@ -17,6 +17,60 @@ export type AdminBillingSettingsResponse = {
   ok: boolean;
   settings: AdminBillingSettings;
 };
+
+export type AdminBillingSubscriptionFilter =
+  | "ALL"
+  | "BETA"
+  | "ACTIVE"
+  | "PENDING_PAYMENT"
+  | "PAST_DUE"
+  | "SUSPENDED"
+  | "COMPLIMENTARY"
+  | "CANCELLED";
+
+export type AdminBillingCommerceSubscription = {
+  commerce: { id: number; name: string };
+  status: "BETA_FREE" | "PENDING_PAYMENT" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED" | "NO_COVERAGE" | string;
+  hasCoverage: boolean;
+  coverageSource: "BETA_FREE" | "MERCADO_PAGO" | "COMPLIMENTARY" | "MANUAL" | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  graceEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  provider: string | null;
+  providerStatus: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminBillingSubscriptionsResponse = {
+  ok: boolean;
+  subscriptions: AdminBillingCommerceSubscription[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
+export type AdminBillingSubscriptionDetailResponse = {
+  ok: boolean;
+  subscription: {
+    commerce: { id: number; name: string };
+    summary: AdminBillingCommerceSubscription;
+    subscription: {
+      status: string;
+      provider: string | null;
+      providerStatus: string | null;
+      providerSubscriptionId: string | null;
+      providerExternalReference: string | null;
+      currentPeriodStart: string | null;
+      currentPeriodEnd: string | null;
+      graceEndsAt: string | null;
+      cancelAtPeriodEnd: boolean;
+      cancelRequestedAt: string | null;
+      cancelledAt: string | null;
+      updatedAt: string;
+    } | null;
+  };
+};
 export type UserStatus = "ACTIVE" | "BLOCKED" | "PENDING" | string;
 
 export type AuthUser = {
