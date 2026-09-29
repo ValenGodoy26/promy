@@ -417,6 +417,29 @@ export type CommerceStatistics = {
 
 export type CommerceStatisticsResponse = { ok: boolean; statistics: CommerceStatistics };
 
+export type CommerceSubscription = {
+  billingMode: string;
+  billingStartsAt: string | null;
+  monthlyPrice: string | null;
+  currency: string | null;
+  status: string;
+  hasCoverage: boolean;
+  coverageSource: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  graceEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  canCreatePromotion: boolean;
+  canPublishPromotion: boolean;
+  canValidateExistingRedemption: boolean;
+  needsPayment: boolean;
+};
+
+export type CommerceSubscriptionResponse = {
+  ok: boolean;
+  subscription: CommerceSubscription;
+};
+
 export type CommerceValidateRedemptionResponse = {
   ok: boolean;
   message?: string;

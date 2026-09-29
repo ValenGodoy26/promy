@@ -11728,6 +11728,79 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
 }
 
 /* ============================================
+   COMMERCE · SUSCRIPCIÓN
+============================================ */
+.commerce-subscription-page { width: min(100%, 1080px); padding: 30px 32px 64px; }
+.commerce-subscription-page--state { display: grid; gap: 16px; justify-items: start; }
+.commerce-subscription-header { margin-bottom: 22px; }
+.commerce-subscription-header > div > span,
+.commerce-subscription-card-head span,
+.commerce-subscription-actions > div > span { color: #9a856a; font-family: var(--font-mono); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.commerce-subscription-header h1 { margin: 7px 0 5px; color: #18130d; font-family: var(--font-display); font-size: clamp(34px, 4vw, 48px); letter-spacing: -.045em; line-height: .98; }
+.commerce-subscription-header p { max-width: 480px; margin: 0; color: #746652; font-size: 14px; line-height: 1.55; }
+.commerce-subscription-hero { display: flex; align-items: stretch; justify-content: space-between; gap: 22px; padding: 24px; border: 1px solid #eadcbb; border-radius: 20px; background: #fffaf0; box-shadow: 0 12px 30px rgba(77, 53, 13, .05); }
+.commerce-subscription-hero.is-beta { border-color: #efd377; background: linear-gradient(130deg, #fff9df, #fffdf7); }
+.commerce-subscription-hero.is-success { border-color: #cde4d2; background: #fbfffb; }
+.commerce-subscription-hero.is-warning { border-color: #f0d48d; background: #fffaf0; }
+.commerce-subscription-hero.is-danger { border-color: #efc4c1; background: #fff9f8; }
+.commerce-subscription-hero-main { display: flex; align-items: flex-start; gap: 15px; min-width: 0; }
+.commerce-subscription-plan-mark { width: 38px; height: 38px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 12px; background: #21190f; color: #ffbe00; }
+.commerce-subscription-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 4px 9px; border-radius: 99px; font-size: 10px; font-weight: 800; }
+.commerce-subscription-badge.is-beta { background: #ffbe00; color: #342400; }
+.commerce-subscription-badge.is-success { background: #ddf2e1; color: #226034; }
+.commerce-subscription-badge.is-warning { background: #fff0c5; color: #88580a; }
+.commerce-subscription-badge.is-danger { background: #fde4e2; color: #9f312b; }
+.commerce-subscription-badge.is-neutral { background: #eee9e0; color: #62574a; }
+.commerce-subscription-plan-label { margin: 12px 0 3px; color: #8c7b62; font-size: 11px; font-weight: 700; }
+.commerce-subscription-hero h2 { margin: 0; color: #21190f; font-family: var(--font-display); font-size: clamp(23px, 3vw, 30px); letter-spacing: -.035em; line-height: 1.05; }
+.commerce-subscription-hero p { max-width: 570px; margin: 8px 0 0; color: #6d5f4a; font-size: 12px; line-height: 1.55; }
+.commerce-subscription-price { min-width: 170px; display: flex; flex-direction: column; justify-content: center; padding-left: 22px; border-left: 1px solid rgba(118, 90, 42, .15); }
+.commerce-subscription-price strong { color: #8b7960; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.commerce-subscription-price span { margin-top: 5px; color: #21190f; font-size: 22px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; }
+.commerce-subscription-price.is-secondary span { color: #463b2c; font-size: 20px; font-weight: 750; }
+.commerce-subscription-price span small { color: #83725c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
+.commerce-subscription-price span.is-muted { font-size: 14px; letter-spacing: 0; }
+.commerce-subscription-price em { margin-top: 5px; color: #907713; font-size: 10px; font-style: normal; line-height: 1.35; }
+.commerce-subscription-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr); align-items: start; gap: 14px; margin-top: 14px; }
+.commerce-subscription-card, .commerce-subscription-actions { border: 1px solid #eadfca; border-radius: 17px; background: #fff; box-shadow: 0 7px 18px rgba(76, 51, 13, .035); }
+.commerce-subscription-card { padding: 20px; }
+.commerce-subscription-card-head { margin-bottom: 16px; }
+.commerce-subscription-card-head h2, .commerce-subscription-actions h2 { margin: 5px 0 0; color: #281f15; font-family: var(--font-display); font-size: 23px; letter-spacing: -.025em; }
+.commerce-subscription-details dl { margin: 0; }
+.commerce-subscription-details dl > div { display: flex; justify-content: space-between; gap: 18px; padding: 11px 0; border-top: 1px solid #f0eadf; }
+.commerce-subscription-details dt { color: #887964; font-size: 11px; }
+.commerce-subscription-details dd { margin: 0; color: #34291c; font-size: 11px; font-weight: 750; text-align: right; }
+.commerce-subscription-includes ul { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.commerce-subscription-includes li { display: flex; align-items: center; gap: 9px; color: #5b4d3d; font-size: 12px; }
+.commerce-subscription-includes li svg { color: #ba8800; }
+.commerce-subscription-notice, .commerce-subscription-error { display: flex; align-items: flex-start; gap: 11px; margin-top: 14px; padding: 14px 16px; border: 1px solid #edd38f; border-radius: 14px; background: #fff9e9; color: #765619; }
+.commerce-subscription-notice.is-danger { border-color: #efc4c1; background: #fff8f7; color: #973931; }
+.commerce-subscription-notice strong, .commerce-subscription-notice span, .commerce-subscription-error strong, .commerce-subscription-error span { display: block; }
+.commerce-subscription-notice strong, .commerce-subscription-error strong { font-size: 12px; }
+.commerce-subscription-notice span, .commerce-subscription-error span { margin-top: 3px; font-size: 11px; line-height: 1.45; }
+.commerce-subscription-inline-error { margin-top: -8px; margin-bottom: 12px; color: #9d4238; font-size: 11px; }
+.commerce-subscription-actions { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 14px; padding: 20px; }
+.commerce-subscription-actions p { max-width: 570px; margin: 6px 0 0; color: #766954; font-size: 12px; line-height: 1.5; }
+.commerce-subscription-actions-buttons { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; }
+.commerce-subscription-cancel { border: 0; background: transparent; color: #9c5045; font: inherit; font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.commerce-subscription-dialog-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(33, 25, 15, .36); }
+.commerce-subscription-dialog { position: relative; width: min(100%, 430px); padding: 25px; border: 1px solid #e4d8c4; border-radius: 19px; background: #fffdf9; box-shadow: 0 20px 70px rgba(31, 21, 9, .24); }
+.commerce-subscription-dialog h2 { margin: 0; color: #21190f; font-family: var(--font-display); font-size: 27px; letter-spacing: -.035em; }
+.commerce-subscription-dialog p { margin: 11px 0 20px; color: #6c5e49; font-size: 13px; line-height: 1.55; }
+.commerce-subscription-dialog-close { position: absolute; top: 12px; right: 12px; display: grid; width: 31px; height: 31px; place-items: center; border: 0; border-radius: 9px; background: #f4eee4; color: #5e513f; }
+.commerce-subscription-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.commerce-subscription-skeleton { display: grid; gap: 14px; }
+.commerce-subscription-skeleton > div, .commerce-subscription-skeleton-grid > div { border-radius: 17px; background: linear-gradient(100deg, #f3eee5 20%, #faf7f1 40%, #f3eee5 60%); background-size: 200% 100%; animation: commerce-subscription-shimmer 1.4s infinite; }
+.commerce-subscription-skeleton-head { width: 36%; height: 82px; }
+.commerce-subscription-skeleton-hero { height: 190px; }
+.commerce-subscription-skeleton-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; }
+.commerce-subscription-skeleton-grid > div { height: 180px; }
+@keyframes commerce-subscription-shimmer { to { background-position: -200% 0; } }
+@media (max-width: 780px) { .commerce-subscription-page { padding: 24px 20px 48px; } .commerce-subscription-hero, .commerce-subscription-actions { flex-direction: column; align-items: stretch; } .commerce-subscription-price { min-width: 0; padding: 16px 0 0; border-top: 1px solid rgba(118, 90, 42, .15); border-left: 0; } .commerce-subscription-actions-buttons { justify-content: flex-start; } .commerce-subscription-grid, .commerce-subscription-skeleton-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .commerce-subscription-details dl > div { align-items: flex-start; flex-direction: column; gap: 3px; } .commerce-subscription-details dd { text-align: left; } }
+@media (max-width: 480px) { .commerce-subscription-page { padding: 20px 14px 40px; } .commerce-subscription-hero, .commerce-subscription-card, .commerce-subscription-actions { padding: 17px; border-radius: 15px; } .commerce-subscription-hero-main { gap: 11px; } .commerce-subscription-plan-mark { width: 34px; height: 34px; } .commerce-subscription-actions-buttons > .btn, .commerce-subscription-cancel { width: 100%; min-height: 40px; text-align: center; } }
+
+/* ============================================
    COMMERCE · MI NEGOCIO — FINAL POLISH + CLIENT PREVIEW
 ============================================ */
 .commerce-profile-description {

@@ -9,6 +9,7 @@ import {
   validateCommerceProfileForm,
 } from "../src/features/commerce/commerceRules.ts";
 import { getAvailablePromotionTransitions } from "../src/features/admin/promotionLifecycle.ts";
+import { formatBillingDate, formatMoneyARS, getSubscriptionPresentation, isBetaSubscriptionAccess, shouldShowSubscriptionActionPanel } from "../src/features/commerce/commerceSubscription.ts";
 
 const commerceContract = JSON.parse(
   readFileSync(new URL("../../contracts/promy-commerce-v1.json", import.meta.url), "utf8"),
@@ -86,4 +87,72 @@ test("commerce analytics contract keeps measured coverage and unambiguous rates"
   assert.equal(analytics.commerceStatistics.timezone, "PROMOTION_TIMEZONE");
   assert.equal(analytics.commerceStatistics.nullBeforeCoverage, true);
   assert.equal(analytics.commerceStatistics.rates.finalConversion, "validated/impressions");
+});
+
+test("commerce subscription presentation keeps beta and payment states human-readable", () => {
+  assert.deepEqual(
+    getSubscriptionPresentation({
+      billingMode: "OFF",
+      coverageSource: "BETA_FREE",
+      status: "BETA_FREE",
+      hasCoverage: true,
+      cancelAtPeriodEnd: false,
+      graceEndsAt: null,
+    }).label,
+    "Beta activa",
+  );
+  const betaSubscription = {
+    billingMode: "OFF",
+    coverageSource: "BETA_FREE",
+    status: "BETA_FREE",
+    hasCoverage: true,
+    cancelAtPeriodEnd: false,
+    graceEndsAt: null,
+  };
+  assert.equal(isBetaSubscriptionAccess(betaSubscription), true);
+  assert.equal(shouldShowSubscriptionActionPanel(betaSubscription), false);
+  assert.equal(shouldShowSubscriptionActionPanel({ ...betaSubscription, billingMode: "ON" }), true);
+  assert.equal(
+    getSubscriptionPresentation({
+      billingMode: "ON",
+      coverageSource: "MERCADO_PAGO",
+      status: "PAST_DUE",
+      hasCoverage: true,
+      cancelAtPeriodEnd: false,
+      graceEndsAt: "2026-10-10T12:00:00.000Z",
+    }).label,
+    "Pago pendiente",
+  );
+  assert.equal(
+    getSubscriptionPresentation({
+      billingMode: "ON",
+      coverageSource: "MERCADO_PAGO",
+      status: "ACTIVE",
+      hasCoverage: true,
+      cancelAtPeriodEnd: true,
+      graceEndsAt: null,
+    }).label,
+    "Cancelación programada",
+  );
+  for (const [coverageSource, status, label] of [
+    ["MERCADO_PAGO", "ACTIVE", "Suscripción activa"],
+    ["MERCADO_PAGO", "SUSPENDED", "Suscripción suspendida"],
+    ["MERCADO_PAGO", "CANCELLED", "Suscripción cancelada"],
+    ["COMPLIMENTARY", "ACTIVE", "Acceso bonificado"],
+    ["MANUAL", "ACTIVE", "Cobertura registrada"],
+  ]) {
+    assert.equal(
+      getSubscriptionPresentation({
+        billingMode: "ON",
+        coverageSource,
+        status,
+        hasCoverage: status === "ACTIVE",
+        cancelAtPeriodEnd: false,
+        graceEndsAt: null,
+      }).label,
+      label,
+    );
+  }
+  assert.equal(formatMoneyARS("1000", "ARS"), "$ 1.000");
+  assert.match(formatBillingDate("2026-12-31T12:00:00.000Z"), /^31\/12\/2026$/);
 });

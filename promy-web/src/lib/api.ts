@@ -14,6 +14,7 @@ import type {
   CommerceManagedPromotionResponse,
   CommerceManagedPromotionsResponse,
   CommerceManagedRedemptionsResponse,
+  CommerceSubscriptionResponse,
   CommerceStatisticsResponse,
   CommerceValidateRedemptionResponse,
   CreateCommercePromotionInput,
@@ -318,6 +319,27 @@ export async function fetchCommerceStatistics(
   }
   return request<CommerceStatisticsResponse>(`/commerce/statistics?${params.toString()}`, {
     method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription", {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function refreshCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription/refresh", {
+    method: "POST",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function cancelCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription/cancel", {
+    method: "POST",
     accessToken: session.accessToken,
   });
 }
