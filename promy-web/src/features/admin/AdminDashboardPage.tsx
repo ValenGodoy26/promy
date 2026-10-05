@@ -6,7 +6,7 @@ import type { AdminAuditLogItem, AdminDashboardResponse } from "../../types/api"
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import { IconActivity, IconAlert, IconShield } from "../../components/Icons";
 import {
-  Alert,
+  AdminErrorState,
   AuditTimelineCard,
   buildCityCoverage,
   DataCard,
@@ -15,16 +15,14 @@ import {
   LoadingBlock,
   MiniBarsCard,
   MiniSignalCard,
-  PageHeader,
+  AdminPageFrame,
   StatCard,
   StatusBadge,
 } from "./AdminShared";
 
 export function AdminDashboardPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -58,10 +56,10 @@ export function AdminDashboardPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="Admin / Vista general"
         title="Dashboard"
-        tabs={tabs}
+        description="Lectura operativa de métricas, actividad y cobertura de PROMY."
         meta={
           <>
             <span className="page-meta-item">
@@ -78,12 +76,10 @@ export function AdminDashboardPage({
         ) : null}
 
         {error ? (
-          <>
-            <Alert tone="danger" message={error} />
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadDashboard().catch((loadError) => setError(getUserFacingErrorMessage(loadError, "load")))}>
-              Reintentar
-            </button>
-          </>
+          <AdminErrorState
+            message={error}
+            onRetry={() => void loadDashboard().catch((loadError) => setError(getUserFacingErrorMessage(loadError, "load")))}
+          />
         ) : null}
 
         {data ? (

@@ -4,14 +4,13 @@ import { IconAlert, IconCalendar, IconCheck, IconReceipt, IconX } from "../../co
 import { ensureAdminMercadoPagoPlan, fetchAdminBillingSubscription, fetchAdminBillingSubscriptions, fetchAdminBillingSettings, grantAdminComplimentaryCoverage, reconcileAdminBillingSubscription, registerAdminManualPayment, revokeAdminComplimentaryCoverage, updateAdminBillingSettings } from "../../lib/api";
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import type { AdminBillingCommerceSubscription, AdminBillingSubscriptionDetailResponse, AdminBillingSubscriptionFilter, AdminBillingSubscriptionsResponse, AdminBillingSettings, BillingMode } from "../../types/api";
-import { Alert, ConfirmDialog, LoadingBlock, PageHeader } from "./AdminShared";
+import { AdminPageFrame, Alert, ConfirmDialog, LoadingBlock } from "./AdminShared";
 import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPresentation, parseMonthlyPrice, toLocalDateTimeInput } from "./adminBilling";
 import { adminBillingSubscriptionFilters, formatAdminBillingDate, formatAdminBillingProvider, getAdminBillingCoverageLabel, getAdminBillingSubscriptionPresentation, truncateOperationalId } from "./adminBillingSubscriptions";
 
-type AdminTab = { to: string; label: string; end?: boolean };
 type BillingSupportAction = "grant" | "revoke" | "manual";
 
-export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
+export function AdminBillingPage() {
   const { withSession } = useAuth();
   const [settings, setSettings] = useState<AdminBillingSettings | null>(null);
   const [priceInput, setPriceInput] = useState("");
@@ -222,9 +221,12 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
   };
 
   return <>
-    <PageHeader kicker="Super admin / Configuración" title="Billing" tabs={tabs} />
+    <AdminPageFrame
+      kicker="Super admin / Configuración"
+      title="Billing"
+      description="Configurá las suscripciones de comercios y consultá su cobertura operativa."
+    />
     <main className="main-content admin-billing-page">
-      <div className="admin-billing-heading"><p>Configurá cómo funcionan las suscripciones de los comercios en PROMY.</p></div>
       {loading ? <LoadingBlock title="Cargando Billing" text="Preparando la configuración global." /> : null}
       {error ? <Alert tone="danger" message={error === "No pudimos completar la solicitud." ? "No pudimos cargar la configuración de Billing." : error} /> : null}
       {feedback ? <Alert tone="success" message={feedback} /> : null}

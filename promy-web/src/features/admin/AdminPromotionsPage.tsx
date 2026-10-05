@@ -10,6 +10,7 @@ import type { AdminAuditLogItem, AdminPromotionItem } from "../../types/api";
 import { IconCheck, IconPause, IconX } from "../../components/Icons";
 import {
   Alert,
+  AdminPageFrame,
   AuditTimelineCard,
   ConfirmDialog,
   DetailRow,
@@ -23,7 +24,6 @@ import {
   LoadingBlock,
   MiniBadge,
   ModerationModal,
-  PageHeader,
   StatusBadge,
   Toolbar,
 } from "./AdminShared";
@@ -110,10 +110,8 @@ function getPromotionModerationDescription(modalState: ModerationModalState) {
 }
 
 export function AdminPromotionsPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -362,26 +360,14 @@ export function AdminPromotionsPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="/ Admin · Moderacion"
         title="Promociones"
         titleAccent="moderables"
-        tabs={tabs}
+        description="Revisá promociones, detectá inactividad y conservá trazabilidad en cada cambio."
       />
 
       <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Moderacion de contenido</h2>
-              <p>
-                Revisa promos, detecta inactividad y deja trazabilidad interna sobre cada cambio de
-                estado.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {feedback ? <Alert tone="success" message={feedback} /> : null}
         {error && !auditError ? <Alert tone="danger" message={error} /> : null}
 

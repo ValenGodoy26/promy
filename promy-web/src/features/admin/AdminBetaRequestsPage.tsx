@@ -4,11 +4,11 @@ import { fetchAdminBetaRequests } from "../../lib/api";
 import type { AdminBetaAccessRequest } from "../../types/api";
 import {
   Alert,
+  AdminPageFrame,
   DetailRow,
   FilterChips,
   LoadingBlock,
   MiniBadge,
-  PageHeader,
   StatCard,
   Toolbar,
   formatDate,
@@ -23,10 +23,8 @@ function getPlatformLabel(platform: "IPHONE" | "ANDROID") {
 }
 
 export function AdminBetaRequestsPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -115,7 +113,12 @@ export function AdminBetaRequestsPage({
 
   return (
     <>
-      <PageHeader kicker="/ Admin · Growth" title="Solicitudes de acceso" titleAccent="cliente" tabs={tabs} />
+      <AdminPageFrame
+        kicker="/ Admin · Growth"
+        title="Solicitudes de acceso"
+        titleAccent="cliente"
+        description="Revisá interés, plataformas y ciudades declaradas por potenciales usuarios."
+      />
 
       <div className="main-content">
         <div

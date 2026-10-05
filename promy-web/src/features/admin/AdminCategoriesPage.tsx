@@ -9,19 +9,17 @@ import type { AdminCategoryItem } from "../../types/api";
 import { IconEdit, IconPlus } from "../../components/Icons";
 import {
   Alert,
+  AdminPageFrame,
   DetailRow,
   FilterChips,
   LoadingBlock,
   MiniBadge,
-  PageHeader,
   Toolbar,
 } from "./AdminShared";
 
 export function AdminCategoriesPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -129,26 +127,14 @@ export function AdminCategoriesPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="/ Admin · Catalogo"
         title="Categorías"
         titleAccent="operativas"
-        tabs={tabs}
+        description="Gestioná rubros y revisá cuántos ya tienen comercios listos para mapa."
       />
 
       <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Rubros y cobertura</h2>
-              <p>
-                Gestiona el catalogo de categorias y revisa cuantas ya tienen comercios listos
-                para mapa.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {feedback ? <Alert tone="success" message={feedback} /> : null}
         {error ? <Alert tone="danger" message={error} /> : null}
 
@@ -159,7 +145,7 @@ export function AdminCategoriesPage({
           countLabel={`${categories.length} categorias`}
         />
 
-        <div className="toolbar" style={{ marginTop: -6 }}>
+        <div className="admin-filter-actions">
           <div className="toolbar-start">
             <FilterChips
               value={activeFilter}

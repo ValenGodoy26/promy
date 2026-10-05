@@ -4,9 +4,9 @@ import { fetchAdminAuditLogs } from "../../lib/api";
 import type { AdminAuditLogItem } from "../../types/api";
 import {
   Alert,
+  AdminPageFrame,
   AuditTimelineCard,
   LoadingBlock,
-  PageHeader,
   Toolbar,
 } from "./AdminShared";
 
@@ -21,10 +21,8 @@ type AuditActionFilter =
 const ADMIN_AUDIT_PAGE_SIZE = 20;
 
 export function AdminAuditPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -84,26 +82,14 @@ export function AdminAuditPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="/ Admin · Operacion"
         title="Auditoria"
         titleAccent="visible"
-        tabs={tabs}
+        description="Filtrá acciones, recursos y eventos críticos para revisar decisiones administrativas."
       />
 
       <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Bitacora operativa</h2>
-              <p>
-                Filtra por accion, recurso y eventos criticos para revisar incidentes o decisiones
-                administrativas.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {error ? <Alert tone="danger" message={error} /> : null}
 
         <Toolbar
@@ -113,7 +99,7 @@ export function AdminAuditPage({
           countLabel={`${logs.length} de ${total} registros`}
         />
 
-        <div className="chip-row" style={{ marginBottom: 16 }}>
+        <div className="admin-filter-chips">
           {[
             { id: "all", label: "Todo" },
             { id: "COMMERCE", label: "Comercios" },

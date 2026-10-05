@@ -9,13 +9,13 @@ import {
 import type { AdminAuditLogItem, AdminCommerceItem, AdminPromotionItem } from "../../types/api";
 import {
   Alert,
+  AdminPageFrame,
   ConfirmDialog,
   FilterChips,
   getCommerceModalTitle,
   getConfirmLabel,
   LoadingBlock,
   ModerationModal,
-  PageHeader,
   Toolbar,
 } from "./AdminShared";
 import { AdminCommercesTable } from "./AdminCommercesTable";
@@ -50,10 +50,8 @@ function getCommerceModerationDescription(modalState: ModerationModalState) {
 }
 
 export function AdminCommercesPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -316,26 +314,14 @@ export function AdminCommercesPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="/ Admin · Moderacion"
         title="Comercios"
         titleAccent="adheridos"
-        tabs={tabs}
+        description="Buscá por responsable, ciudad o categoría y gestioná altas desde el backoffice."
       />
 
       <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Consola de revision</h2>
-              <p>
-                Busca por owner, ciudad o categoria y opera el alta de comercios sin salir del
-                backoffice.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {feedback ? <Alert tone="success" message={feedback} /> : null}
         {error ? <Alert tone="danger" message={error} /> : null}
 

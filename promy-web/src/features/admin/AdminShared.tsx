@@ -1,54 +1,45 @@
 import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 import type { AdminAuditLogItem } from "../../types/api";
 import { IconAlert, IconCheck, IconSearch } from "../../components/Icons";
 import { getAvailablePromotionTransitions } from "./promotionLifecycle";
 
-export function PageHeader({
+export function AdminPageFrame({
   kicker,
   title,
   titleAccent,
+  description,
   meta,
-  tabs,
+  actions,
 }: {
   kicker: string;
   title: string;
   titleAccent?: string;
+  description?: string;
   meta?: React.ReactNode;
-  tabs?: Array<{ to: string; label: string; end?: boolean }>;
+  actions?: React.ReactNode;
 }) {
   return (
-    <header className="main-header">
-      <div className="page-title-row">
+    <header className="admin-page-frame">
+      <div className="admin-page-frame-row">
         <div>
           <div className="page-kicker">{kicker}</div>
           <h1 className="page-title">
             {title} {titleAccent && <i>{titleAccent}</i>}
           </h1>
+          {description ? <p className="admin-page-description">{description}</p> : null}
         </div>
-        {meta ? <div className="page-meta">{meta}</div> : null}
+        {meta || actions ? (
+          <div className="admin-page-frame-aside">
+            {meta ? <div className="page-meta">{meta}</div> : null}
+            {actions ? <div className="admin-page-actions">{actions}</div> : null}
+          </div>
+        ) : null}
       </div>
-      {tabs ? (
-        <nav className="subnav">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.end}
-              className={({ isActive }) =>
-                isActive ? "subnav-link is-active" : "subnav-link"
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
-      ) : null}
     </header>
   );
 }
 
-export function Toolbar({
+export function AdminFilterBar({
   search,
   onSearchChange,
   placeholder,
@@ -60,8 +51,8 @@ export function Toolbar({
   countLabel: string;
 }) {
   return (
-    <div className="toolbar">
-      <div className="toolbar-start">
+    <section className="admin-filter-bar" aria-label="Filtros del listado">
+      <div className="admin-filter-bar-search">
         <div className="search-input-wrap">
           <IconSearch size={14} className="search-input-icon" />
           <input
@@ -74,11 +65,20 @@ export function Toolbar({
           />
         </div>
       </div>
-      <div className="toolbar-end">
+      <div className="admin-filter-bar-summary">
         <div className="summary-count">{countLabel}</div>
       </div>
-    </div>
+    </section>
   );
+}
+
+export function Toolbar(props: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  placeholder: string;
+  countLabel: string;
+}) {
+  return <AdminFilterBar {...props} />;
 }
 
 export function FilterChips({
@@ -91,7 +91,7 @@ export function FilterChips({
   options: Array<{ id: string; label: string }>;
 }) {
   return (
-    <div className="chip-row" style={{ marginBottom: 16 }}>
+    <div className="admin-filter-chips">
       {options.map((option) => (
         <button
           key={option.id}
@@ -262,21 +262,14 @@ export function AuditTimelineCard({
           ))}
         </div>
       ) : (
-        <div className="data-empty">{emptyMessage}</div>
+        <AdminEmptyState title="Sin eventos para mostrar" text={emptyMessage} />
       )}
     </article>
   );
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "APPROVED" || status === "APPROVED_VISIBLE" || status === "SUCCESS"
-      ? "success"
-      : status === "PENDING" || status === "PENDING_REVIEW"
-      ? "warning"
-      : status === "REJECTED" || status === "FAILED"
-      ? "danger"
-      : "neutral";
+  const tone = getStatusTone(status);
 
   return (
     <span className={`badge badge-${tone}`}>
@@ -290,7 +283,7 @@ export function MiniBadge({
   tone,
   label,
 }: {
-  tone: "success" | "warning" | "neutral";
+  tone: "success" | "warning" | "danger" | "neutral" | "info";
   label: string;
 }) {
   return <span className={`badge badge-${tone}`}>{label}</span>;
@@ -468,9 +461,9 @@ export function formatMissingFields(fields: string[]) {
   return fields.map(getMissingFieldLabel).join(" · ");
 }
 
-export function LoadingBlock({ title, text }: { title: string; text: string }) {
+export function AdminLoadingState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="loading-state">
+    <div className="admin-state loading-state" role="status" aria-live="polite">
       <h3>
         {title}
         <span className="loading-dots">
@@ -480,6 +473,38 @@ export function LoadingBlock({ title, text }: { title: string; text: string }) {
         </span>
       </h3>
       <p>{text}</p>
+    </div>
+  );
+}
+
+export function LoadingBlock(props: { title: string; text: string }) {
+  return <AdminLoadingState {...props} />;
+}
+
+export function AdminEmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="admin-state admin-empty-state">
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+export function AdminErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="admin-error-state">
+      <Alert tone="danger" message={message} />
+      {onRetry ? (
+        <button className="btn btn-secondary btn-sm" type="button" onClick={onRetry}>
+          Reintentar
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -531,6 +556,19 @@ export function getStatusLabel(status: string) {
     : status === "EXPIRED"
     ? "Expirada"
     : status;
+}
+
+function getStatusTone(status: string) {
+  const normalized = status.toUpperCase();
+  if (["APPROVED", "APPROVED_VISIBLE", "SUCCESS", "ACTIVE", "MATCH", "COVERED"].includes(normalized)) {
+    return "success";
+  }
+  if (["PENDING", "PENDING_REVIEW", "SCHEDULED", "MISMATCH"].includes(normalized)) {
+    return "warning";
+  }
+  if (["REJECTED", "FAILED"].includes(normalized)) return "danger";
+  if (["BETA", "PROVIDER"].includes(normalized)) return "info";
+  return "neutral";
 }
 
 export function getPromotionTypeLabel(type: string) {
