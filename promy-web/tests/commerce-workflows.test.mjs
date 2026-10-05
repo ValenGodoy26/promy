@@ -192,6 +192,24 @@ test("admin subscription list keeps the SUPER_ADMIN guard, filters, search and d
   assert.match(pageSource, /Ver detalle/u);
 });
 
+test("super admin support actions use human copy, guarded endpoints and no technical payment details", () => {
+  const pageSource = readFileSync(new URL("../src/features/admin/AdminBillingPage.tsx", import.meta.url), "utf8");
+  const apiSource = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
+  assert.match(pageSource, /Acciones de soporte/u);
+  assert.match(pageSource, /Otorgar acceso bonificado/u);
+  assert.match(pageSource, /Finalizar bonificación/u);
+  assert.match(pageSource, /Registrar pago manual/u);
+  assert.match(pageSource, /Estado local y Mercado Pago/u);
+  assert.match(pageSource, /No cambia la suscripción local ni inicia cobros/u);
+  assert.match(apiSource, /\/admin\/billing\/\$\{commerceId\}\/reconcile/u);
+  assert.match(pageSource, /Sin fecha de finalización/u);
+  assert.match(pageSource, /submitting \? "Guardando\.\.\."/u);
+  assert.doesNotMatch(pageSource, /window\.confirm|APP_USR-|MERCADO_PAGO_ACCESS_TOKEN|Authorization|cardToken/u);
+  assert.match(apiSource, /\/admin\/billing\/\$\{commerceId\}\/complimentary/u);
+  assert.match(apiSource, /\/admin\/billing\/\$\{commerceId\}\/revoke-complimentary/u);
+  assert.match(apiSource, /\/admin\/billing\/\$\{commerceId\}\/manual-payment/u);
+});
+
 function subscriptionForPayment(overrides = {}) {
   return {
     billingMode: "ON",

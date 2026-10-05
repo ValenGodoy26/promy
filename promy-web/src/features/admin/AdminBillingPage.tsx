@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../../auth";
 import { IconAlert, IconCalendar, IconCheck, IconReceipt, IconX } from "../../components/Icons";
-import { ensureAdminMercadoPagoPlan, fetchAdminBillingSubscription, fetchAdminBillingSubscriptions, fetchAdminBillingSettings, updateAdminBillingSettings } from "../../lib/api";
+import { ensureAdminMercadoPagoPlan, fetchAdminBillingSubscription, fetchAdminBillingSubscriptions, fetchAdminBillingSettings, grantAdminComplimentaryCoverage, reconcileAdminBillingSubscription, registerAdminManualPayment, revokeAdminComplimentaryCoverage, updateAdminBillingSettings } from "../../lib/api";
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import type { AdminBillingCommerceSubscription, AdminBillingSubscriptionDetailResponse, AdminBillingSubscriptionFilter, AdminBillingSubscriptionsResponse, AdminBillingSettings, BillingMode } from "../../types/api";
 import { Alert, ConfirmDialog, LoadingBlock, PageHeader } from "./AdminShared";
@@ -9,6 +9,7 @@ import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPrese
 import { adminBillingSubscriptionFilters, formatAdminBillingDate, formatAdminBillingProvider, getAdminBillingCoverageLabel, getAdminBillingSubscriptionPresentation, truncateOperationalId } from "./adminBillingSubscriptions";
 
 type AdminTab = { to: string; label: string; end?: boolean };
+type BillingSupportAction = "grant" | "revoke" | "manual";
 
 export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
   const { withSession } = useAuth();
@@ -30,6 +31,11 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
   const [subscriptionDetail, setSubscriptionDetail] = useState<AdminBillingSubscriptionDetailResponse["subscription"] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [supportAction, setSupportAction] = useState<BillingSupportAction | null>(null);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportError, setSupportError] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconciliationError, setReconciliationError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -79,6 +85,72 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
       setDetailError(getUserFacingErrorMessage(loadError, "load"));
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const refreshBillingSupport = async (commerceId: number) => {
+    await Promise.all([loadSubscriptions(), openSubscriptionDetail(commerceId)]);
+  };
+
+  const observeRemoteSubscription = async () => {
+    if (!subscriptionDetail) return;
+    try {
+      setReconciling(true);
+      setReconciliationError(null);
+      await withSession((session) => reconcileAdminBillingSubscription(session, subscriptionDetail.commerce.id));
+      await openSubscriptionDetail(subscriptionDetail.commerce.id);
+    } catch (actionError) {
+      setReconciliationError(getUserFacingErrorMessage(actionError, "action"));
+    } finally {
+      setReconciling(false);
+    }
+  };
+
+  const grantComplimentary = async (body: { reason: string; endsAt: string | null }) => {
+    if (!subscriptionDetail) return;
+    try {
+      setSupportSubmitting(true);
+      setSupportError(null);
+      await withSession((session) => grantAdminComplimentaryCoverage(session, subscriptionDetail.commerce.id, body));
+      setSupportAction(null);
+      setFeedback("Acceso bonificado otorgado");
+      await refreshBillingSupport(subscriptionDetail.commerce.id);
+    } catch (actionError) {
+      setSupportError(getUserFacingErrorMessage(actionError, "action"));
+    } finally {
+      setSupportSubmitting(false);
+    }
+  };
+
+  const revokeComplimentary = async (body: { grantId: number; reason: string }) => {
+    if (!subscriptionDetail) return;
+    try {
+      setSupportSubmitting(true);
+      setSupportError(null);
+      await withSession((session) => revokeAdminComplimentaryCoverage(session, subscriptionDetail.commerce.id, body));
+      setSupportAction(null);
+      setFeedback("Bonificación finalizada");
+      await refreshBillingSupport(subscriptionDetail.commerce.id);
+    } catch (actionError) {
+      setSupportError(getUserFacingErrorMessage(actionError, "action"));
+    } finally {
+      setSupportSubmitting(false);
+    }
+  };
+
+  const registerManualPayment = async (body: { amount: number; currency: "ARS"; paidAt: string; periodStart: string; periodEnd: string; reference: string; note?: string; idempotencyKey: string }) => {
+    if (!subscriptionDetail) return;
+    try {
+      setSupportSubmitting(true);
+      setSupportError(null);
+      await withSession((session) => registerAdminManualPayment(session, subscriptionDetail.commerce.id, body));
+      setSupportAction(null);
+      setFeedback("Pago manual registrado");
+      await refreshBillingSupport(subscriptionDetail.commerce.id);
+    } catch (actionError) {
+      setSupportError(getUserFacingErrorMessage(actionError, "action"));
+    } finally {
+      setSupportSubmitting(false);
     }
   };
 
@@ -198,7 +270,7 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
       </div> : null}
       <section className="panel admin-billing-subscriptions" aria-labelledby="admin-billing-subscriptions-title">
         <div className="admin-billing-subscriptions-heading">
-          <div><span className="page-kicker">Solo lectura</span><h2 id="admin-billing-subscriptions-title">Suscripciones por comercio</h2><p className="muted">Consultá el estado y la cobertura actual de cada comercio. Esta vista no modifica suscripciones.</p></div>
+          <div><span className="page-kicker">Gestión y soporte</span><h2 id="admin-billing-subscriptions-title">Suscripciones por comercio</h2><p className="muted">Consultá el estado y la cobertura actual de cada comercio. Las acciones administrativas se realizan desde el detalle.</p></div>
         </div>
         <form className="admin-billing-subscriptions-search" onSubmit={(event) => { event.preventDefault(); setSubscriptionPage(1); setAppliedSubscriptionSearch(subscriptionSearch); }}>
           <label className="field-label" htmlFor="admin-billing-subscription-search">Buscar comercio</label>
@@ -218,7 +290,8 @@ export function AdminBillingPage({ tabs }: { tabs: AdminTab[] }) {
         </> : null}
       </section>
     </main>
-    <AdminBillingSubscriptionDetailDialog subscription={subscriptionDetail} loading={detailLoading} error={detailError} onClose={() => { setSubscriptionDetail(null); setDetailError(null); }} />
+    <AdminBillingSubscriptionDetailDialog subscription={subscriptionDetail} loading={detailLoading} error={detailError} reconciliationError={reconciliationError} reconciling={reconciling} onClose={() => { setSubscriptionDetail(null); setDetailError(null); setSupportAction(null); setSupportError(null); setReconciliationError(null); }} onSupportAction={(action) => { setSupportError(null); setSupportAction(action); }} onReconcile={() => void observeRemoteSubscription()} />
+    {subscriptionDetail && supportAction ? <AdminBillingSupportActionDialog key={supportAction} action={supportAction} subscription={subscriptionDetail} submitting={supportSubmitting} error={supportError} monthlyPrice={settings?.monthlyPrice ?? null} onClose={() => { if (!supportSubmitting) { setSupportAction(null); setSupportError(null); } }} onGrant={grantComplimentary} onRevoke={revokeComplimentary} onManualPayment={registerManualPayment} /> : null}
     <ConfirmDialog open={showActivationConfirm} title="Activar cobros" description="Al activar Billing, los comercios alcanzados por la política vigente podrán comenzar el proceso de suscripción." confirmLabel={saving === "mode" ? "Activando..." : "Confirmar activación"} tone="danger" onClose={() => setShowActivationConfirm(false)} onConfirm={activateBilling}>
       <dl className="modal-confirmation-summary">
         <div><dt>Precio mensual</dt><dd>{formatBillingMoney(parseMonthlyPrice(priceInput).value ?? settings?.monthlyPrice, settings?.currency)}</dd></div>
@@ -244,21 +317,30 @@ function AdminBillingSubscriptionDetailDialog({
   subscription,
   loading,
   error,
+  reconciliationError,
+  reconciling,
   onClose,
+  onSupportAction,
+  onReconcile,
 }: {
   subscription: AdminBillingSubscriptionDetailResponse["subscription"] | null;
   loading: boolean;
   error: string | null;
+  reconciliationError: string | null;
+  reconciling: boolean;
   onClose: () => void;
+  onSupportAction: (action: BillingSupportAction) => void;
+  onReconcile: () => void;
 }) {
   if (!subscription && !loading && !error) return null;
   const summary = subscription?.summary;
   const presentation = summary ? getAdminBillingSubscriptionPresentation(summary) : null;
   const remote = subscription?.subscription;
+  const lastReconciliation = subscription?.reconciliation[0];
   return <div className="modal-backdrop" role="presentation" onClick={onClose}>
     <section className="modal admin-billing-subscription-detail" role="dialog" aria-modal="true" aria-labelledby="admin-billing-subscription-detail-title" onClick={(event) => event.stopPropagation()}>
       <button className="commerce-subscription-dialog-close" type="button" aria-label="Cerrar detalle" onClick={onClose}><IconX size={17} /></button>
-      <span className="page-kicker">Solo lectura</span>
+      <span className="page-kicker">Detalle y soporte</span>
       <h2 id="admin-billing-subscription-detail-title">{subscription ? subscription.commerce.name : "Suscripción"}</h2>
       {loading ? <p className="muted">Cargando detalle…</p> : null}
       {error ? <Alert tone="danger" message={error} /> : null}
@@ -273,9 +355,146 @@ function AdminBillingSubscriptionDetailDialog({
         {presentation.cancellationLabel ? <div><dt>Cancelación</dt><dd>{presentation.cancellationLabel}</dd></div> : null}
         {remote ? <><div><dt>Proveedor</dt><dd>{formatAdminBillingProvider(remote.provider)}</dd></div><div><dt>Estado del proveedor</dt><dd>{remote.providerStatus ?? "No disponible"}</dd></div><div><dt>ID de suscripción</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerSubscriptionId)}</dd></div><div><dt>Referencia externa</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerExternalReference)}</dd></div><div><dt>Actualizado</dt><dd>{formatAdminBillingDate(remote.updatedAt)}</dd></div></> : null}
       </dl> : null}
+      {subscription && remote?.provider === "mercado_pago" && remote.providerSubscriptionId ? <section className="admin-billing-support-actions" aria-labelledby="admin-billing-reconciliation-title">
+        <div><span className="page-kicker">Conciliación</span><h3 id="admin-billing-reconciliation-title">Estado local y Mercado Pago</h3><p className="muted">La consulta solo compara y registra el resultado. No cambia la suscripción local ni inicia cobros.</p></div>
+        {reconciliationError ? <Alert tone="danger" message={reconciliationError} /> : null}
+        {lastReconciliation ? <dl className="admin-billing-subscription-detail-list admin-billing-reconciliation-list">
+          <div><dt>Última consulta</dt><dd>{formatAdminBillingDate(lastReconciliation.checkedAt)}</dd></div>
+          <div><dt>Resultado</dt><dd>{getReconciliationPresentation(lastReconciliation.result)}</dd></div>
+          <div><dt>Estado local</dt><dd>{lastReconciliation.localProviderStatus ?? lastReconciliation.localStatus}</dd></div>
+          <div><dt>Estado observado</dt><dd>{lastReconciliation.observedStatus ?? "No disponible"}</dd></div>
+          {lastReconciliation.mismatchFields.length ? <div><dt>Diferencias</dt><dd>{lastReconciliation.mismatchFields.map(getReconciliationFieldLabel).join(", ")}</dd></div> : null}
+          {lastReconciliation.result === "UNAVAILABLE" ? <div><dt>Disponibilidad</dt><dd>No pudimos obtener el estado remoto. Volvé a intentar más tarde.</dd></div> : null}
+        </dl> : <p className="muted">Todavía no hay consultas remotas registradas.</p>}
+        <div className="admin-billing-actions"><button className="btn btn-secondary" type="button" disabled={reconciling} onClick={onReconcile}>{reconciling ? "Consultando..." : "Consultar Mercado Pago"}</button></div>
+      </section> : null}
+      {subscription ? <section className="admin-billing-support-actions" aria-labelledby="admin-billing-support-actions-title">
+        <div><span className="page-kicker">Soporte</span><h3 id="admin-billing-support-actions-title">Acciones de soporte</h3><p className="muted">Registrá coberturas administrativas sin modificar la suscripción del proveedor.</p></div>
+        <div className="admin-billing-actions">
+          {subscription.support.activeComplimentary ? <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("revoke")}>Finalizar bonificación</button> : <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("grant")}>Otorgar acceso bonificado</button>}
+          <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("manual")}>Registrar pago manual</button>
+        </div>
+      </section> : null}
       <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
     </section>
   </div>;
+}
+
+function getReconciliationPresentation(result: string) {
+  if (result === "MATCH") return "Coinciden";
+  if (result === "MISMATCH") return "Hay diferencias";
+  if (result === "UNAVAILABLE") return "Sin respuesta remota";
+  return "No disponible";
+}
+
+function getReconciliationFieldLabel(field: string) {
+  return ({ status: "estado", providerStatus: "estado del proveedor", plan: "plan", periodStart: "inicio de período", periodEnd: "fin de período", externalReference: "referencia externa" } as Record<string, string>)[field] ?? "dato remoto";
+}
+
+function AdminBillingSupportActionDialog({
+  action,
+  subscription,
+  submitting,
+  error,
+  monthlyPrice,
+  onClose,
+  onGrant,
+  onRevoke,
+  onManualPayment,
+}: {
+  action: BillingSupportAction;
+  subscription: AdminBillingSubscriptionDetailResponse["subscription"];
+  submitting: boolean;
+  error: string | null;
+  monthlyPrice: string | null;
+  onClose: () => void;
+  onGrant: (body: { reason: string; endsAt: string | null }) => Promise<void>;
+  onRevoke: (body: { grantId: number; reason: string }) => Promise<void>;
+  onManualPayment: (body: { amount: number; currency: "ARS"; paidAt: string; periodStart: string; periodEnd: string; reference: string; note?: string; idempotencyKey: string }) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [endsOn, setEndsOn] = useState("");
+  const [noEnd, setNoEnd] = useState(false);
+  const [amount, setAmount] = useState(monthlyPrice ?? "");
+  const [paidOn, setPaidOn] = useState(todayForBilling());
+  const [periodStart, setPeriodStart] = useState(todayForBilling());
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [reference, setReference] = useState("");
+  const [note, setNote] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const commerceName = subscription.commerce.name;
+  const activeGrant = subscription.support.activeComplimentary;
+  const title = action === "grant" ? "Otorgar acceso bonificado" : action === "revoke" ? "Finalizar bonificación" : "Registrar pago manual";
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) { setFormError(action === "manual" ? "Indicá una referencia o motivo." : "Indicá el motivo."); return; }
+    if (action === "grant") {
+      if (!noEnd && !endsOn) { setFormError("Elegí una fecha de finalización o marcá que no tiene vencimiento."); return; }
+      const endsAt = noEnd ? null : billingDateToIso(endsOn);
+      if (!noEnd && (!endsAt || new Date(endsAt).getTime() <= Date.now())) { setFormError("La fecha de finalización debe ser futura."); return; }
+      setFormError(null);
+      await onGrant({ reason: trimmedReason, endsAt });
+      return;
+    }
+    if (action === "revoke") {
+      if (!activeGrant) { setFormError("No encontramos una bonificación activa para finalizar."); return; }
+      setFormError(null);
+      await onRevoke({ grantId: activeGrant.id, reason: trimmedReason });
+      return;
+    }
+    const parsedAmount = Number(amount.replace(",", "."));
+    const paidAt = billingDateToIso(paidOn);
+    const startsAt = billingDateToIso(periodStart);
+    const endsAt = billingDateToIso(periodEnd);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { setFormError("Indicá un importe mayor a cero."); return; }
+    if (!paidAt || !startsAt || !endsAt || new Date(endsAt).getTime() <= new Date(startsAt).getTime()) { setFormError("Indicá un período de cobertura válido."); return; }
+    setFormError(null);
+    await onManualPayment({ amount: parsedAmount, currency: "ARS", paidAt, periodStart: startsAt, periodEnd: endsAt, reference: trimmedReason, note: note.trim() || undefined, idempotencyKey: createBillingSupportIdempotencyKey() });
+  };
+
+  return <div className="modal-backdrop admin-billing-support-backdrop" role="presentation" onClick={onClose}>
+    <section className="modal admin-billing-support-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-billing-support-dialog-title" onClick={(event) => event.stopPropagation()}>
+      <button className="commerce-subscription-dialog-close" type="button" aria-label="Cerrar" disabled={submitting} onClick={onClose}><IconX size={17} /></button>
+      <span className="page-kicker">Soporte de billing</span>
+      <h2 id="admin-billing-support-dialog-title">{title}</h2>
+      <p className="muted">{action === "grant" ? "Permití que este comercio use PROMY sin un cobro durante el período indicado." : action === "revoke" ? "El comercio dejará de contar con esta cobertura cuando la finalización sea efectiva." : "Registrá un pago recibido fuera de Mercado Pago y su período de cobertura."}</p>
+      <p className="admin-billing-support-commerce"><strong>Comercio</strong><span>{commerceName}</span></p>
+      {error ? <Alert tone="danger" message={error} /> : null}
+      {formError ? <Alert tone="danger" message={formError} /> : null}
+      <form className="admin-billing-support-form" onSubmit={(event) => void submit(event)}>
+        {action === "grant" ? <>
+          <label className="field-label" htmlFor="billing-complimentary-end">Finalización</label>
+          <input id="billing-complimentary-end" className="field-input" type="date" value={endsOn} disabled={noEnd || submitting} onChange={(event) => setEndsOn(event.target.value)} />
+          <label className="admin-billing-checkbox"><input type="checkbox" checked={noEnd} disabled={submitting} onChange={(event) => setNoEnd(event.target.checked)} /> <span>Sin fecha de finalización</span></label>
+        </> : null}
+        {action === "manual" ? <>
+          <div className="admin-billing-support-field-grid"><div><label className="field-label" htmlFor="billing-manual-amount">Importe</label><input id="billing-manual-amount" className="field-input" inputMode="decimal" value={amount} disabled={submitting} onChange={(event) => setAmount(event.target.value)} /></div><div><label className="field-label" htmlFor="billing-manual-currency">Moneda</label><input id="billing-manual-currency" className="field-input" value="ARS" readOnly /></div></div>
+          <label className="field-label" htmlFor="billing-manual-paid-on">Fecha de pago</label><input id="billing-manual-paid-on" className="field-input" type="date" value={paidOn} disabled={submitting} onChange={(event) => setPaidOn(event.target.value)} />
+          <div className="admin-billing-support-field-grid"><div><label className="field-label" htmlFor="billing-manual-start">Cobertura desde</label><input id="billing-manual-start" className="field-input" type="date" value={periodStart} disabled={submitting} onChange={(event) => setPeriodStart(event.target.value)} /></div><div><label className="field-label" htmlFor="billing-manual-end">Cobertura hasta</label><input id="billing-manual-end" className="field-input" type="date" value={periodEnd} disabled={submitting} onChange={(event) => setPeriodEnd(event.target.value)} /></div></div>
+        </> : null}
+        <label className="field-label" htmlFor="billing-support-reason">{action === "manual" ? "Referencia o motivo" : action === "revoke" ? "Motivo de finalización" : "Motivo"}</label>
+        <textarea id="billing-support-reason" className="field-input" rows={3} value={reason} disabled={submitting} onChange={(event) => setReason(event.target.value)} />
+        {action === "manual" ? <><label className="field-label" htmlFor="billing-manual-note">Nota interna (opcional)</label><textarea id="billing-manual-note" className="field-input" rows={2} value={note} disabled={submitting} onChange={(event) => setNote(event.target.value)} /></> : null}
+        <div className="modal-footer"><button className="btn btn-secondary" type="button" disabled={submitting} onClick={onClose}>Cancelar</button><button className="btn btn-primary" type="submit" disabled={submitting}>{submitting ? "Guardando..." : action === "grant" ? "Otorgar bonificación" : action === "revoke" ? "Finalizar bonificación" : "Registrar pago"}</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function todayForBilling() { return new Date().toISOString().slice(0, 10); }
+
+function billingDateToIso(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function createBillingSupportIdempotencyKey() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `admin-manual-${crypto.randomUUID()}`
+    : `admin-manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function currencySymbol(currency: string) { return currency === "ARS" ? "$" : currency; }

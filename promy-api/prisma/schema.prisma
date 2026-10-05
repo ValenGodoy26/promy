@@ -48,6 +48,12 @@ enum BillingPaymentStatus {
   REVERSED
 }
 
+enum BillingReconciliationResult {
+  MATCH
+  MISMATCH
+  UNAVAILABLE
+}
+
 enum BillingAccessState {
   COVERED
   NO_COVERAGE
@@ -158,6 +164,7 @@ model User {
   registeredBillingPayments BillingPayment[] @relation("BillingPaymentRegistrar")
   billingGrantsCreated BillingCoverageGrant[] @relation("BillingGrantCreator")
   billingGrantsRevoked BillingCoverageGrant[] @relation("BillingGrantRevoker")
+  billingReconciliations BillingReconciliationObservation[] @relation("BillingReconciliationObserver")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -246,6 +253,7 @@ model Commerce {
   billingSubscription BillingSubscription?
   billingPayments BillingPayment[]
   billingCoverageGrants BillingCoverageGrant[]
+  billingReconciliationObservations BillingReconciliationObservation[]
 
   @@unique([ownerUserId])
   @@index([ownerUserId, status])
@@ -429,10 +437,39 @@ model BillingSubscription {
 
   commerce Commerce @relation(fields: [commerceId], references: [id], onDelete: Cascade)
   payments BillingPayment[]
+  reconciliations BillingReconciliationObservation[]
 
   @@index([status, currentPeriodEnd])
   @@index([graceEndsAt])
   @@index([provider, reconciliationDueAt])
+}
+
+model BillingReconciliationObservation {
+  id                       Int                         @id @default(autoincrement())
+  commerceId               Int
+  subscriptionId           Int
+  result                   BillingReconciliationResult
+  mismatchFields           String?                     @db.Text
+  localStatus              BillingSubscriptionStatus
+  localProviderStatus      String?
+  localProviderPlanId      String?
+  localCurrentPeriodStart  DateTime?
+  localCurrentPeriodEnd    DateTime?
+  observedStatus           String?
+  observedProviderPlanId   String?
+  observedCurrentPeriodStart DateTime?
+  observedCurrentPeriodEnd DateTime?
+  providerErrorCode        String?
+  checkedByUserId          Int?
+  checkedAt                DateTime                    @default(now())
+
+  commerce       Commerce            @relation(fields: [commerceId], references: [id], onDelete: Cascade)
+  subscription   BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  checkedByUser  User?               @relation("BillingReconciliationObserver", fields: [checkedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([commerceId, checkedAt])
+  @@index([subscriptionId, checkedAt])
+  @@index([result, checkedAt])
 }
 
 model BillingPayment {
@@ -447,6 +484,7 @@ model BillingPayment {
   periodEnd           DateTime
   paidAt              DateTime?
   reference           String?
+  idempotencyKey      String?              @unique
   providerPaymentId   String?              @unique
   note                String?              @db.Text
   registeredByUserId  Int?
@@ -487,6 +525,8 @@ model BillingCoverageGrant {
   createdByUserId   Int
   revokedAt         DateTime?
   revokedByUserId   Int?
+  revocationReason String?               @db.Text
+  activeKey         String?               @unique
   createdAt         DateTime              @default(now())
 
   commerce Commerce @relation(fields: [commerceId], references: [id], onDelete: Cascade)

@@ -19,8 +19,9 @@ import { cancelMercadoPagoSubscription, ensureMercadoPagoPlan, reconcileMercadoP
 
 const dateSchema = z.string().datetime().transform((value) => new Date(value));
 const settingsSchema = z.object({ mode: z.nativeEnum(BillingMode), billingStartsAt: dateSchema.nullable().optional(), monthlyPrice: z.number().positive().finite().nullable().optional() });
-const complimentarySchema = z.object({ startsAt: dateSchema.optional(), endsAt: dateSchema.nullable().optional(), months: z.number().int().min(1).max(120).optional(), reason: z.string().trim().max(1000).optional() }).refine((value) => !(value.endsAt && value.months), { message: "Usa fecha final o meses, no ambos." });
-const manualPaymentSchema = z.object({ amount: z.number().positive().finite(), months: z.number().int().min(1).max(24).optional(), reference: z.string().trim().max(190).optional(), note: z.string().trim().max(2000).optional(), idempotencyKey: z.string().trim().min(8).max(190).optional() });
+const complimentarySchema = z.object({ startsAt: dateSchema.optional(), endsAt: dateSchema.nullable().optional(), months: z.number().int().min(1).max(120).optional(), reason: z.string().trim().min(1).max(1000) }).refine((value) => !(value.endsAt && value.months), { message: "Usa fecha final o meses, no ambos." });
+const revokeComplimentarySchema = z.object({ grantId: z.number().int().positive(), reason: z.string().trim().min(1).max(1000) });
+const manualPaymentSchema = z.object({ amount: z.number().positive().finite(), currency: z.literal("ARS").default("ARS"), paidAt: dateSchema.optional(), periodStart: dateSchema.optional(), periodEnd: dateSchema.optional(), months: z.number().int().min(1).max(24).optional(), reference: z.string().trim().min(1).max(190), note: z.string().trim().max(2000).optional(), idempotencyKey: z.string().trim().min(8).max(190) }).refine((value) => Boolean(value.periodStart) === Boolean(value.periodEnd), { message: "Indicá ambas fechas del período." }).refine((value) => !(value.periodStart && value.months), { message: "Usá un período explícito o meses, no ambos." });
 const reverseSchema = z.object({ note: z.string().trim().max(2000).optional() });
 const enrollmentSchema = z.object({ cardToken: z.string().trim().min(8).max(512) });
 const adminSubscriptionsQuerySchema = z.object({
@@ -71,7 +72,7 @@ export async function provisionMercadoPagoPlan(req: AuthRequest, res: Response) 
   try { if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." }); return res.json({ ok: true, settings: await ensureMercadoPagoPlan(req.user.userId) }); } catch (error) { return sendError(req, res, "Provision Mercado Pago plan error", error); }
 }
 export async function reconcileAdminBillingSubscription(req: AuthRequest, res: Response) {
-  try { const commerceId = Number(req.params.commerceId); if (!Number.isInteger(commerceId) || commerceId <= 0) return res.status(400).json({ ok: false, message: "Comercio inválido." }); if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." }); return res.json({ ok: true, subscription: await reconcileMercadoPagoSubscription(commerceId, req.user.userId) }); } catch (error) { return sendError(req, res, "Reconcile Mercado Pago subscription error", error); }
+  try { const commerceId = Number(req.params.commerceId); if (!Number.isInteger(commerceId) || commerceId <= 0) return res.status(400).json({ ok: false, message: "Comercio inválido." }); if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." }); return res.json({ ok: true, reconciliation: await reconcileMercadoPagoSubscription(commerceId, req.user.userId) }); } catch (error) { return sendError(req, res, "Reconcile Mercado Pago subscription error", error); }
 }
 
 export async function getAdminBillingSubscriptions(req: AuthRequest, res: Response) {
@@ -104,10 +105,10 @@ export async function createComplimentary(req: AuthRequest, res: Response) {
 
 export async function revokeComplimentary(req: AuthRequest, res: Response) {
   try {
-    const commerceId = Number(req.params.commerceId); const grantId = Number(req.body?.grantId);
-    if (!Number.isInteger(commerceId) || !Number.isInteger(grantId) || commerceId <= 0 || grantId <= 0) return res.status(400).json({ ok: false, message: "Bonificación inválida." });
+    const commerceId = Number(req.params.commerceId); const parsed = revokeComplimentarySchema.safeParse(req.body);
+    if (!Number.isInteger(commerceId) || commerceId <= 0 || !parsed.success) return res.status(400).json({ ok: false, message: "Bonificación inválida.", ...(parsed.success ? {} : { errors: parsed.error.flatten() }) });
     if (!req.user) return res.status(401).json({ ok: false, message: "No autenticado." });
-    return res.json({ ok: true, grant: await revokeComplimentaryCoverage({ actorUserId: req.user.userId, commerceId, grantId }) });
+    return res.json({ ok: true, grant: await revokeComplimentaryCoverage({ actorUserId: req.user.userId, commerceId, ...parsed.data }) });
   } catch (error) { return sendError(req, res, "Revoke complimentary coverage error", error); }
 }
 

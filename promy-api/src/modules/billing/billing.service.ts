@@ -73,7 +73,7 @@ type AdminBillingCommerceSnapshot = {
     updatedAt: Date;
   } | null;
   billingPayments: Array<{ source: BillingPaymentSource; status: BillingPaymentStatus; periodStart: Date; periodEnd: Date; reversalOf: { id: number } | null }>;
-  billingCoverageGrants: Array<{ source: BillingCoverageSource; startsAt: Date; endsAt: Date | null; revokedAt: Date | null }>;
+  billingCoverageGrants: Array<{ id: number; source: BillingCoverageSource; startsAt: Date; endsAt: Date | null; reason: string | null; revokedAt: Date | null; activeKey: string | null }>;
 };
 
 const adminBillingCommerceSelect = {
@@ -88,7 +88,7 @@ const adminBillingCommerceSelect = {
     cancelRequestedAt: true, cancelledAt: true, updatedAt: true,
   } },
   billingPayments: { select: { source: true, status: true, periodStart: true, periodEnd: true, reversalOf: { select: { id: true } } } },
-  billingCoverageGrants: { select: { source: true, startsAt: true, endsAt: true, revokedAt: true } },
+  billingCoverageGrants: { select: { id: true, source: true, startsAt: true, endsAt: true, reason: true, revokedAt: true, activeKey: true } },
 } satisfies Prisma.CommerceSelect;
 
 function readOnlyBillingSettings(settings: { mode: BillingMode; billingStartsAt: Date | null; monthlyPrice: Prisma.Decimal | null; currency: string } | null) {
@@ -155,10 +155,17 @@ function billingFilterWhere(filter: AdminBillingSubscriptionFilter, settings: { 
   const hasActiveProvider = { billingSubscription: { is: provider } } satisfies Prisma.CommerceWhereInput;
   const noActiveProvider = { NOT: [hasActiveProvider] } satisfies Prisma.CommerceWhereInput;
   const isBetaMode = settings.mode === BillingMode.OFF || (settings.mode === BillingMode.SCHEDULED && (!settings.billingStartsAt || settings.billingStartsAt > now));
+  // While global billing is not enforceable, presentation follows the beta
+  // policy for every approved commerce. Historical support records remain in
+  // the detail/audit trail, but must not make the admin filters contradict the
+  // effective coverage shown to Commerce.
+  if (isBetaMode) {
+    if (filter === "BETA") return { status: CommerceStatus.APPROVED };
+    return { id: -1 };
+  }
   if (filter === "COMPLIMENTARY") return { billingCoverageGrants: { some: grant } };
   if (filter === "ACTIVE") return { OR: [{ billingCoverageGrants: { some: grant } }, { billingPayments: { some: manual } }, hasActiveProvider] };
   if (filter === "BETA") {
-    if (isBetaMode) return { AND: [withoutOverrides, noActiveProvider] };
     if (settings.billingStartsAt) {
       const transitionEnd = new Date(settings.billingStartsAt.getTime() + BILLING_GRACE_DAYS * 24 * 60 * 60 * 1000);
       if (now.getTime() < transitionEnd.getTime()) return { AND: [withoutOverrides, noActiveProvider, { approvedAt: { lt: settings.billingStartsAt } }] };
@@ -174,7 +181,6 @@ function billingFilterWhere(filter: AdminBillingSubscriptionFilter, settings: { 
       ? { AND: [withoutOverrides, hasActiveProvider, { billingSubscription: { is: { status: BillingSubscriptionStatus.PAST_DUE } } }] }
       : { AND: [withoutOverrides, { billingSubscription: { is: { status: BillingSubscriptionStatus.PAST_DUE } } }] };
   }
-  if (isBetaMode) return { id: -1 };
   const status = filter === "SUSPENDED" ? BillingSubscriptionStatus.SUSPENDED : BillingSubscriptionStatus.CANCELLED;
   return { AND: [withoutOverrides, noActiveProvider, { billingSubscription: { is: { status } } }] };
 }
@@ -214,6 +220,13 @@ export function resolveBillingCoverage(input: CoverageInput, now = new Date()): 
     return { hasCoverage: false, source: null, status: "NO_COVERAGE", periodStart: null, periodEnd: null, graceEndsAt: null, reason: "commerce_not_approved" };
   }
 
+  // Billing OFF (and the pre-start scheduled period) is intentionally the
+  // public beta policy. Support records remain historically valid, but do not
+  // replace that presentation until billing becomes enforceable.
+  if (settings.mode === BillingMode.OFF || (settings.mode === BillingMode.SCHEDULED && (!settings.billingStartsAt || now.getTime() < settings.billingStartsAt.getTime()))) {
+    return { hasCoverage: true, source: BillingCoverageSource.BETA_FREE, status: "BETA_FREE", periodStart: null, periodEnd: settings.billingStartsAt, graceEndsAt: null, reason: settings.mode === BillingMode.OFF ? "billing_off" : "billing_scheduled" };
+  }
+
   const activeGrant = grants
     .filter((grant) => grant.source === BillingCoverageSource.COMPLIMENTARY && !grant.revokedAt && isActivePeriod(grant.startsAt, grant.endsAt, now))
     .sort((a, b) => (b.endsAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (a.endsAt?.getTime() ?? Number.MAX_SAFE_INTEGER))[0];
@@ -233,10 +246,6 @@ export function resolveBillingCoverage(input: CoverageInput, now = new Date()): 
   }
   if (subscription && (subscription.status === BillingSubscriptionStatus.ACTIVE || (subscription.status === BillingSubscriptionStatus.PAST_DUE && subscription.cancelAtPeriodEnd)) && subscription.currentPeriodStart && subscription.currentPeriodEnd && isActivePeriod(subscription.currentPeriodStart, subscription.currentPeriodEnd, now)) {
     return { hasCoverage: true, source: BillingCoverageSource.MERCADO_PAGO, status: subscription.status, periodStart: subscription.currentPeriodStart, periodEnd: subscription.currentPeriodEnd, graceEndsAt: subscription.graceEndsAt, reason: subscription.cancelAtPeriodEnd ? "cancel_at_period_end" : "subscription_period" };
-  }
-
-  if (settings.mode === BillingMode.OFF || (settings.mode === BillingMode.SCHEDULED && (!settings.billingStartsAt || now.getTime() < settings.billingStartsAt.getTime()))) {
-    return { hasCoverage: true, source: BillingCoverageSource.BETA_FREE, status: "BETA_FREE", periodStart: null, periodEnd: settings.billingStartsAt, graceEndsAt: null, reason: settings.mode === BillingMode.OFF ? "billing_off" : "billing_scheduled" };
   }
 
   if (settings.billingStartsAt && commerce.approvedAt && commerce.approvedAt.getTime() < settings.billingStartsAt.getTime()) {
@@ -340,55 +349,84 @@ async function ensureBillingSubscription(tx: BillingTx, commerceId: number) {
   return tx.billingSubscription.upsert({ where: { commerceId }, update: {}, create: { commerceId, status: BillingSubscriptionStatus.PENDING_PAYMENT } });
 }
 
-export async function registerManualPayment(input: { actorUserId: number; commerceId: number; amount: number; months?: number; reference?: string; note?: string; idempotencyKey?: string }) {
+export async function registerManualPayment(input: { actorUserId: number; commerceId: number; amount: number; currency?: string; paidAt?: Date; periodStart?: Date; periodEnd?: Date; months?: number; reference?: string; note?: string; idempotencyKey?: string }) {
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new BillingServiceError("El monto debe ser mayor a cero.", 400);
+  const currency = (input.currency ?? "ARS").trim().toUpperCase();
+  if (currency !== "ARS") throw new BillingServiceError("La moneda de cobertura manual debe ser ARS.", 400);
   const months = Math.trunc(input.months ?? 1);
   if (months < 1 || months > 24) throw new BillingServiceError("Los meses deben estar entre 1 y 24.", 400);
-  const result = await prisma.$transaction(async (tx) => {
-    const commerce = await tx.commerce.findUniqueOrThrow({ where: { id: input.commerceId }, select: { id: true, ownerUserId: true } });
-    const existing = input.idempotencyKey ? await tx.billingPayment.findFirst({ where: { commerceId: input.commerceId, source: BillingPaymentSource.MANUAL, reference: input.idempotencyKey, status: BillingPaymentStatus.APPROVED } }) : null;
+  if (input.periodStart && input.periodEnd && input.periodEnd.getTime() <= input.periodStart.getTime()) throw new BillingServiceError("El período de cobertura es inválido.", 400);
+  if (input.periodStart && input.months) throw new BillingServiceError("Usá un período explícito o meses, no ambos.", 400);
+  if (!input.idempotencyKey?.trim()) throw new BillingServiceError("Falta la clave de idempotencia del pago manual.", 400);
+  let result: { payment: { id: number }; ownerUserId: number; duplicate: boolean };
+  try {
+    result = await prisma.$transaction(async (tx) => {
+    const commerce = await tx.commerce.findUnique({ where: { id: input.commerceId }, select: { id: true, ownerUserId: true } });
+    if (!commerce) throw new BillingServiceError("Comercio no encontrado.", 404);
+    const existing = await tx.billingPayment.findUnique({ where: { idempotencyKey: input.idempotencyKey!.trim() } });
     if (existing) return { payment: existing, ownerUserId: commerce.ownerUserId, duplicate: true };
-    const subscription = await ensureBillingSubscription(tx, input.commerceId);
-    if (subscription.provider && subscription.status === BillingSubscriptionStatus.ACTIVE) throw new BillingServiceError("No se puede registrar un pago manual mientras una recurrencia externa permanezca activa.", 409);
+    const subscription = await tx.billingSubscription.findUnique({ where: { commerceId: input.commerceId } });
+    if (subscription?.provider && subscription.status === BillingSubscriptionStatus.ACTIVE) throw new BillingServiceError("No se puede registrar un pago manual mientras una recurrencia externa permanezca activa.", 409);
     const coverage = resolveBillingCoverage(await getCoverageInput(tx, input.commerceId));
-    const periodStart = coverage.hasCoverage && coverage.periodEnd && coverage.periodEnd.getTime() > Date.now() ? coverage.periodEnd : new Date();
-    const anchorDay = subscription.anchorDay ?? dateParts(periodStart).day;
-    const periodEnd = addBillingMonthPreservingAnchor(periodStart, months, anchorDay);
-    const payment = await tx.billingPayment.create({ data: { commerceId: input.commerceId, subscriptionId: subscription.id, source: BillingPaymentSource.MANUAL, status: BillingPaymentStatus.APPROVED, amount: new Prisma.Decimal(input.amount), currency: "ARS", periodStart, periodEnd, paidAt: new Date(), reference: input.idempotencyKey ?? input.reference ?? null, note: input.note ?? null, registeredByUserId: input.actorUserId } });
-    await tx.billingSubscription.update({ where: { id: subscription.id }, data: { status: BillingSubscriptionStatus.ACTIVE, currentPeriodStart: periodStart, currentPeriodEnd: periodEnd, anchorDay, paymentFailedAt: null, graceEndsAt: null, cancelAtPeriodEnd: false, cancelledAt: null } });
+    const periodStart = input.periodStart ?? (coverage.hasCoverage && coverage.periodEnd && coverage.periodEnd.getTime() > Date.now() ? coverage.periodEnd : new Date());
+    const periodEnd = input.periodEnd ?? addBillingMonthPreservingAnchor(periodStart, months, subscription?.anchorDay);
+    if (periodEnd.getTime() <= periodStart.getTime()) throw new BillingServiceError("El período de cobertura es inválido.", 400);
+    const payment = await tx.billingPayment.create({ data: { commerceId: input.commerceId, subscriptionId: subscription?.id ?? null, source: BillingPaymentSource.MANUAL, status: BillingPaymentStatus.APPROVED, amount: new Prisma.Decimal(input.amount), currency, periodStart, periodEnd, paidAt: input.paidAt ?? new Date(), reference: input.reference?.trim() || null, note: input.note?.trim() || null, idempotencyKey: input.idempotencyKey!.trim(), registeredByUserId: input.actorUserId } });
     const coverageAfter = await refreshCommerceBillingProjection(tx, input.commerceId);
-    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "MANUAL_PAYMENT_REGISTERED", targetType: "BILLING_PAYMENT", targetId: payment.id, commerceId: input.commerceId, metadata: JSON.stringify({ amount: payment.amount.toString(), currency: "ARS", months, periodStart, periodEnd, source: coverageAfter.source }) } });
+    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "MANUAL_PAYMENT_REGISTERED", targetType: "BILLING_PAYMENT", targetId: payment.id, commerceId: input.commerceId, metadata: JSON.stringify({ amount: payment.amount.toString(), currency, periodStart, periodEnd, source: coverageAfter.source, reference: payment.reference }) } });
     return { payment, ownerUserId: commerce.ownerUserId, duplicate: false };
-  });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await prisma.billingPayment.findUnique({ where: { idempotencyKey: input.idempotencyKey!.trim() }, select: { id: true, commerceId: true, commerce: { select: { ownerUserId: true } } } });
+      if (existing && existing.commerceId === input.commerceId) return { payment: { id: existing.id }, ownerUserId: existing.commerce.ownerUserId, duplicate: true };
+      if (existing) throw new BillingServiceError("La clave de idempotencia ya pertenece a otra operación.", 409);
+    }
+    throw error;
+  }
   if (!result.duplicate) await createAppNotification({ userId: result.ownerUserId, type: "BILLING_MANUAL_PAYMENT_REGISTERED", title: "Pago registrado", body: "Registramos una cobertura manual para tu comercio.", data: { commerceId: input.commerceId, billingPaymentId: result.payment.id } });
   return result;
 }
 
-export async function grantComplimentaryCoverage(input: { actorUserId: number; commerceId: number; startsAt?: Date; endsAt?: Date | null; months?: number; reason?: string }) {
+export async function grantComplimentaryCoverage(input: { actorUserId: number; commerceId: number; startsAt?: Date; endsAt?: Date | null; months?: number; reason: string }) {
   const now = new Date();
   const startsAt = input.startsAt ?? now;
   const endsAt = input.endsAt ?? (input.months ? addBillingMonthPreservingAnchor(startsAt, input.months) : null);
-  if (endsAt && endsAt.getTime() <= startsAt.getTime()) throw new BillingServiceError("La fecha final debe ser posterior al inicio.", 400);
-  const result = await prisma.$transaction(async (tx) => {
-    const commerce = await tx.commerce.findUniqueOrThrow({ where: { id: input.commerceId }, select: { ownerUserId: true } });
+  const reason = input.reason.trim();
+  if (!reason) throw new BillingServiceError("Indicá el motivo de la bonificación.", 400);
+  if (endsAt && (endsAt.getTime() <= startsAt.getTime() || endsAt.getTime() <= now.getTime())) throw new BillingServiceError("La fecha final debe ser futura.", 400);
+  let result: { grant: { id: number }; ownerUserId: number };
+  try {
+    result = await prisma.$transaction(async (tx) => {
+    const commerce = await tx.commerce.findUnique({ where: { id: input.commerceId }, select: { ownerUserId: true } });
+    if (!commerce) throw new BillingServiceError("Comercio no encontrado.", 404);
     const subscription = await tx.billingSubscription.findUnique({ where: { commerceId: input.commerceId } });
     if (subscription?.provider && subscription.status === BillingSubscriptionStatus.ACTIVE) throw new BillingServiceError("No se puede bonificar mientras una recurrencia externa permanezca activa.", 409);
-    const grant = await tx.billingCoverageGrant.create({ data: { commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, startsAt, endsAt, reason: input.reason ?? null, createdByUserId: input.actorUserId } });
+    await tx.billingCoverageGrant.updateMany({ where: { commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, revokedAt: null, activeKey: { not: null }, endsAt: { lte: now } }, data: { activeKey: null } });
+    const activeGrant = await tx.billingCoverageGrant.findFirst({ where: { commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, revokedAt: null, OR: [{ endsAt: null }, { endsAt: { gt: now } }] }, select: { id: true } });
+    if (activeGrant) throw new BillingServiceError("El comercio ya tiene una bonificación activa.", 409);
+    const grant = await tx.billingCoverageGrant.create({ data: { commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, startsAt, endsAt, reason, activeKey: `complimentary:${input.commerceId}`, createdByUserId: input.actorUserId } });
     await refreshCommerceBillingProjection(tx, input.commerceId);
-    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "COMPLIMENTARY_GRANTED", targetType: "BILLING_COVERAGE_GRANT", targetId: grant.id, commerceId: input.commerceId, metadata: JSON.stringify({ startsAt, endsAt }) } });
+    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "COMPLIMENTARY_GRANTED", targetType: "BILLING_COVERAGE_GRANT", targetId: grant.id, commerceId: input.commerceId, metadata: JSON.stringify({ startsAt, endsAt, reason }) } });
     return { grant, ownerUserId: commerce.ownerUserId };
-  });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new BillingServiceError("El comercio ya tiene una bonificación activa.", 409);
+    throw error;
+  }
   await createAppNotification({ userId: result.ownerUserId, type: "BILLING_COMPLIMENTARY_GRANTED", title: "Cobertura bonificada", body: "Tu comercio recibió una bonificación de suscripción.", data: { commerceId: input.commerceId, billingGrantId: result.grant.id } });
   return result.grant;
 }
 
-export async function revokeComplimentaryCoverage(input: { actorUserId: number; commerceId: number; grantId: number }) {
+export async function revokeComplimentaryCoverage(input: { actorUserId: number; commerceId: number; grantId: number; reason: string }) {
+  const reason = input.reason.trim();
+  if (!reason) throw new BillingServiceError("Indicá el motivo de finalización.", 400);
   return prisma.$transaction(async (tx) => {
-    const grant = await tx.billingCoverageGrant.findFirst({ where: { id: input.grantId, commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, revokedAt: null } });
+    const grant = await tx.billingCoverageGrant.findFirst({ where: { id: input.grantId, commerceId: input.commerceId, source: BillingCoverageSource.COMPLIMENTARY, revokedAt: null, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] } });
     if (!grant) throw new BillingServiceError("Bonificación activa no encontrada.", 404);
-    const revoked = await tx.billingCoverageGrant.update({ where: { id: grant.id }, data: { revokedAt: new Date(), revokedByUserId: input.actorUserId } });
+    const revoked = await tx.billingCoverageGrant.update({ where: { id: grant.id }, data: { revokedAt: new Date(), revokedByUserId: input.actorUserId, revocationReason: reason, activeKey: null } });
     await refreshCommerceBillingProjection(tx, input.commerceId);
-    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "COMPLIMENTARY_REVOKED", targetType: "BILLING_COVERAGE_GRANT", targetId: grant.id, commerceId: input.commerceId } });
+    await tx.adminActionLog.create({ data: { adminUserId: input.actorUserId, action: "COMPLIMENTARY_REVOKED", targetType: "BILLING_COVERAGE_GRANT", targetId: grant.id, commerceId: input.commerceId, metadata: JSON.stringify({ reason }) } });
     return revoked;
   });
 }
@@ -445,9 +483,18 @@ export async function listBillingSubscriptions(input: {
 }
 
 export async function getAdminBillingSubscription(commerceId: number) {
-  const [settingsRecord, commerce] = await Promise.all([
+  const [settingsRecord, commerce, reconciliations] = await Promise.all([
     prisma.billingSettings.findUnique({ where: { id: 1 } }),
     prisma.commerce.findUnique({ where: { id: commerceId }, select: adminBillingCommerceSelect }),
+    prisma.billingReconciliationObservation.findMany({
+      where: { commerceId },
+      orderBy: [{ checkedAt: "desc" }, { id: "desc" }],
+      take: 8,
+      select: {
+        id: true, result: true, mismatchFields: true, localStatus: true, localProviderStatus: true,
+        observedStatus: true, observedProviderPlanId: true, providerErrorCode: true, checkedAt: true,
+      },
+    }),
   ]);
   if (!commerce) throw new BillingServiceError("Comercio no encontrado.", 404);
 
@@ -455,6 +502,8 @@ export async function getAdminBillingSubscription(commerceId: number) {
   const snapshot = commerce as AdminBillingCommerceSnapshot;
   const summary = toAdminBillingSubscription(snapshot, settings);
   const subscription = snapshot.billingSubscription;
+  const now = new Date();
+  const activeComplimentary = snapshot.billingCoverageGrants.find((grant) => grant.source === BillingCoverageSource.COMPLIMENTARY && !grant.revokedAt && isActivePeriod(grant.startsAt, grant.endsAt, now));
 
   return {
     commerce: summary.commerce,
@@ -473,7 +522,36 @@ export async function getAdminBillingSubscription(commerceId: number) {
       cancelledAt: subscription.cancelledAt,
       updatedAt: subscription.updatedAt,
     } : null,
+    support: {
+      activeComplimentary: activeComplimentary ? {
+        id: activeComplimentary.id,
+        startsAt: activeComplimentary.startsAt,
+        endsAt: activeComplimentary.endsAt,
+        reason: activeComplimentary.reason,
+      } : null,
+    },
+    reconciliation: reconciliations.map((observation) => ({
+      id: observation.id,
+      result: observation.result,
+      mismatchFields: parseReconciliationMismatchFields(observation.mismatchFields),
+      localStatus: observation.localStatus,
+      localProviderStatus: observation.localProviderStatus,
+      observedStatus: observation.observedStatus,
+      observedProviderPlanId: observation.observedProviderPlanId,
+      providerErrorCode: observation.providerErrorCode,
+      checkedAt: observation.checkedAt,
+    })),
   };
+}
+
+function parseReconciliationMismatchFields(value: string | null) {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(0, 8) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function markPaymentFailed(commerceId: number, failedAt = new Date()) {

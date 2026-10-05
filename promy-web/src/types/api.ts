@@ -55,6 +55,25 @@ export type AdminBillingSubscriptionDetailResponse = {
   subscription: {
     commerce: { id: number; name: string };
     summary: AdminBillingCommerceSubscription;
+    support: {
+      activeComplimentary: {
+        id: number;
+        startsAt: string;
+        endsAt: string | null;
+        reason: string;
+      } | null;
+    };
+    reconciliation: Array<{
+      id: number;
+      result: "MATCH" | "MISMATCH" | "UNAVAILABLE" | string;
+      mismatchFields: string[];
+      localStatus: string;
+      localProviderStatus: string | null;
+      observedStatus: string | null;
+      observedProviderPlanId: string | null;
+      providerErrorCode: string | null;
+      checkedAt: string;
+    }>;
     subscription: {
       status: string;
       provider: string | null;
@@ -69,6 +88,36 @@ export type AdminBillingSubscriptionDetailResponse = {
       cancelledAt: string | null;
       updatedAt: string;
     } | null;
+  };
+};
+
+export type AdminBillingReconciliationResponse = {
+  ok: boolean;
+  reconciliation: {
+    id: number;
+    result: "MATCH" | "MISMATCH" | "UNAVAILABLE" | string;
+    mismatchFields: string | null;
+    providerErrorCode: string | null;
+    checkedAt: string;
+  };
+};
+
+export type AdminBillingSupportActionResponse = {
+  ok: boolean;
+  duplicate?: boolean;
+  grant?: {
+    id: number;
+    source: "COMPLIMENTARY" | string;
+    startsAt: string;
+    endsAt: string | null;
+  };
+  payment?: {
+    id: number;
+    source: "MANUAL" | string;
+    amount: string;
+    currency: string;
+    periodStart: string;
+    periodEnd: string;
   };
 };
 export type UserStatus = "ACTIVE" | "BLOCKED" | "PENDING" | string;

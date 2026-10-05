@@ -3,6 +3,8 @@ import type {
   AdminAuditLogsResponse,
   AdminBillingSubscriptionDetailResponse,
   AdminBillingSubscriptionFilter,
+  AdminBillingReconciliationResponse,
+  AdminBillingSupportActionResponse,
   AdminBillingSubscriptionsResponse,
   AdminBillingSettingsResponse,
   AdminCategoriesResponse,
@@ -404,6 +406,49 @@ export async function fetchAdminBillingSubscription(session: AuthSession, commer
   return request<AdminBillingSubscriptionDetailResponse>(`/admin/subscriptions/${commerceId}`, {
     method: "GET",
     accessToken: session.accessToken,
+  });
+}
+
+export async function reconcileAdminBillingSubscription(session: AuthSession, commerceId: number) {
+  return request<AdminBillingReconciliationResponse>(`/admin/billing/${commerceId}/reconcile`, {
+    method: "POST",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function grantAdminComplimentaryCoverage(
+  session: AuthSession,
+  commerceId: number,
+  body: { reason: string; endsAt?: string | null },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/complimentary`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function revokeAdminComplimentaryCoverage(
+  session: AuthSession,
+  commerceId: number,
+  body: { grantId: number; reason: string },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/revoke-complimentary`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function registerAdminManualPayment(
+  session: AuthSession,
+  commerceId: number,
+  body: { amount: number; currency: "ARS"; paidAt: string; periodStart: string; periodEnd: string; reference: string; note?: string; idempotencyKey: string },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/manual-payment`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
   });
 }
 

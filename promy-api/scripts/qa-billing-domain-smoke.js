@@ -9,9 +9,6 @@ const { assertCurrentTestDatabase } = require("./qa-database-guard");
 const {
   expireBillingCoverage,
   getCommerceBillingSummary,
-  registerManualPayment,
-  grantComplimentaryCoverage,
-  revokeComplimentaryCoverage,
   updateBillingSettings,
 } = require("../dist/modules/billing/billing.service");
 
@@ -63,26 +60,51 @@ async function main() {
     assert(forbiddenAdmin.status === 403, "ADMIN no debe leer settings Billing");
     const forbiddenSubscriptions = await adminHttp.request("/admin/subscriptions?page=1&limit=25", { method: "GET", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` } });
     assert(forbiddenSubscriptions.status === 403, "ADMIN no debe leer suscripciones de comercios");
+    const forbiddenGrant = await adminHttp.request(`/admin/billing/${commerce.id}/complimentary`, { method: "POST", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` }, body: JSON.stringify({ reason: "No permitido" }) });
+    assert(forbiddenGrant.status === 403, "ADMIN no debe otorgar bonificaciones");
+    const forbiddenPayment = await adminHttp.request(`/admin/billing/${commerce.id}/manual-payment`, { method: "POST", headers: { Authorization: `Bearer ${standardAdminSession.accessToken}` }, body: JSON.stringify({ amount: 1000, reference: "No permitido", idempotencyKey: `forbidden-${stamp}` }) });
+    assert(forbiddenPayment.status === 403, "ADMIN no debe registrar pagos manuales");
     await prisma.user.update({ where: { id: admin.id }, data: { role: "SUPER_ADMIN" } });
     const restoredSuperAdminSession = await loginWeb(adminHttp, admin.email, "demo1234");
 
-    const payment = await registerManualPayment({ actorUserId: admin.id, commerceId: commerce.id, amount: 1000, months: 2, idempotencyKey: `billing-manual-${stamp}` });
-    assert(!payment.duplicate, "Primer manual payment no puede ser duplicado");
-    const duplicate = await registerManualPayment({ actorUserId: admin.id, commerceId: commerce.id, amount: 1000, months: 2, idempotencyKey: `billing-manual-${stamp}` });
-    assert(duplicate.duplicate && duplicate.payment.id === payment.payment.id, "Manual payment debe ser idempotente");
+    const invalidPayment = await adminHttp.request(`/admin/billing/${commerce.id}/manual-payment`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ amount: 0, reference: "QA", idempotencyKey: `invalid-${stamp}` }) });
+    assert(invalidPayment.status === 400, "Pago manual inválido debe rechazarse");
+    const manualRequest = { amount: 1000, currency: "ARS", months: 2, reference: "QA transferencia", note: "Cobertura de integración", idempotencyKey: `billing-manual-${stamp}` };
+    const paymentResponse = await adminHttp.request(`/admin/billing/${commerce.id}/manual-payment`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify(manualRequest) });
+    assert(paymentResponse.status === 201 && paymentResponse.data?.payment?.source === "MANUAL", "SUPER_ADMIN debe registrar un pago manual");
+    const duplicateResponse = await adminHttp.request(`/admin/billing/${commerce.id}/manual-payment`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify(manualRequest) });
+    assert(duplicateResponse.status === 200 && duplicateResponse.data?.duplicate === true && duplicateResponse.data?.payment?.id === paymentResponse.data.payment.id, "Pago manual debe ser idempotente");
+    const payment = { payment: paymentResponse.data.payment, duplicate: false };
+    assert((await prisma.billingPayment.count({ where: { commerceId: commerce.id, source: "MANUAL" } })) === 1, "La idempotencia no debe duplicar pagos manuales");
+    assert((await prisma.billingPayment.findUnique({ where: { id: payment.payment.id } })).subscriptionId === null, "Un pago manual no debe fabricar una suscripción de proveedor");
     const covered = await getCommerceBillingSummary(commerce.id);
     assert(covered.hasCoverage && covered.coverageSource === "MANUAL", "Pago manual debe habilitar cobertura");
 
-    const grant = await grantComplimentaryCoverage({ actorUserId: admin.id, commerceId: commerce.id, reason: "QA billing", months: 1 });
+    const invalidGrant = await adminHttp.request(`/admin/billing/${commerce.id}/complimentary`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ reason: "   " }) });
+    assert(invalidGrant.status === 400, "Motivo vacío de bonificación debe rechazarse");
+    const grantResponse = await adminHttp.request(`/admin/billing/${commerce.id}/complimentary`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ reason: "Comercio piloto", months: 1 }) });
+    assert(grantResponse.status === 201 && grantResponse.data?.grant?.source === "COMPLIMENTARY", "SUPER_ADMIN debe otorgar una bonificación");
+    const grant = grantResponse.data.grant;
+    const duplicateGrant = await adminHttp.request(`/admin/billing/${commerce.id}/complimentary`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ reason: "Duplicada", months: 1 }) });
+    assert(duplicateGrant.status === 409, "No debe crear dos bonificaciones efectivas en paralelo");
     const complementary = await getCommerceBillingSummary(commerce.id);
     assert(complementary.coverageSource === "COMPLIMENTARY", "Bonificación debe tener prioridad determinista");
-    await revokeComplimentaryCoverage({ actorUserId: admin.id, commerceId: commerce.id, grantId: grant.id });
+    const invalidRevoke = await adminHttp.request(`/admin/billing/${commerce.id}/revoke-complimentary`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ grantId: grant.id, reason: " " }) });
+    assert(invalidRevoke.status === 400, "Finalizar bonificación exige un motivo");
+    const revokeResponse = await adminHttp.request(`/admin/billing/${commerce.id}/revoke-complimentary`, { method: "POST", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` }, body: JSON.stringify({ grantId: grant.id, reason: "Fin del piloto" }) });
+    assert(revokeResponse.status === 200, "SUPER_ADMIN debe finalizar una bonificación activa");
+    const historicGrant = await prisma.billingCoverageGrant.findUnique({ where: { id: grant.id } });
+    assert(historicGrant?.revokedAt && historicGrant.revocationReason === "Fin del piloto", "Revocar debe conservar el historial de bonificación");
     const afterRevoke = await getCommerceBillingSummary(commerce.id);
     assert(afterRevoke.coverageSource === "MANUAL", "Revocar bonificación debe restaurar la siguiente cobertura válida");
 
-    const activeList = await adminHttp.request(`/admin/subscriptions?filter=ACTIVE&search=${commerce.id}&page=1&limit=25`, { method: "GET", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` } });
-    assert(activeList.status === 200 && activeList.data?.page === 1 && activeList.data?.limit === 25 && activeList.data?.total === 1, "La lista debe aplicar búsqueda, filtro y paginación");
-    assert(activeList.data.subscriptions[0].coverageSource === "MANUAL", "La vista debe conservar el origen de cobertura registrado");
+    await updateBillingSettings({ actorUserId: admin.id, mode: "OFF", billingStartsAt: null, monthlyPrice: 1000 });
+    const betaAfterSupportActions = await getCommerceBillingSummary(commerce.id);
+    assert(betaAfterSupportActions.coverageSource === "BETA_FREE" && betaAfterSupportActions.status === "BETA_FREE", "Billing OFF debe preservar beta como política efectiva aunque existan registros de soporte");
+
+    const betaAfterSupportList = await adminHttp.request(`/admin/subscriptions?filter=BETA&search=${commerce.id}&page=1&limit=25`, { method: "GET", headers: { Authorization: `Bearer ${restoredSuperAdminSession.accessToken}` } });
+    assert(betaAfterSupportList.status === 200 && betaAfterSupportList.data?.page === 1 && betaAfterSupportList.data?.limit === 25 && betaAfterSupportList.data?.total === 1, "La lista debe aplicar búsqueda, filtro y paginación");
+    assert(betaAfterSupportList.data.subscriptions[0].coverageSource === "BETA_FREE", "La vista debe preservar beta mientras Billing está OFF");
 
     console.log(JSON.stringify({ ok: true, commerceId: commerce.id, paymentId: payment.payment.id, grantId: grant.id, contracts: ["billing-settings", "super-admin", "subscriptions-read-only", "manual-idempotency", "complimentary-priority", "projection"] }, null, 2));
   } finally {
