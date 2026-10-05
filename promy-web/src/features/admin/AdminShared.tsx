@@ -216,15 +216,21 @@ export function AuditTimelineCard({
   logs,
   emptyMessage,
   inline = false,
+  compact = false,
 }: {
   title: string;
   subtitle: string;
   logs: AdminAuditLogItem[];
   emptyMessage: string;
   inline?: boolean;
+  compact?: boolean;
 }) {
+  const className = [inline ? "audit-card" : "panel", compact ? "audit-card-compact" : ""]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <article className={inline ? "audit-card" : "panel"}>
+    <article className={className}>
       <div className="page-kicker">Auditoría</div>
       <h2 style={{ fontSize: inline ? 16 : 18, fontWeight: 500, marginTop: 6 }}>{title}</h2>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
@@ -239,11 +245,7 @@ export function AuditTimelineCard({
                 <span className="audit-action">{getAuditActionLabel(log.action)}</span>
                 <span className="audit-date">{formatDate(log.createdAt)}</span>
               </div>
-              <p className="audit-target">
-                {log.targetType === "COMMERCE"
-                  ? log.commerce?.name || `Comercio #${log.targetId}`
-                  : log.promotion?.title || `Promoción #${log.targetId}`}
-              </p>
+              <p className="audit-target">{getAuditTargetLabel(log)}</p>
               <p className="audit-user">
                 {log.adminUser.fullName} · {log.adminUser.email}
               </p>
@@ -693,11 +695,48 @@ export function getMissingFieldLabel(field: string) {
 }
 
 export function getAuditActionLabel(action: string) {
-  return action === "UPDATE_COMMERCE_STATUS"
-    ? "Cambio de estado · Comercio"
-    : action === "UPDATE_PROMOTION_STATUS"
-    ? "Cambio de estado · Promoción"
-    : action;
+  const labels: Record<string, string> = {
+    UPDATE_COMMERCE_STATUS: "Cambio de estado · Comercio",
+    UPDATE_PROMOTION_STATUS: "Cambio de estado · Promoción",
+    UPDATE_COMMERCE_CONTENT: "Edición · Comercio",
+    UPDATE_PROMOTION_CONTENT: "Edición · Promoción",
+    GRANT_COMPLIMENTARY_COVERAGE: "Cobertura bonificada otorgada",
+    REVOKE_COMPLIMENTARY_COVERAGE: "Cobertura bonificada finalizada",
+    REGISTER_MANUAL_PAYMENT: "Pago manual registrado",
+    RECONCILE_BILLING_SUBSCRIPTION: "Consulta de conciliación",
+    COMPLIMENTARY_GRANTED: "Cobertura bonificada otorgada",
+    COMPLIMENTARY_REVOKED: "Cobertura bonificada finalizada",
+    MANUAL_PAYMENT_REGISTERED: "Pago manual registrado",
+    MERCADO_PAGO_RECONCILIATION_OBSERVED: "Observación de conciliación",
+    BILLING_RECONCILIATION_OBSERVED: "Observación de conciliación",
+    BILLING_RECONCILIATION_MISMATCH: "Diferencia detectada en conciliación",
+    BILLING_PROVIDER_UNAVAILABLE: "Proveedor no disponible",
+  };
+
+  if (labels[action]) return labels[action];
+
+  const humanized = action
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .join(" ");
+
+  return humanized ? humanized.charAt(0).toUpperCase() + humanized.slice(1) : "Acción administrativa";
+}
+
+function getAuditTargetLabel(log: AdminAuditLogItem) {
+  if (log.commerce?.name) return log.commerce.name;
+  if (log.promotion?.title) return log.promotion.title;
+  if (log.targetType === "COMMERCE") return `Comercio #${log.targetId}`;
+  if (log.targetType === "PROMOTION") return `Promoción #${log.targetId}`;
+
+  const targetType = log.targetType
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .join(" ");
+  const label = targetType ? targetType.charAt(0).toUpperCase() + targetType.slice(1) : "Recurso";
+  return `${label} #${log.targetId}`;
 }
 
 export function getCommerceModalTitle(next?: string) {

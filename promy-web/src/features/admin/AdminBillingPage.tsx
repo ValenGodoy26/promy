@@ -4,7 +4,7 @@ import { IconAlert, IconCalendar, IconCheck, IconReceipt, IconX } from "../../co
 import { ensureAdminMercadoPagoPlan, fetchAdminBillingSubscription, fetchAdminBillingSubscriptions, fetchAdminBillingSettings, grantAdminComplimentaryCoverage, reconcileAdminBillingSubscription, registerAdminManualPayment, revokeAdminComplimentaryCoverage, updateAdminBillingSettings } from "../../lib/api";
 import { getUserFacingErrorMessage } from "../../lib/httpErrors";
 import type { AdminBillingCommerceSubscription, AdminBillingSubscriptionDetailResponse, AdminBillingSubscriptionFilter, AdminBillingSubscriptionsResponse, AdminBillingSettings, BillingMode } from "../../types/api";
-import { AdminPageFrame, Alert, ConfirmDialog, LoadingBlock } from "./AdminShared";
+import { AdminEmptyState, AdminPageFrame, Alert, ConfirmDialog, LoadingBlock, MiniBadge } from "./AdminShared";
 import { formatBillingMoney, getBillingModePresentation, getMercadoPagoPlanPresentation, parseMonthlyPrice, toLocalDateTimeInput } from "./adminBilling";
 import { adminBillingSubscriptionFilters, formatAdminBillingDate, formatAdminBillingProvider, getAdminBillingCoverageLabel, getAdminBillingSubscriptionPresentation, truncateOperationalId } from "./adminBillingSubscriptions";
 
@@ -222,75 +222,100 @@ export function AdminBillingPage() {
 
   return <>
     <AdminPageFrame
-      kicker="Super admin / Configuración"
+      kicker="Super admin / Operación"
       title="Billing"
-      description="Configurá las suscripciones de comercios y consultá su cobertura operativa."
+      description="Soporte de cobertura, suscripciones y conciliación. La configuración global queda en segundo plano."
     />
     <main className="main-content admin-billing-page">
       {loading ? <LoadingBlock title="Cargando Billing" text="Preparando la configuración global." /> : null}
       {error ? <Alert tone="danger" message={error === "No pudimos completar la solicitud." ? "No pudimos cargar la configuración de Billing." : error} /> : null}
       {feedback ? <Alert tone="success" message={feedback} /> : null}
       {!loading && error && !settings ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => void load()}>Reintentar</button> : null}
-      {settings && presentation && plan ? <div className="admin-billing-grid">
-        <section className="panel admin-billing-card admin-billing-status-card">
-          <div className="admin-billing-card-heading"><div><span className="page-kicker">Estado global</span><h2>Estado de Billing</h2></div><span className={`badge badge-${presentation.tone}`}><span className="badge-dot" />{presentation.label}</span></div>
-          <p className="muted">{presentation.description}</p>
-          <div className="admin-billing-actions">
+
+      {settings && presentation && plan ? <section className="admin-billing-overview" aria-label="Estado global de Billing">
+        <div className="admin-billing-overview-status">
+          <div>
+            <span className="page-kicker">Estado global</span>
+            <div className="admin-billing-overview-title-row">
+              <h2>Billing {presentation.label.toLowerCase()}</h2>
+              <span className={`badge badge-${presentation.tone}`}><span className="badge-dot" />{presentation.label}</span>
+            </div>
+            <p>{presentation.description}</p>
+            {settings.mode === "OFF" ? <p className="admin-billing-beta-note">La presentación efectiva por comercio puede seguir siendo Beta o una cobertura administrativa.</p> : null}
+          </div>
+          <div className="admin-billing-actions admin-billing-overview-actions">
             {settings.mode !== "ON" ? <button className="btn btn-primary" type="button" disabled={saving !== null} onClick={() => setShowActivationConfirm(true)}>Activar cobros</button> : null}
             {settings.mode !== "OFF" ? <button className="btn btn-secondary" type="button" disabled={saving !== null} onClick={disableBilling}>{saving === "mode" ? "Guardando..." : "Desactivar Billing"}</button> : null}
           </div>
-        </section>
+        </div>
+        <dl className="admin-billing-overview-facts">
+          <div><dt>Precio</dt><dd>{formatBillingMoney(settings.monthlyPrice, settings.currency)}{settings.monthlyPrice ? " / mes" : ""}</dd></div>
+          <div><dt>Inicio</dt><dd>{settings.billingStartsAt ? formatBillingDateTime(settings.billingStartsAt) : "No programado"}</dd></div>
+          <div><dt>Proveedor</dt><dd>{plan.label}</dd></div>
+          <div><dt>Moneda</dt><dd>{settings.currency || "No configurado"}</dd></div>
+        </dl>
+      </section> : null}
 
-        <section className="panel admin-billing-card">
-          <div className="admin-billing-card-heading"><div><span className="page-kicker">Configuración actual</span><h2>Resumen operativo</h2></div><IconReceipt size={18} /></div>
-          <dl className="admin-billing-summary"><div><dt>Billing</dt><dd>{presentation.label}</dd></div><div><dt>Precio</dt><dd>{formatBillingMoney(settings.monthlyPrice, settings.currency)}{settings.monthlyPrice ? " / mes" : ""}</dd></div><div><dt>Moneda</dt><dd>{settings.currency || "No configurado"}</dd></div><div><dt>Inicio</dt><dd>{settings.billingStartsAt ? formatBillingDateTime(settings.billingStartsAt) : "No programado"}</dd></div><div><dt>Mercado Pago</dt><dd>{plan.label}</dd></div></dl>
-        </section>
-
-        <section className="panel admin-billing-card">
-          <div className="admin-billing-card-heading"><div><span className="page-kicker">Precio mensual</span><h2>Valor de suscripción</h2></div></div>
-          <p className="muted">Usá el importe que recibirán los comercios cuando Billing esté activo.</p>
-          <label className="field-label" htmlFor="billing-monthly-price">Precio mensual ({settings.currency})</label>
-          <div className="admin-billing-price-input"><span>{currencySymbol(settings.currency)}</span><input id="billing-monthly-price" className="field-input" inputMode="decimal" value={priceInput} onChange={(event) => setPriceInput(event.target.value)} aria-describedby="billing-price-help" /></div>
-          <p id="billing-price-help" className="form-hint">Monto positivo, con hasta dos decimales.</p>
-          <button className="btn btn-secondary" type="button" disabled={saving !== null} onClick={savePrice}>{saving === "price" ? "Guardando..." : "Guardar precio"}</button>
-        </section>
-
-        <section className="panel admin-billing-card">
-          <div className="admin-billing-card-heading"><div><span className="page-kicker">Inicio de cobros</span><h2>Programación</h2></div><IconCalendar size={18} /></div>
-          <p className="muted">Programá el inicio sin activar cobros ahora. Hora local del navegador: {localTimezone}.</p>
-          <label className="field-label" htmlFor="billing-starts-at">Inicio programado</label>
-          <input id="billing-starts-at" className="field-input" type="datetime-local" value={startsAtInput} onChange={(event) => setStartsAtInput(event.target.value)} />
-          <div className="admin-billing-actions"><button className="btn btn-secondary" type="button" disabled={saving !== null} onClick={scheduleBilling}>{saving === "schedule" ? "Guardando..." : "Programar inicio"}</button>{settings.mode === "SCHEDULED" ? <button className="btn btn-ghost" type="button" disabled={saving !== null} onClick={disableBilling}>Cancelar programación</button> : null}</div>
-        </section>
-
-        <section className="panel admin-billing-card admin-billing-mercado-pago">
-          <div className="admin-billing-card-heading"><div><span className="page-kicker">Proveedor</span><h2>Mercado Pago</h2></div><IconCheck size={18} /></div>
-          <dl className="admin-billing-summary"><div><dt>Estado del plan</dt><dd>{plan.label}</dd></div><div><dt>Plan remoto</dt><dd className="admin-billing-plan-id">{plan.planId}</dd></div><div><dt>Precio</dt><dd>{formatBillingMoney(settings.monthlyPrice, settings.currency)}</dd></div><div><dt>Frecuencia</dt><dd>Mensual</dd></div><div><dt>Moneda</dt><dd>{settings.currency || "No configurado"}</dd></div></dl>
-          <p className="form-hint">La verificación consulta el proveedor sólo al confirmar esta acción.</p>
-          <button className="btn btn-secondary" type="button" disabled={saving !== null || !settings.monthlyPrice} onClick={verifyPlan}>{saving === "plan" ? "Verificando..." : settings.mercadoPagoPlanId ? "Verificar plan de Mercado Pago" : "Configurar plan de Mercado Pago"}</button>
-        </section>
-      </div> : null}
-      <section className="panel admin-billing-subscriptions" aria-labelledby="admin-billing-subscriptions-title">
+      <section className="panel admin-billing-subscriptions admin-billing-primary-work" aria-labelledby="admin-billing-subscriptions-title">
         <div className="admin-billing-subscriptions-heading">
-          <div><span className="page-kicker">Gestión y soporte</span><h2 id="admin-billing-subscriptions-title">Suscripciones por comercio</h2><p className="muted">Consultá el estado y la cobertura actual de cada comercio. Las acciones administrativas se realizan desde el detalle.</p></div>
+          <div>
+            <span className="page-kicker">Gestión y soporte</span>
+            <h2 id="admin-billing-subscriptions-title">Suscripciones por comercio</h2>
+            <p className="muted">Revisá cobertura, soporte y estado remoto sin modificar automáticamente la suscripción local.</p>
+          </div>
         </div>
         <form className="admin-billing-subscriptions-search" onSubmit={(event) => { event.preventDefault(); setSubscriptionPage(1); setAppliedSubscriptionSearch(subscriptionSearch); }}>
           <label className="field-label" htmlFor="admin-billing-subscription-search">Buscar comercio</label>
           <div><input id="admin-billing-subscription-search" className="field-input" value={subscriptionSearch} onChange={(event) => setSubscriptionSearch(event.target.value)} placeholder="Nombre, email del responsable o ID" /><button className="btn btn-secondary btn-sm" type="submit">Buscar</button></div>
         </form>
         <div className="admin-billing-subscription-filters" aria-label="Filtrar suscripciones">
-          {adminBillingSubscriptionFilters.map((option) => <button key={option.value} className={`btn btn-sm ${subscriptionFilter === option.value ? "btn-primary" : "btn-ghost"}`} type="button" onClick={() => { setSubscriptionFilter(option.value); setSubscriptionPage(1); }}>{option.label}</button>)}
+          {adminBillingSubscriptionFilters.map((option) => <button key={option.value} className={`chip ${subscriptionFilter === option.value ? "is-active" : ""}`} type="button" onClick={() => { setSubscriptionFilter(option.value); setSubscriptionPage(1); }}>{option.label}</button>)}
         </div>
         {subscriptionsLoading ? <div className="admin-billing-subscription-loading" role="status">Cargando suscripciones…</div> : null}
         {subscriptionsError ? <div className="admin-billing-subscription-error"><Alert tone="danger" message={subscriptionsError} /><button className="btn btn-secondary btn-sm" type="button" onClick={() => void loadSubscriptions()}>Reintentar</button></div> : null}
         {!subscriptionsLoading && !subscriptionsError && subscriptions ? <>
-          {subscriptions.subscriptions.length === 0 ? <div className="admin-billing-subscription-empty"><strong>No encontramos suscripciones para este criterio.</strong><span>Probá otro filtro o modificá la búsqueda.</span></div> : <div className="admin-billing-subscription-table" role="table" aria-label="Suscripciones por comercio">
+          {subscriptions.subscriptions.length === 0 ? <AdminEmptyState title="No encontramos suscripciones para este criterio." text="Probá otro filtro o modificá la búsqueda." /> : <div className="admin-billing-subscription-table" role="table" aria-label="Suscripciones por comercio">
             <div className="admin-billing-subscription-table-head" role="row"><span>Comercio</span><span>Estado</span><span>Cobertura</span><span>Próximo fin</span><span>Origen</span><span /></div>
             {subscriptions.subscriptions.map((subscription) => <SubscriptionRow key={subscription.commerce.id} subscription={subscription} onOpen={openSubscriptionDetail} />)}
           </div>}
           {subscriptions.total > subscriptions.limit ? <div className="admin-billing-subscription-pagination"><span>Página {subscriptions.page} de {Math.max(1, Math.ceil(subscriptions.total / subscriptions.limit))} · {subscriptions.total} comercios</span><div><button className="btn btn-ghost btn-sm" type="button" disabled={subscriptions.page <= 1} onClick={() => setSubscriptionPage((current) => Math.max(1, current - 1))}>Anterior</button><button className="btn btn-secondary btn-sm" type="button" disabled={subscriptions.page >= Math.ceil(subscriptions.total / subscriptions.limit)} onClick={() => setSubscriptionPage((current) => current + 1)}>Siguiente</button></div></div> : null}
         </> : null}
       </section>
+
+      {settings && presentation && plan ? <section className="admin-billing-settings-section" aria-labelledby="admin-billing-settings-title">
+        <div className="admin-billing-section-heading">
+          <div>
+            <span className="page-kicker">Configuración global</span>
+            <h2 id="admin-billing-settings-title">Parámetros de cobro</h2>
+            <p>Configuración secundaria del modo, importe y proveedor. No modifica coberturas manuales ni conciliaciones existentes.</p>
+          </div>
+        </div>
+        <div className="admin-billing-grid admin-billing-grid-settings">
+          <section className="panel admin-billing-card">
+            <div className="admin-billing-card-heading"><div><span className="page-kicker">Precio mensual</span><h3>Valor de suscripción</h3></div><IconReceipt size={18} /></div>
+            <p className="muted">Importe que recibirán los comercios cuando Billing esté activo.</p>
+            <label className="field-label" htmlFor="billing-monthly-price">Precio mensual ({settings.currency})</label>
+            <div className="admin-billing-price-input"><span>{currencySymbol(settings.currency)}</span><input id="billing-monthly-price" className="field-input" inputMode="decimal" value={priceInput} onChange={(event) => setPriceInput(event.target.value)} aria-describedby="billing-price-help" /></div>
+            <p id="billing-price-help" className="form-hint">Monto positivo, con hasta dos decimales.</p>
+            <button className="btn btn-secondary" type="button" disabled={saving !== null} onClick={savePrice}>{saving === "price" ? "Guardando..." : "Guardar precio"}</button>
+          </section>
+
+          <section className="panel admin-billing-card">
+            <div className="admin-billing-card-heading"><div><span className="page-kicker">Inicio de cobros</span><h3>Programación</h3></div><IconCalendar size={18} /></div>
+            <p className="muted">Programá el inicio sin activar cobros ahora. Hora local: {localTimezone}.</p>
+            <label className="field-label" htmlFor="billing-starts-at">Inicio programado</label>
+            <input id="billing-starts-at" className="field-input" type="datetime-local" value={startsAtInput} onChange={(event) => setStartsAtInput(event.target.value)} />
+            <div className="admin-billing-actions"><button className="btn btn-secondary" type="button" disabled={saving !== null} onClick={scheduleBilling}>{saving === "schedule" ? "Guardando..." : "Programar inicio"}</button>{settings.mode === "SCHEDULED" ? <button className="btn btn-ghost" type="button" disabled={saving !== null} onClick={disableBilling}>Cancelar programación</button> : null}</div>
+          </section>
+
+          <section className="panel admin-billing-card admin-billing-mercado-pago">
+            <div className="admin-billing-card-heading"><div><span className="page-kicker">Proveedor</span><h3>Mercado Pago</h3></div><IconCheck size={18} /></div>
+            <dl className="admin-billing-summary"><div><dt>Estado del plan</dt><dd>{plan.label}</dd></div><div><dt>Plan remoto</dt><dd className="admin-billing-plan-id">{plan.planId}</dd></div><div><dt>Precio</dt><dd>{formatBillingMoney(settings.monthlyPrice, settings.currency)}</dd></div><div><dt>Frecuencia</dt><dd>Mensual</dd></div></dl>
+            <p className="form-hint">La verificación consulta el proveedor sólo al confirmar esta acción.</p>
+            <button className="btn btn-secondary" type="button" disabled={saving !== null || !settings.monthlyPrice} onClick={verifyPlan}>{saving === "plan" ? "Verificando..." : settings.mercadoPagoPlanId ? "Verificar plan de Mercado Pago" : "Configurar plan de Mercado Pago"}</button>
+          </section>
+        </div>
+      </section> : null}
     </main>
     <AdminBillingSubscriptionDetailDialog subscription={subscriptionDetail} loading={detailLoading} error={detailError} reconciliationError={reconciliationError} reconciling={reconciling} onClose={() => { setSubscriptionDetail(null); setDetailError(null); setSupportAction(null); setSupportError(null); setReconciliationError(null); }} onSupportAction={(action) => { setSupportError(null); setSupportAction(action); }} onReconcile={() => void observeRemoteSubscription()} />
     {subscriptionDetail && supportAction ? <AdminBillingSupportActionDialog key={supportAction} action={supportAction} subscription={subscriptionDetail} submitting={supportSubmitting} error={supportError} monthlyPrice={settings?.monthlyPrice ?? null} onClose={() => { if (!supportSubmitting) { setSupportAction(null); setSupportError(null); } }} onGrant={grantComplimentary} onRevoke={revokeComplimentary} onManualPayment={registerManualPayment} /> : null}
@@ -339,47 +364,92 @@ function AdminBillingSubscriptionDetailDialog({
   const presentation = summary ? getAdminBillingSubscriptionPresentation(summary) : null;
   const remote = subscription?.subscription;
   const lastReconciliation = subscription?.reconciliation[0];
+  const reconciliationTone = lastReconciliation?.result === "MATCH"
+    ? "success"
+    : lastReconciliation?.result === "MISMATCH"
+      ? "warning"
+      : lastReconciliation?.result === "UNAVAILABLE"
+        ? "danger"
+        : "neutral";
+
   return <div className="modal-backdrop" role="presentation" onClick={onClose}>
     <section className="modal admin-billing-subscription-detail" role="dialog" aria-modal="true" aria-labelledby="admin-billing-subscription-detail-title" onClick={(event) => event.stopPropagation()}>
       <button className="commerce-subscription-dialog-close" type="button" aria-label="Cerrar detalle" onClick={onClose}><IconX size={17} /></button>
       <span className="page-kicker">Detalle y soporte</span>
-      <h2 id="admin-billing-subscription-detail-title">{subscription ? subscription.commerce.name : "Suscripción"}</h2>
+      <div className="admin-billing-detail-heading">
+        <div>
+          <h2 id="admin-billing-subscription-detail-title">{subscription ? subscription.commerce.name : "Suscripción"}</h2>
+          {presentation ? <p>{presentation.statusLabel} · {summary ? getAdminBillingCoverageLabel(summary) : "Sin cobertura"}</p> : null}
+        </div>
+        {presentation ? <MiniBadge tone={summary?.hasCoverage ? "success" : "neutral"} label={presentation.statusLabel} /> : null}
+      </div>
       {loading ? <p className="muted">Cargando detalle…</p> : null}
       {error ? <Alert tone="danger" message={error} /> : null}
-      {subscription && summary && presentation ? <dl className="admin-billing-subscription-detail-list">
-        <div><dt>Commerce ID</dt><dd>{subscription.commerce.id}</dd></div>
-        <div><dt>Estado</dt><dd>{presentation.statusLabel}</dd></div>
-        <div><dt>Cobertura</dt><dd>{getAdminBillingCoverageLabel(summary)}</dd></div>
-        <div><dt>Origen</dt><dd>{presentation.sourceLabel ?? "No disponible"}</dd></div>
-        <div><dt>Inicio de período</dt><dd>{formatAdminBillingDate(summary.periodStart)}</dd></div>
-        <div><dt>Fin de período</dt><dd>{formatAdminBillingDate(summary.periodEnd)}</dd></div>
-        {summary.graceEndsAt ? <div><dt>Fin de gracia</dt><dd>{formatAdminBillingDate(summary.graceEndsAt)}</dd></div> : null}
-        {presentation.cancellationLabel ? <div><dt>Cancelación</dt><dd>{presentation.cancellationLabel}</dd></div> : null}
-        {remote ? <><div><dt>Proveedor</dt><dd>{formatAdminBillingProvider(remote.provider)}</dd></div><div><dt>Estado del proveedor</dt><dd>{remote.providerStatus ?? "No disponible"}</dd></div><div><dt>ID de suscripción</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerSubscriptionId)}</dd></div><div><dt>Referencia externa</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerExternalReference)}</dd></div><div><dt>Actualizado</dt><dd>{formatAdminBillingDate(remote.updatedAt)}</dd></div></> : null}
-      </dl> : null}
-      {subscription && remote?.provider === "mercado_pago" && remote.providerSubscriptionId ? <section className="admin-billing-support-actions" aria-labelledby="admin-billing-reconciliation-title">
-        <div><span className="page-kicker">Conciliación</span><h3 id="admin-billing-reconciliation-title">Estado local y Mercado Pago</h3><p className="muted">La consulta solo compara y registra el resultado. No cambia la suscripción local ni inicia cobros.</p></div>
-        {reconciliationError ? <Alert tone="danger" message={reconciliationError} /> : null}
-        {lastReconciliation ? <dl className="admin-billing-subscription-detail-list admin-billing-reconciliation-list">
-          <div><dt>Última consulta</dt><dd>{formatAdminBillingDate(lastReconciliation.checkedAt)}</dd></div>
-          <div><dt>Resultado</dt><dd>{getReconciliationPresentation(lastReconciliation.result)}</dd></div>
-          <div><dt>Estado local</dt><dd>{lastReconciliation.localProviderStatus ?? lastReconciliation.localStatus}</dd></div>
-          <div><dt>Estado observado</dt><dd>{lastReconciliation.observedStatus ?? "No disponible"}</dd></div>
-          {lastReconciliation.mismatchFields.length ? <div><dt>Diferencias</dt><dd>{lastReconciliation.mismatchFields.map(getReconciliationFieldLabel).join(", ")}</dd></div> : null}
-          {lastReconciliation.result === "UNAVAILABLE" ? <div><dt>Disponibilidad</dt><dd>No pudimos obtener el estado remoto. Volvé a intentar más tarde.</dd></div> : null}
-        </dl> : <p className="muted">Todavía no hay consultas remotas registradas.</p>}
-        <div className="admin-billing-actions"><button className="btn btn-secondary" type="button" disabled={reconciling} onClick={onReconcile}>{reconciling ? "Consultando..." : "Consultar Mercado Pago"}</button></div>
-      </section> : null}
-      {subscription ? <section className="admin-billing-support-actions" aria-labelledby="admin-billing-support-actions-title">
-        <div><span className="page-kicker">Soporte</span><h3 id="admin-billing-support-actions-title">Acciones de soporte</h3><p className="muted">Registrá coberturas administrativas sin modificar la suscripción del proveedor.</p></div>
-        <div className="admin-billing-actions">
-          {subscription.support.activeComplimentary ? <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("revoke")}>Finalizar bonificación</button> : <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("grant")}>Otorgar acceso bonificado</button>}
-          <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("manual")}>Registrar pago manual</button>
+
+      {subscription && summary && presentation ? <div className="admin-billing-detail-grid">
+        <section className="admin-billing-detail-section" aria-labelledby="admin-billing-current-state-title">
+          <div className="admin-billing-detail-section-heading">
+            <span className="page-kicker">Estado actual</span>
+            <h3 id="admin-billing-current-state-title">Cobertura y proveedor</h3>
+          </div>
+          <dl className="admin-billing-subscription-detail-list">
+            <div><dt>Commerce ID</dt><dd>{subscription.commerce.id}</dd></div>
+            <div><dt>Estado</dt><dd>{presentation.statusLabel}</dd></div>
+            <div><dt>Cobertura</dt><dd>{getAdminBillingCoverageLabel(summary)}</dd></div>
+            <div><dt>Origen</dt><dd>{presentation.sourceLabel ?? "No disponible"}</dd></div>
+            <div><dt>Inicio de período</dt><dd>{formatAdminBillingDate(summary.periodStart)}</dd></div>
+            <div><dt>Fin de período</dt><dd>{formatAdminBillingDate(summary.periodEnd)}</dd></div>
+            {summary.graceEndsAt ? <div><dt>Fin de gracia</dt><dd>{formatAdminBillingDate(summary.graceEndsAt)}</dd></div> : null}
+            {presentation.cancellationLabel ? <div><dt>Cancelación</dt><dd>{presentation.cancellationLabel}</dd></div> : null}
+            {remote ? <>
+              <div><dt>Proveedor</dt><dd>{formatAdminBillingProvider(remote.provider)}</dd></div>
+              <div><dt>Estado del proveedor</dt><dd>{remote.providerStatus ?? "No disponible"}</dd></div>
+              <div><dt>ID de suscripción</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerSubscriptionId)}</dd></div>
+              <div><dt>Referencia externa</dt><dd className="admin-billing-plan-id">{truncateOperationalId(remote.providerExternalReference)}</dd></div>
+              <div><dt>Actualizado</dt><dd>{formatAdminBillingDate(remote.updatedAt)}</dd></div>
+            </> : null}
+          </dl>
+        </section>
+
+        <div className="admin-billing-detail-operations">
+          {remote?.provider === "mercado_pago" && remote.providerSubscriptionId ? <section className={`admin-billing-reconciliation-card is-${reconciliationTone}`} aria-labelledby="admin-billing-reconciliation-title">
+            <div className="admin-billing-detail-section-heading">
+              <div>
+                <span className="page-kicker">Conciliación</span>
+                <h3 id="admin-billing-reconciliation-title">Estado local y Mercado Pago</h3>
+              </div>
+              {lastReconciliation ? <MiniBadge tone={reconciliationTone} label={getReconciliationPresentation(lastReconciliation.result)} /> : null}
+            </div>
+            <p className="muted">La consulta solo compara y registra el resultado. No cambia la suscripción local ni inicia cobros.</p>
+            {reconciliationError ? <Alert tone="danger" message={reconciliationError} /> : null}
+            {lastReconciliation ? <dl className="admin-billing-subscription-detail-list admin-billing-reconciliation-list">
+              <div><dt>Última consulta</dt><dd>{formatAdminBillingDate(lastReconciliation.checkedAt)}</dd></div>
+              <div><dt>Resultado</dt><dd>{getReconciliationPresentation(lastReconciliation.result)}</dd></div>
+              <div><dt>Estado local</dt><dd>{lastReconciliation.localProviderStatus ?? lastReconciliation.localStatus}</dd></div>
+              <div><dt>Estado observado</dt><dd>{lastReconciliation.observedStatus ?? "No disponible"}</dd></div>
+              {lastReconciliation.mismatchFields.length ? <div><dt>Diferencias</dt><dd>{lastReconciliation.mismatchFields.map(getReconciliationFieldLabel).join(", ")}</dd></div> : null}
+            </dl> : <p className="muted">Todavía no hay consultas remotas registradas.</p>}
+            {lastReconciliation?.result === "UNAVAILABLE" ? <div className="admin-billing-provider-alert" role="status"><IconAlert size={16} /><span>No pudimos obtener el estado remoto. Es una indisponibilidad del proveedor, no una diferencia de estado.</span></div> : null}
+            <div className="admin-billing-actions"><button className="btn btn-secondary" type="button" disabled={reconciling} onClick={onReconcile}>{reconciling ? "Consultando..." : "Consultar Mercado Pago"}</button></div>
+          </section> : null}
+
+          <section className="admin-billing-support-actions admin-billing-support-card" aria-labelledby="admin-billing-support-actions-title">
+            <div>
+              <span className="page-kicker">Soporte</span>
+              <h3 id="admin-billing-support-actions-title">Acciones de soporte</h3>
+              <p className="muted">Registrá coberturas administrativas sin modificar la suscripción del proveedor.</p>
+            </div>
+            <div className="admin-billing-actions">
+              {subscription.support.activeComplimentary ? <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("revoke")}>Finalizar bonificación</button> : <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("grant")}>Otorgar acceso bonificado</button>}
+              <button className="btn btn-secondary" type="button" onClick={() => onSupportAction("manual")}>Registrar pago manual</button>
+            </div>
+          </section>
         </div>
-      </section> : null}
+      </div> : null}
       <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
     </section>
   </div>;
+
 }
 
 function getReconciliationPresentation(result: string) {
