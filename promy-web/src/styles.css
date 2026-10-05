@@ -13464,3 +13464,69 @@ h1, h2, h3, h4 { color: var(--text); font-weight: 500; letter-spacing: -0.02em; 
   .admin-filter-bar { align-items: stretch; flex-direction: column; }
   .admin-filter-bar-summary { align-self: flex-start; }
 }
+
+/* ============================================
+   ADMIN OPERATIONS — 22C-2
+   Shared table, inspector and pagination structure.
+============================================ */
+.admin-data-table { min-width: 0; }
+.admin-data-table-table { min-width: 720px; }
+.admin-data-table .data-table tbody tr:focus-within,
+.admin-data-table .data-table tbody tr.is-selected { box-shadow: inset 3px 0 0 var(--yellow); }
+
+.admin-data-table-footer {
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface-muted);
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.admin-cell-mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); }
+.admin-cell-clamp { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.admin-inspector { padding: 0; overflow: hidden; }
+.admin-inspector-header { padding: 24px 24px 0; }
+.admin-inspector-content { padding: 0 24px 24px; }
+.admin-inspector .detail-desc { margin-bottom: 16px; }
+.admin-inspector-badges { margin: 0 0 14px; }
+.admin-inspector-switches { margin: 14px 0 16px; }
+.admin-editor-badges { margin-bottom: 12px; }
+.admin-alert-spaced { margin-top: 12px; }
+
+.admin-action-group {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.admin-inspector-content > .admin-action-group {
+  margin: 18px 0 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.admin-definition-list-spaced { margin-top: 12px; }
+.admin-definition-list + .admin-definition-list { margin-top: 12px; }
+.admin-definition-list .detail-row { padding: 10px 0; }
+
+@media (max-width: 1024px) {
+  .detail-layout { grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); }
+  .admin-inspector-header, .admin-inspector-content { padding-right: 20px; padding-left: 20px; }
+}
+
+@media (max-width: 760px) {
+  .detail-layout { grid-template-columns: minmax(0, 1fr); }
+  .detail-card.admin-inspector { position: static; }
+  .admin-pagination { align-items: stretch; flex-direction: column; }
+  .admin-pagination .btn { width: 100%; }
+}

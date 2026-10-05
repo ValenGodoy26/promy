@@ -477,6 +477,85 @@ export function AdminLoadingState({ title, text }: { title: string; text: string
   );
 }
 
+export function AdminDataTable({
+  children,
+  footer,
+  label,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  label?: string;
+}) {
+  return (
+    <div className="table-wrap admin-data-table">
+      <table className="data-table admin-data-table-table" aria-label={label}>
+        {children}
+      </table>
+      {footer ? <div className="admin-data-table-footer">{footer}</div> : null}
+    </div>
+  );
+}
+
+export function AdminPagination({
+  shown,
+  total,
+  label,
+  loading = false,
+  onLoadMore,
+}: {
+  shown: number;
+  total: number;
+  label: string;
+  loading?: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <div className="admin-pagination">
+      <span>{shown} de {total} {label}</span>
+      <button className="btn btn-ghost btn-sm" type="button" disabled={loading} onClick={onLoadMore}>
+        {loading ? "Cargando..." : `Ver más ${label}`}
+      </button>
+    </div>
+  );
+}
+
+export function AdminInspector({
+  kicker,
+  title,
+  description,
+  meta,
+  actions,
+  children,
+}: {
+  kicker: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <aside className="detail-card admin-inspector">
+      <header className="admin-inspector-header">
+        <div className="page-kicker">{kicker}</div>
+        <h2 className="detail-title">{title}</h2>
+        {description ? <div className="detail-desc">{description}</div> : null}
+        {meta ? <div className="admin-inspector-meta">{meta}</div> : null}
+        {actions ? <AdminActionGroup>{actions}</AdminActionGroup> : null}
+      </header>
+      <div className="admin-inspector-content">{children}</div>
+    </aside>
+  );
+}
+
+export function AdminDefinitionList({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`detail-list admin-definition-list ${className}`.trim()}>{children}</div>;
+}
+
+export function AdminActionGroup({ children }: { children: React.ReactNode }) {
+  return <div className="detail-actions admin-action-group">{children}</div>;
+}
+
 export function LoadingBlock(props: { title: string; text: string }) {
   return <AdminLoadingState {...props} />;
 }

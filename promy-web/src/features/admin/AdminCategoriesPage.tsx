@@ -9,6 +9,10 @@ import type { AdminCategoryItem } from "../../types/api";
 import { IconEdit, IconPlus } from "../../components/Icons";
 import {
   Alert,
+  AdminActionGroup,
+  AdminDataTable,
+  AdminDefinitionList,
+  AdminInspector,
   AdminPageFrame,
   DetailRow,
   FilterChips,
@@ -173,8 +177,7 @@ export function AdminCategoriesPage({
           <LoadingBlock title="Cargando categorías" text="Trayendo rubros y métricas de cobertura." />
         ) : (
           <div className="detail-layout">
-            <div className="table-wrap">
-              <table className="data-table">
+            <AdminDataTable label="Categorías operativas">
                 <thead>
                   <tr>
                     <th>Categoria</th>
@@ -221,22 +224,16 @@ export function AdminCategoriesPage({
                     </tr>
                   ) : null}
                 </tbody>
-              </table>
-            </div>
+            </AdminDataTable>
 
-            <aside className="detail-card">
-              <div className="page-kicker">{mode === "edit" ? "Edicion" : "Alta"}</div>
-              <h2 className="detail-title">
-                {mode === "edit" && selected ? selected.name : "Nueva categoría"}
-              </h2>
-              <p className="detail-desc">
-                {mode === "edit" && selected
+            <AdminInspector
+              kicker={mode === "edit" ? "Edicion" : "Alta"}
+              title={mode === "edit" && selected ? selected.name : "Nueva categoría"}
+              description={mode === "edit" && selected
                   ? `${selected.mapReadyCommerceCount} comercios ya estan listos para mapa dentro de este rubro.`
                   : "Creá una categoría cuidando el nombre canónico que va a ordenar el catálogo."}
-              </p>
-
-              {selected && mode === "edit" ? (
-                <div className="stacked-badges" style={{ marginBottom: 14 }}>
+              meta={selected && mode === "edit" ? (
+                <div className="stacked-badges admin-inspector-badges">
                   <MiniBadge
                     tone={selected.isActive ? "success" : "neutral"}
                     label={selected.isActive ? "Activa" : "Inactiva"}
@@ -250,7 +247,8 @@ export function AdminCategoriesPage({
                     }
                   />
                 </div>
-              ) : null}
+              ) : undefined}
+            >
 
               <div className="form-grid">
                 <div className="field">
@@ -281,7 +279,7 @@ export function AdminCategoriesPage({
                 </div>
               </div>
 
-              <div className="stacked-badges" style={{ marginTop: 14, marginBottom: 16 }}>
+              <div className="stacked-badges admin-inspector-switches">
                 <button
                   type="button"
                   aria-pressed={draft.isActive}
@@ -301,15 +299,15 @@ export function AdminCategoriesPage({
               </div>
 
               {selected && mode === "edit" ? (
-                <div className="detail-list" style={{ marginBottom: 16 }}>
+                <AdminDefinitionList className="admin-definition-list-spaced">
                   <DetailRow label="Slug" value={selected.slug} />
                   <DetailRow label="Comercios" value={String(selected.commerceCount)} />
                   <DetailRow label="Aprobados" value={String(selected.approvedCommerceCount)} />
                   <DetailRow label="Mapa listo" value={String(selected.mapReadyCommerceCount)} />
-                </div>
+                </AdminDefinitionList>
               ) : null}
 
-              <div className="modal-footer" style={{ marginTop: 0 }}>
+              <AdminActionGroup>
                 <button
                   className="btn btn-ghost"
                   type="button"
@@ -329,8 +327,8 @@ export function AdminCategoriesPage({
                 >
                   {saving ? "Guardando..." : mode === "edit" ? "Actualizar categoría" : "Crear categoría"}
                 </button>
-              </div>
-            </aside>
+              </AdminActionGroup>
+            </AdminInspector>
           </div>
         )}
       </div>
