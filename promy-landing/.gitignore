@@ -16,8 +16,10 @@ build
 
 # Env
 .env
+.env.release
 .env.local
 .env.*.local
+!.env.release.example
 
 # Logs
 npm-debug.log*

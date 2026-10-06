@@ -1,0 +1,1280 @@
+/* ================================================================
+   📱 MOBILE RESPONSIVE — sólo aplica a ≤ 720px
+   No modifica nada por encima de 720px.
+   Agrega vida, 2 columnas donde hacía falta, y compacta el hero.
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   ANIMACIONES EXCLUSIVAS MOBILE
+   ---------------------------------------------------------------- */
+@keyframes mobilePopIn {
+  0%   { opacity: 0; transform: rotate(var(--base-rot, 0deg)) scale(0.82); }
+  55%  { opacity: 1; transform: rotate(calc(var(--base-rot, 0deg) + 4deg)) scale(1.05); }
+  100% { opacity: 1; transform: rotate(var(--base-rot, 0deg)) scale(1); }
+}
+
+@keyframes mobilePhoneIn {
+  0%   { opacity: 0; transform: rotate(2.5deg) translateY(32px) scale(0.94); }
+  100% { opacity: 1; transform: rotate(2.5deg) translateY(0) scale(1); }
+}
+
+@keyframes mobilePulseBtn {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0.5); }
+  65%  { box-shadow: 0 0 0 16px rgba(255, 49, 49, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0); }
+}
+
+@keyframes mobileCardIn {
+  0%   { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ----------------------------------------------------------------
+   HERO — phone centrado, bigP oculta, stickers reposicionados
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .hero {
+    padding: 86px 0 0 !important;
+  }
+
+  .hero-grid {
+    gap: 20px !important;
+  }
+
+  .hero-title {
+    gap: 6px !important;
+    margin: 14px 0 16px !important;
+  }
+
+  .hero-title-kicker {
+    font-size: clamp(30px, 9vw, 42px) !important;
+    white-space: normal !important;
+    line-height: 1.05 !important;
+  }
+
+  .rotating-word {
+    min-width: 2.8em !important;
+  }
+
+  .hero-title-impact-light {
+    font-size: clamp(34px, 10vw, 46px) !important;
+  }
+
+  .hero-title-impact-strong {
+    font-size: clamp(38px, 11.5vw, 52px) !important;
+  }
+
+  .hero-sub {
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+    margin-bottom: 16px !important;
+  }
+
+  .hero-platforms {
+    gap: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .hero-platforms-label {
+    font-size: 10px !important;
+  }
+
+  .hero-stores {
+    gap: 8px !important;
+  }
+
+  .hero-stores .store-badge {
+    min-width: 118px !important;
+    padding: 10px 14px !important;
+  }
+
+  /* Celular: centrado, no absolute, con entrada suave */
+  .hero-visual {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin-top: 4px !important;
+  }
+
+  .hero-visual > .phone {
+    position: relative !important;
+    inset: auto !important;
+    display: block !important;
+    width: min(280px, 78%) !important;
+    margin: 0 auto !important;
+    right: auto !important;
+    left: auto !important;
+    top: auto !important;
+    transform: rotate(2.5deg) !important;
+    z-index: 3 !important;
+    animation: mobilePhoneIn 650ms 300ms cubic-bezier(0.18, 1.05, 0.22, 1) both !important;
+  }
+
+  /* Ocultar bigP — la animación de peek no tiene sentido en pantalla angosta */
+  .bigP,
+  .bigP.floaty {
+    display: none !important;
+    animation: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Stickers: reubicados alrededor del celular, con entrada pop */
+  .sticker {
+    font-size: 11px !important;
+    padding: 7px 12px !important;
+    border-radius: 14px !important;
+    animation: mobilePopIn 520ms cubic-bezier(0.18, 1.05, 0.22, 1) both !important;
+  }
+
+  .s1 {
+    top: 14px !important;
+    right: auto !important;
+    left: 6px !important;
+    --base-rot: -7deg !important;
+    animation-delay: 500ms !important;
+  }
+
+  .s2 {
+    top: auto !important;
+    bottom: 88px !important;
+    right: 4px !important;
+    left: auto !important;
+    --base-rot: 6deg !important;
+    animation-delay: 750ms !important;
+  }
+
+  .s3 {
+    bottom: 28px !important;
+    left: 6px !important;
+    --base-rot: -4deg !important;
+    animation-delay: 950ms !important;
+  }
+
+  .s5 {
+    top: 14px !important;
+    right: 4px !important;
+    left: auto !important;
+    bottom: auto !important;
+    --base-rot: 3deg !important;
+    animation-delay: 650ms !important;
+  }
+
+  /* Botón primario: pulso doble llamando a la acción */
+  .hero-ctas .btn-primary {
+    animation: mobilePulseBtn 2.4s 1.4s ease-out 2 !important;
+  }
+}
+
+/* Hero V3: composición de producto real en mobile. */
+@media (max-width: 720px) {
+  .hero-product-shot {
+    width: min(378px, 100%) !important;
+    min-height: 412px !important;
+    margin: 0 auto !important;
+  }
+
+  .hero-product-halo {
+    width: 74% !important;
+    transform: translate(12%, 4%) !important;
+    opacity: 0.4 !important;
+  }
+
+  .hero-product-brand {
+    left: -5% !important;
+    top: 2% !important;
+    width: min(176px, 42%) !important;
+    opacity: 0.24 !important;
+    transform: rotate(-10deg) !important;
+  }
+
+  .hero-product-device {
+    width: min(264px, 72%) !important;
+    padding: 7px !important;
+    border-radius: 40px !important;
+    transform: scaleX(0.97) scaleY(1.035) rotate(0.95deg) translateX(1.2%) !important;
+  }
+
+  .hero-product-device::after {
+    inset: 7px !important;
+    border-radius: 33px !important;
+  }
+
+  .hero-product-notch {
+    top: 7px !important;
+    width: 72px !important;
+    height: 15px !important;
+    border-radius: 0 0 10px 10px !important;
+  }
+
+  .hero-product-screen {
+    border-radius: 33px !important;
+  }
+
+  .hero-product-promo {
+    left: auto !important;
+    right: 2% !important;
+    top: 43% !important;
+    width: min(164px, 45%) !important;
+    padding: 3px !important;
+    border-radius: 19px !important;
+    transform: rotate(2deg) translateY(-50%) !important;
+  }
+
+  .hero-product-promo img {
+    border-radius: 16px !important;
+  }
+
+  .hero-product-promo-distance {
+    right: 7px !important;
+    bottom: 7px !important;
+    min-height: 22px !important;
+    padding: 0 8px !important;
+    gap: 5px !important;
+    font-size: 8px !important;
+  }
+
+  .hero-product-distance {
+    display: none !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero-product-shot {
+    min-height: 370px !important;
+  }
+
+  .hero-product-brand {
+    width: min(154px, 39%) !important;
+  }
+
+  .hero-product-device {
+    width: min(236px, 72%) !important;
+  }
+
+  .hero-product-promo {
+    left: auto !important;
+    right: 1% !important;
+    width: min(150px, 46%) !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   STEPS — layout horizontal compacto (ícono izq + texto der)
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .steps {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .step {
+    display: grid !important;
+    grid-template-columns: 52px 1fr !important;
+    grid-template-rows: auto auto !important;
+    column-gap: 14px !important;
+    row-gap: 3px !important;
+    align-items: start !important;
+    padding: 16px 18px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Ocultar número "PASO 01" para no saturar */
+  .step .step-num {
+    display: none !important;
+  }
+
+  /* Ícono: columna 1, centrado verticalmente en 2 filas */
+  .step .step-icon,
+  .step-icon.soft,
+  .step-icon.dark {
+    grid-column: 1 !important;
+    grid-row: 1 / 3 !important;
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 16px !important;
+    margin: 0 !important;
+    align-self: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .step h3 {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    font-size: 16px !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+    font-family: var(--serif) !important;
+  }
+
+  .step p {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    font-size: 13px !important;
+    margin: 0 !important;
+    line-height: 1.42 !important;
+    color: var(--muted) !important;
+  }
+
+  .step-arrow {
+    display: none !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   BENTO BENEFICIOS — 2 columnas, b1 ocupa todo el ancho
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    gap: 12px !important;
+  }
+
+  .b1 {
+    grid-column: 1 / -1 !important;
+    min-height: 190px !important;
+  }
+
+  .b2, .b3, .b4, .b5, .b6, .b7 {
+    grid-column: span 1 !important;
+    min-height: 0 !important;
+  }
+
+  .bcard {
+    padding: 18px !important;
+    border-radius: 22px !important;
+    min-height: 0 !important;
+  }
+
+  .b1 h4 {
+    font-size: clamp(20px, 6vw, 26px) !important;
+  }
+
+  .bcard h4 {
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+  }
+
+  .bcard p {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin-top: 4px !important;
+  }
+
+  .b-big-number {
+    font-size: 38px !important;
+    line-height: 1 !important;
+  }
+
+  .b-big-number.text-word {
+    font-size: 30px !important;
+  }
+
+  .bcard-brand {
+    width: 130px !important;
+    height: 130px !important;
+    right: -18px !important;
+    top: -18px !important;
+  }
+
+  .bcard-media {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .bcard-media-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+
+  .bcard-pill {
+    right: 12px !important;
+    bottom: 12px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   CATEGORÍAS — 2 columnas compactas
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .cats .cat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .cats .cat,
+  .cats .cat-shape-1,
+  .cats .cat-shape-2,
+  .cats .cat-shape-3,
+  .cats .cat-shape-4,
+  .cats .cat-shape-5,
+  .cats .cat-shape-6,
+  .cats .cat-shape-7,
+  .cats .cat-shape-8 {
+    min-height: 158px !important;
+    --tilt: 0deg !important;
+    --shift-y: 0px !important;
+  }
+
+  .cats .cat {
+    padding: 15px 14px 14px !important;
+    gap: 5px !important;
+    border-radius: 22px !important;
+  }
+
+  .cats .cat .cat-icon {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 13px !important;
+    margin: 0 0 6px !important;
+  }
+
+  .cats .cat h4 {
+    font-size: 15px !important;
+    margin: 3px 0 4px !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  .cats .cat p {
+    font-size: 11.5px !important;
+    line-height: 1.33 !important;
+  }
+
+  .cats .cat-sample {
+    font-size: 10px !important;
+    padding: 4px 8px !important;
+    top: 12px !important;
+    right: 12px !important;
+    max-width: calc(100% - 72px) !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   COUNTERS — 3 columnas compactas
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .counters {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .counter {
+    min-height: 0 !important;
+    padding: 16px 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .counter .big,
+  .counter .big.text-stat {
+    font-size: 24px !important;
+    line-height: 1 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .counter .lbl {
+    font-size: 11px !important;
+    margin-top: 6px !important;
+    line-height: 1.3 !important;
+  }
+
+  .live-badge {
+    font-size: 9px !important;
+    margin-bottom: 6px !important;
+  }
+}
+
+.beta-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.beta-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.beta-field {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.beta-field span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.beta-field input,
+.beta-field select {
+  width: 100%;
+  height: 52px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 14px;
+  font: inherit;
+  color: #fff;
+  outline: none;
+}
+
+.beta-field input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.beta-field select option {
+  color: #111;
+}
+
+.beta-field input:focus,
+.beta-field select:focus {
+  border-color: rgba(255, 191, 0, 0.92);
+  box-shadow: 0 0 0 4px rgba(255, 191, 0, 0.16);
+}
+
+.beta-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.beta-form-status {
+  margin: 6px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  border: 1px solid rgba(15, 15, 16, 0.08);
+}
+
+.beta-form-status.success {
+  background: rgba(255, 255, 255, 0.84);
+  color: #1f5133;
+  border-color: rgba(31, 81, 51, 0.18);
+}
+
+.beta-form-status.error {
+  background: rgba(255, 49, 49, 0.08);
+  color: #7c2323;
+  border-color: rgba(255, 49, 49, 0.18);
+}
+
+@media (max-width: 900px) {
+  .beta-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beta-form-actions {
+    align-items: stretch;
+  }
+
+  .beta-form-actions .btn-primary {
+    justify-content: center;
+  }
+}
+
+/* ----------------------------------------------------------------
+   TESTIMONIOS — 1 columna (ya está bien, solo ajustar padding)
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .tm-grid {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .tm {
+    padding: 18px !important;
+    border-radius: 22px !important;
+  }
+
+  .tm p {
+    font-size: 14.5px !important;
+    line-height: 1.46 !important;
+    margin-bottom: 14px !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   MERCH / COMMERCE CTA
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .merch-inner {
+    padding: 24px 22px !important;
+    border-radius: 24px !important;
+    gap: 18px !important;
+  }
+
+  .merch h2 {
+    font-size: clamp(22px, 7vw, 28px) !important;
+    line-height: 1.1 !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   FINAL CTA — ocultar phones flotantes, no sirven en mobile
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .final-phone-float {
+    display: none !important;
+  }
+
+  .final h2 {
+    font-size: clamp(30px, 10vw, 44px) !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   EFECTOS TÁCTILES — feedback visual al tocar (mobile-only)
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .step:active,
+  .bcard:active,
+  .cat:active,
+  .counter:active,
+  .tm:active {
+    transform: scale(0.97) !important;
+    transition: transform 120ms ease !important;
+  }
+
+  .btn-primary:active,
+  .btn-ghost:active,
+  .store-badge:active,
+  .nav-cta:active {
+    transform: scale(0.95) !important;
+    opacity: 0.88 !important;
+    transition: transform 100ms ease, opacity 100ms ease !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   EXTRA PEQUEÑO ≤ 400px — ajustes adicionales
+   ---------------------------------------------------------------- */
+@media (max-width: 400px) {
+  .hero-title-kicker {
+    font-size: 28px !important;
+  }
+
+  .hero-title-impact-light {
+    font-size: 32px !important;
+  }
+
+  .hero-title-impact-strong {
+    font-size: 36px !important;
+  }
+
+  .bento {
+    grid-template-columns: 1fr !important;
+  }
+
+  .b1,
+  .b2, .b3, .b4, .b5, .b6, .b7 {
+    grid-column: 1 !important;
+    min-height: 0 !important;
+  }
+
+  .cats .cat-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .cats .cat,
+  .cats .cat-shape-1,
+  .cats .cat-shape-2,
+  .cats .cat-shape-3,
+  .cats .cat-shape-4,
+  .cats .cat-shape-5,
+  .cats .cat-shape-6,
+  .cats .cat-shape-7,
+  .cats .cat-shape-8 {
+    min-height: 0 !important;
+  }
+
+  .counters {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+
+/* ================================================================
+   PATCH v2 — corrige steps 2×2 y counters más espaciados
+   ================================================================ */
+
+/* Steps: 2 columnas reales con cards verticales compactas */
+@media (max-width: 720px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* Resetear el grid interno que rompía el layout */
+  .step {
+    display: block !important;
+    min-height: 0 !important;
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .step .step-num {
+    display: block !important;
+    font-size: 10px !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 10px !important;
+    color: var(--muted) !important;
+  }
+
+  .step .step-icon,
+  .step-icon.soft,
+  .step-icon.dark {
+    display: grid !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 15px !important;
+    margin: 0 0 12px !important;
+    align-self: auto !important;
+  }
+
+  .step h3 {
+    display: block !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    font-size: 17px !important;
+    line-height: 1.15 !important;
+    margin: 0 0 6px !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .step p {
+    display: block !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    font-size: 12.5px !important;
+    line-height: 1.42 !important;
+    margin: 0 !important;
+  }
+}
+
+/* Counters: "1" arriba full-width, "Real" y "Beta" en 2 columnas */
+@media (max-width: 720px) {
+  .counters {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    margin-bottom: 18px !important;
+  }
+
+  /* "1" (primer counter) ocupa todo el ancho */
+  .counter:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .counter {
+    min-height: 0 !important;
+    padding: 18px 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .counter .big,
+  .counter .big.text-stat {
+    font-size: 28px !important;
+    line-height: 1 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .counter .lbl {
+    font-size: 12px !important;
+    margin-top: 6px !important;
+    line-height: 1.35 !important;
+  }
+
+  .live-badge {
+    font-size: 9px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+
+/* ================================================================
+   REDUCED MOTION — accessibility + low-power fallback
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .reveal,
+  .reveal.in {
+    opacity: 1 !important;
+    transform: translate3d(0, var(--shift-y, 0px), 0) rotate(var(--tilt, 0deg)) !important;
+    transition: none !important;
+  }
+
+  .rotating-word span,
+  .commerce-marquee-track,
+  .blip,
+  .live-badge span,
+  .floaty,
+  .bigP.floaty,
+  .hero-visual > .phone,
+  .sticker,
+  .hero-ctas .btn-primary,
+  .promo-confetti,
+  .konami-logo {
+    animation: none !important;
+  }
+
+  .marker-smear::before,
+  .scribble-word::after {
+    animation: none !important;
+    transform: scaleX(1) rotate(-1deg) !important;
+  }
+
+  .sticker {
+    transition: box-shadow 160ms ease !important;
+  }
+}
+
+/* ----------------------------------------------------------------
+   HERO V2 — product shot estático
+   ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .hero .hero-visual {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    padding: 4px 0 22px !important;
+    margin-top: 6px !important;
+  }
+
+  .hero-product-shot {
+    width: 100%;
+    min-height: 405px;
+  }
+
+  .hero-product-halo {
+    width: 88%;
+    opacity: 0.72;
+    transform: translate(0, 1%);
+  }
+
+  .hero-product-device {
+    width: min(276px, 72%);
+    padding: 8px;
+    border-radius: 45px;
+    transform: rotate(1.8deg);
+    box-shadow:
+      0 30px 56px -30px rgba(15, 15, 16, 0.34),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    animation: mobilePhoneIn 650ms 260ms cubic-bezier(0.18, 1.05, 0.22, 1) both;
+  }
+
+  .hero-product-notch {
+    top: 8px;
+    width: 86px;
+    height: 17px;
+    border-radius: 0 0 12px 12px;
+  }
+
+  .hero-product-screen {
+    border-radius: 37px;
+  }
+
+  .hero-product-callout {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    animation: mobilePopIn 520ms cubic-bezier(0.18, 1.05, 0.22, 1) both;
+  }
+
+  .hero-product-callout--top {
+    top: 18%;
+    left: 7%;
+    animation-delay: 520ms;
+  }
+
+  .hero-product-callout--bottom {
+    right: 5%;
+    bottom: 18%;
+    animation-delay: 720ms;
+  }
+}
+
+/* ================================================================
+   HOW V3 — mobile: cards separadas + conector vertical
+   ================================================================ */
+@media (max-width: 720px) {
+  .how .section-head {
+    margin-bottom: 22px !important;
+  }
+
+  .how .section-head p {
+    margin-top: 18px !important;
+  }
+
+  .how .steps {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    overflow: visible !important;
+  }
+
+  .how .step {
+    min-height: 0 !important;
+    padding: 18px 18px 17px !important;
+    border-radius: 22px !important;
+    transform: none !important;
+  }
+
+  .how .step-node {
+    margin: 2px 0 14px !important;
+  }
+
+  .how .step-icon,
+  .how .step-icon.soft,
+  .how .step-icon.dark,
+  .how .step-icon.final {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 15px !important;
+  }
+
+  .how .step-copy {
+    max-width: none !important;
+  }
+
+  .how .step h3 {
+    margin-bottom: 6px !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+  }
+
+  .how .step p {
+    max-width: 36ch !important;
+    font-size: 12.5px !important;
+    line-height: 1.44 !important;
+  }
+
+  .how .step-connector {
+    display: block !important;
+    top: calc(100% + 1px) !important;
+    left: 34px !important;
+    width: 16px !important;
+    height: 18px !important;
+    transform: none !important;
+  }
+
+  .how .step-connector::before {
+    left: 50% !important;
+    right: auto !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 2px !important;
+    height: 18px !important;
+    transform: translateX(-50%) !important;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(15, 15, 16, 0.22) 0 5px,
+        rgba(15, 15, 16, 0.06) 5px 9px
+      ) !important;
+    background-size: 2px 18px !important;
+    animation: none !important;
+  }
+
+  .how .step-connector::after {
+    left: 50% !important;
+    top: -1px !important;
+    transform: translateX(-50%) !important;
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ================================================================
+   MOBILE FINAL PASS — PROMY pre-lanzamiento
+   Overrides finales después de los parches históricos de este archivo.
+   ================================================================ */
+@media (max-width: 720px) {
+  .container {
+    width: min(100%, calc(100% - 28px)) !important;
+  }
+
+  .nav,
+  .nav.scrolled {
+    inset: 8px 0 auto !important;
+  }
+
+  .nav-inner,
+  .nav.scrolled .nav-inner {
+    width: calc(100% - 18px) !important;
+    min-height: 50px;
+    gap: 10px !important;
+    padding: 7px 8px 7px 11px !important;
+  }
+
+  .nav-logo,
+  .nav.scrolled .nav-logo {
+    gap: 7px !important;
+    font-size: 14px !important;
+  }
+
+  .nav-logo-mark,
+  .nav.scrolled .nav-logo-mark {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  .nav-cta,
+  .nav.scrolled .nav-cta {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+  }
+
+  .hero {
+    padding-top: 82px !important;
+  }
+
+  .hero-ctas {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .hero-ctas a {
+    flex: 1 1 0;
+    min-height: 46px;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+  }
+
+  .hero-platforms {
+    gap: 7px !important;
+  }
+
+  .hero-platform-tags {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 7px !important;
+  }
+
+  .platform-access-tag {
+    min-width: 0;
+    min-height: 34px;
+    justify-content: center;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+
+  .hero-platforms + .subtle {
+    margin-top: 6px !important;
+    max-width: 36ch !important;
+    font-size: 12px !important;
+  }
+
+  .hero .hero-visual {
+    min-height: 410px !important;
+    margin-top: 0 !important;
+    overflow: visible !important;
+  }
+
+  .hero-product-shot {
+    width: min(390px, 100%) !important;
+    min-height: 405px !important;
+  }
+
+  .hero-product-device {
+    width: min(260px, 70%) !important;
+  }
+
+  .hero-product-brand {
+    width: min(176px, 46%) !important;
+    left: 1% !important;
+    top: 7% !important;
+  }
+
+  .hero-product-promo {
+    width: min(154px, 41%) !important;
+    right: 1% !important;
+  }
+
+  .section-head,
+  .showcase .section-head,
+  .faq-head {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .section-head p,
+  .showcase .section-head p,
+  .faq-intro {
+    margin: 0 !important;
+    max-width: 42ch !important;
+    justify-self: start !important;
+  }
+
+  .how .steps {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .how .step {
+    min-height: 0 !important;
+    padding: 18px !important;
+    transform: none !important;
+  }
+
+  .how .step-node {
+    margin: 4px 0 14px !important;
+  }
+
+  .how .step-connector {
+    display: none !important;
+  }
+
+  .interactive-map-shell {
+    gap: 14px !important;
+  }
+
+  .interactive-map {
+    min-height: 360px !important;
+  }
+
+  .interactive-map-panel {
+    padding: 22px !important;
+  }
+
+  .cats-featured-grid,
+  .cats-secondary-grid,
+  .faq-groups {
+    grid-template-columns: 1fr !important;
+  }
+
+  .final-stage {
+    grid-template-columns: 1fr !important;
+  }
+
+  .final-platform-option.selected::after {
+    display: none !important;
+  }
+
+  .site-footer .foot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .site-footer .foot-col--brand {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-logo > span:last-child {
+    display: none !important;
+  }
+
+  .nav-inner,
+  .nav.scrolled .nav-inner {
+    width: calc(100% - 14px) !important;
+  }
+
+  .hero-ctas {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .hero-ctas a {
+    width: 100%;
+  }
+
+  .hero-product-shot {
+    min-height: 365px !important;
+  }
+
+  .hero-product-device {
+    width: min(238px, 72%) !important;
+  }
+
+  .hero-product-promo {
+    width: min(142px, 43%) !important;
+  }
+
+  .site-footer .foot-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .site-footer .foot-col--brand {
+    grid-column: auto !important;
+  }
+}
+
+/* ================================================================
+   MOBILE HARDENING V1 — navegación contextual, categorías y touch
+   ================================================================ */
+@media (max-width: 980px) {
+  .nav-mobile-toggle {
+    display: block !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .nav-inner,
+  .nav.scrolled .nav-inner {
+    gap: 6px !important;
+  }
+
+  .nav-logo {
+    margin-right: auto !important;
+  }
+
+  .nav-cta,
+  .nav.scrolled .nav-cta,
+  .nav-mobile-toggle {
+    min-height: 44px !important;
+  }
+
+  .cats-secondary-grid {
+    display: none !important;
+  }
+
+  .cats-secondary-grid.mobile-expanded {
+    display: grid !important;
+  }
+
+  .cats-mobile-toggle {
+    display: inline-flex !important;
+  }
+
+  .faq-group .faq-entry .faq-item,
+  .faq-contact a,
+  .site-footer a,
+  .foot-bottom-links a {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-cta,
+  .nav.scrolled .nav-cta {
+    padding-inline: 11px !important;
+    font-size: 11.5px !important;
+  }
+
+  .nav-mobile-toggle {
+    width: 42px !important;
+    height: 42px !important;
+    flex-basis: 42px !important;
+  }
+}

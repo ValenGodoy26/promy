@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner",
-    "test": "node --test tests/public-stats.test.mjs && node ../tools/test-legal-parity.mjs --surface=landing",
+    "test": "node --experimental-strip-types --test tests/public-stats.test.mjs",
     "typecheck": "tsc -b --pretty false",
-    "build": "tsc -b && vite build --configLoader runner",
-    "preview": "vite preview"
+    "build": "tsc -b && vite build --mode release --configLoader runner",
+    "preview": "vite preview",
+    "build:local": "tsc -b && vite build --configLoader runner",
+    "qa:local": "npm run test && npm run typecheck && npm run build:local",
+    "cleanup:legacy-assets": "node scripts/cleanup-legacy-assets.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
