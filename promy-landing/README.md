@@ -20,17 +20,19 @@ VITE_API_BASE_URL=http://localhost:4000/api
 VITE_PANEL_BASE_URL=http://localhost:5173
 ```
 
-## Release público
+## CI de desarrollo y release público
 
 La landing separa explícitamente un build local de un build público.
 
-- `npm run build:local`: compila contra las variables locales/LAN del `.env`.
+- `npm run build:local`: compila para desarrollo/PR contra las variables locales/LAN del `.env`. Confirma que la Landing compila, pero **no** representa una aprobación jurídica ni un release público.
 - `npm run build`: build público en modo `release` y **falla** si API/panel usan HTTP, localhost, IP privada/LAN, dominios `.invalid`, datos legales/política de conservación incompletos o si la revisión jurídica no fue marcada como finalizada.
+
+El CI de Pull Requests usa `npm run build:local`. El release/deploy público debe usar `npm run build`.
 
 Para preparar un release:
 
 1. Copiá `.env.release.example` como `.env.release`.
-2. Reemplazá todos los placeholders por URLs HTTPS y datos públicos reales.
+2. Completá las nueve variables con URLs HTTPS y datos públicos reales. Todas las `VITE_*` son públicas y se incluyen en el bundle cliente: no deben contener secretos.
 3. Marcá `VITE_LEGAL_REVIEWED=true` únicamente después de la revisión jurídica final.
 4. Ejecutá:
 

@@ -149,9 +149,6 @@ jobs:
     name: Landing
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      VITE_API_BASE_URL: http://127.0.0.1:4000/api
-      VITE_PANEL_BASE_URL: http://127.0.0.1:5173
     defaults:
       run:
         working-directory: promy-landing
@@ -175,7 +172,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Build
-        run: npm run build
+        run: npm run build:local
 
   mobile:
     name: Mobile

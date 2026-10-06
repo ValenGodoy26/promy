@@ -104,6 +104,11 @@ test("prelaunch metadata does not advertise a published mobile app", () => {
 test("release configuration rejects local or incomplete public settings", async () => {
   const { validatePublicReleaseEnv } = await import("../releaseEnv.ts");
 
+  const missing = validatePublicReleaseEnv({});
+  assert.ok(missing.includes("Falta VITE_API_BASE_URL."));
+  assert.ok(missing.includes("Falta VITE_PANEL_BASE_URL."));
+  assert.ok(missing.includes("VITE_LEGAL_REVIEWED debe ser true después de la revisión jurídica final."));
+
   const invalid = validatePublicReleaseEnv({
     VITE_API_BASE_URL: "http://192.168.1.4:4000/api",
     VITE_PANEL_BASE_URL: "http://localhost:5173",
@@ -129,4 +134,10 @@ test("release configuration rejects local or incomplete public settings", async 
     VITE_LEGAL_REVIEWED: "true",
   });
   assert.deepEqual(valid, []);
+});
+
+test("local build script does not select release mode", () => {
+  const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.doesNotMatch(packageJson.scripts["build:local"], /--mode\s+release/u);
+  assert.match(packageJson.scripts.build, /--mode\s+release/u);
 });
