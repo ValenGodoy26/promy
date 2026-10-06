@@ -1,0 +1,1485 @@
+/* === Editorial / anti-robot polish === */
+.reveal {
+  transform: translate3d(0, calc(24px + var(--shift-y, 0px)), 0) rotate(var(--tilt, 0deg));
+}
+
+.reveal.in {
+  transform: translate3d(0, var(--shift-y, 0px), 0) rotate(var(--tilt, 0deg));
+}
+
+.hero,
+.how,
+.benefits,
+.cats,
+.social,
+.final {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero > .container,
+.how > .container,
+.benefits > .container,
+.cats > .container,
+.social > .container,
+.final > .container {
+  position: relative;
+  z-index: 2;
+}
+
+.hero::after,
+.how::after,
+.benefits::after,
+.cats::after,
+.social::after,
+.final::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.72;
+  background-image: url("/grain.png");
+  background-size: 96px 96px;
+  background-repeat: repeat;
+  z-index: 1;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.44) 0, rgba(255, 255, 255, 0) 26%),
+    radial-gradient(circle at 86% 22%, rgba(255, 49, 49, 0.12) 0, rgba(255, 49, 49, 0) 22%),
+    radial-gradient(circle at 70% 76%, rgba(255, 190, 0, 0.22) 0, rgba(255, 190, 0, 0) 18%),
+    radial-gradient(circle, rgba(15, 15, 16, 0.08) 1.4px, transparent 1.6px),
+    url('/promy-logo.webp');
+  background-size: auto, auto, auto, 26px 26px, 126px 126px;
+  background-position: center, center, center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat;
+}
+
+.hero-copy,
+.hero-visual,
+.section-head,
+.final-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 18px 0 24px;
+  letter-spacing: -0.06em;
+}
+
+.hero-title-kicker {
+  font-size: clamp(40px, 5vw, 76px);
+  font-weight: 460;
+}
+
+.hero-title-impact {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1em;
+  width: fit-content;
+  line-height: 0.88;
+}
+
+.hero-title-impact-light {
+  font-style: italic;
+  color: var(--red);
+  font-weight: 560;
+  font-size: clamp(44px, 6.2vw, 88px);
+}
+
+.hero-title-impact-strong {
+  font-family: var(--display);
+  font-size: clamp(48px, 7vw, 96px);
+  font-weight: 900;
+  letter-spacing: -0.075em;
+  color: var(--ink);
+  text-transform: lowercase;
+}
+
+.marker-smear {
+  isolation: isolate;
+}
+
+.marker-smear::before {
+  content: "";
+  position: absolute;
+  left: -0.18em;
+  right: -0.14em;
+  bottom: 0.02em;
+  height: 0.48em;
+  background: linear-gradient(90deg, rgba(255, 190, 0, 0.22), rgba(255, 190, 0, 0.52), rgba(255, 190, 0, 0.22));
+  border-radius: 999px 80px 70px 999px;
+  transform: rotate(-1.8deg);
+  z-index: -1;
+}
+
+.section-head h2 {
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.h2-soft {
+  font-weight: 420;
+}
+
+.impact-word {
+  font-family: var(--display);
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: -0.065em;
+}
+
+.scribble-word {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+
+.scribble-word::after {
+  content: "";
+  position: absolute;
+  left: -0.05em;
+  right: -0.04em;
+  bottom: -0.08em;
+  height: 0.25em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='24' viewBox='0 0 160 24'%3E%3Cpath d='M4 15 C18 21, 28 6, 41 11 S65 20, 80 11 S108 7, 123 12 S145 20, 156 10' fill='none' stroke='%23ff3131' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.95;
+  z-index: -1;
+}
+
+.steps {
+  align-items: start;
+  gap: 22px;
+}
+
+.step {
+  transform-origin: 50% 28%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.step:nth-child(1) {
+  --tilt: -1.5deg;
+  --shift-y: 0px;
+}
+
+.step:nth-child(2) {
+  --tilt: 1deg;
+  --shift-y: 10px;
+}
+
+.step:nth-child(3) {
+  --tilt: -0.8deg;
+  --shift-y: -6px;
+}
+
+.step:nth-child(4) {
+  --tilt: 1.2deg;
+  --shift-y: 12px;
+}
+
+.step::before,
+.cat::before,
+.counter::before,
+.bcard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.bento {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 104px;
+  gap: 22px;
+}
+
+.bcard {
+  min-height: 0;
+  height: 100%;
+}
+
+.b1 {
+  grid-column: 1 / span 6;
+  grid-row: 1 / span 4;
+  --tilt: -1.15deg;
+}
+
+.b2 {
+  grid-column: 7 / span 6;
+  grid-row: 1 / span 2;
+  --tilt: 0.85deg;
+}
+
+.b3 {
+  grid-column: 7 / span 3;
+  grid-row: 3 / span 2;
+  --tilt: -0.9deg;
+}
+
+.b4 {
+  grid-column: 10 / span 3;
+  grid-row: 3 / span 1;
+  --tilt: 1.05deg;
+}
+
+.b5 {
+  grid-column: 10 / span 3;
+  grid-row: 4 / span 1;
+  --tilt: -0.65deg;
+}
+
+.b6 {
+  grid-column: 1 / span 8;
+  grid-row: 5 / span 2;
+  --tilt: 0.6deg;
+}
+
+.b7 {
+  grid-column: 9 / span 4;
+  grid-row: 5 / span 2;
+  --tilt: -1deg;
+}
+
+.b4,
+.b5 {
+  min-height: 0;
+}
+
+.cats .section-head {
+  margin-bottom: 50px;
+}
+
+.cat-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: 96px;
+  grid-auto-flow: dense;
+  align-items: start;
+}
+
+.cat {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  transform-origin: 50% 50%;
+}
+
+.cat .cat-icon {
+  margin: 0 0 18px;
+}
+
+.cat-shape-1 {
+  grid-column: span 2;
+  grid-row: span 2;
+  --tilt: -1deg;
+}
+
+.cat-shape-2 {
+  grid-column: span 2;
+  grid-row: span 1;
+  --tilt: 1deg;
+  --shift-y: 18px;
+}
+
+.cat-shape-3 {
+  grid-column: span 2;
+  grid-row: span 2;
+  --tilt: -0.8deg;
+  --shift-y: -10px;
+}
+
+.cat-shape-4 {
+  grid-column: span 3;
+  grid-row: span 1;
+  --tilt: 1.15deg;
+  --shift-y: -6px;
+}
+
+.cat-shape-5 {
+  grid-column: span 3;
+  grid-row: span 1;
+  --tilt: -0.7deg;
+  --shift-y: 12px;
+}
+
+.cat-shape-6 {
+  grid-column: span 2;
+  grid-row: span 2;
+  --tilt: 0.95deg;
+  --shift-y: -16px;
+}
+
+.cat-shape-7 {
+  grid-column: span 2;
+  grid-row: span 1;
+  --tilt: -1.1deg;
+}
+
+.cat-shape-8 {
+  grid-column: span 2;
+  grid-row: span 2;
+  --tilt: 0.7deg;
+  --shift-y: 10px;
+}
+
+.counters {
+  display: grid;
+  grid-template-columns: 1.08fr 0.94fr 1fr;
+  align-items: start;
+  gap: 18px;
+}
+
+.counter {
+  min-height: 210px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.counter:nth-child(1) {
+  --tilt: -1.1deg;
+}
+
+.counter:nth-child(2) {
+  --tilt: 0.85deg;
+  --shift-y: 14px;
+}
+
+.counter:nth-child(3) {
+  --tilt: -0.75deg;
+  --shift-y: -8px;
+}
+
+@media (max-width: 1180px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+  }
+
+  .b1,
+  .b2,
+  .b3,
+  .b4,
+  .b5,
+  .b6,
+  .b7 {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 220px;
+  }
+
+  .b1 {
+    min-height: 340px;
+  }
+
+  .cat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+  }
+
+  .cat-shape-1,
+  .cat-shape-2,
+  .cat-shape-3,
+  .cat-shape-4,
+  .cat-shape-5,
+  .cat-shape-6,
+  .cat-shape-7,
+  .cat-shape-8 {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 260px;
+    --shift-y: 0px;
+  }
+
+  .counters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .hero-title-impact {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero::before {
+    background-size: auto, auto, auto, 22px 22px, 96px 96px;
+  }
+
+  .hero-title {
+    gap: 8px;
+  }
+
+  .steps,
+  .cat-grid,
+  .counters {
+    gap: 16px;
+  }
+
+  .step,
+  .cat,
+  .counter,
+  .bcard {
+    --tilt: 0deg;
+    --shift-y: 0px;
+  }
+
+  .counters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* === Ajuste solicitado: hero limpio + subrayado progresivo === */
+.hero::before,
+.hero::after {
+  content: none;
+  display: none;
+  background: none;
+}
+
+.hero {
+  background: linear-gradient(180deg, var(--cream-2) 0%, var(--yellow-soft) 100%);
+}
+
+.marker-smear::before {
+  left: -0.08em;
+  right: -0.08em;
+  bottom: 0.04em;
+  height: 0.34em;
+  opacity: 0.72;
+  transform-origin: left center;
+  transform: scaleX(0) rotate(-1.3deg);
+  animation: markerSweep 760ms 520ms cubic-bezier(0.18, 0.9, 0.2, 1) forwards;
+}
+
+.scribble-word::after {
+  left: -0.02em;
+  right: -0.02em;
+  bottom: -0.02em;
+  height: 0.08em;
+  border-radius: 999px;
+  background-image: none;
+  background: linear-gradient(90deg, rgba(255, 49, 49, 0), rgba(255, 49, 49, 0.92) 12%, rgba(255, 49, 49, 0.92) 88%, rgba(255, 49, 49, 0));
+  opacity: 0.96;
+  transform-origin: left center;
+  transform: scaleX(0) rotate(-1.1deg);
+}
+
+.reveal.in .scribble-word::after,
+.section-head.reveal.in .scribble-word::after {
+  animation: underlineSweep 680ms 180ms cubic-bezier(0.18, 0.9, 0.2, 1) forwards;
+}
+
+@keyframes underlineSweep {
+  0% {
+    transform: scaleX(0) rotate(-1.1deg);
+    opacity: 0;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: scaleX(1) rotate(-1.1deg);
+    opacity: 0.96;
+  }
+}
+
+@keyframes markerSweep {
+  0% {
+    transform: scaleX(0) rotate(-1.3deg);
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.74;
+  }
+
+  100% {
+    transform: scaleX(1) rotate(-1.3deg);
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-smear::before,
+  .scribble-word::after {
+    animation: none !important;
+    transform: scaleX(1) rotate(-1deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .hero::before,
+  .hero::after {
+    content: none;
+    display: none;
+    background: none;
+  }
+}
+
+
+/* === Logo vivo: mirada + parpadeo + P del hero más controlada === */
+.promy-eye-mark {
+  --eye-x: 0px;
+  --eye-y: 0px;
+  overflow: visible;
+  transform-box: fill-box;
+}
+
+.logo-eye-layer {
+  pointer-events: none;
+}
+
+.logo-eye-white {
+  fill: #f3e6cb;
+  stroke: #0f0f10;
+  vector-effect: non-scaling-stroke;
+}
+
+.logo-pupils {
+  transform: translate3d(var(--eye-x), var(--eye-y), 0);
+  transition:
+    transform 90ms linear,
+    opacity 70ms ease;
+}
+
+.logo-pupil {
+  fill: #0f0f10;
+}
+
+.logo-blink-lines {
+  opacity: 0;
+  transition: opacity 70ms ease;
+}
+
+.logo-blink-lines path {
+  fill: none;
+  stroke: #0f0f10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.promy-eye-mark.is-blinking .logo-pupils {
+  opacity: 0;
+}
+
+.promy-eye-mark.is-blinking .logo-blink-lines {
+  opacity: 1;
+}
+
+.hero-visual {
+  overflow: visible;
+}
+
+.bigP {
+  width: min(560px, 82%);
+  top: 61%;
+  left: 84%;
+  z-index: 1;
+  opacity: 0.96;
+  pointer-events: none;
+  filter: drop-shadow(0 34px 54px rgba(255, 49, 49, 0.16));
+}
+
+.bigP .logo-eye-layer {
+  opacity: 0.96;
+}
+
+@keyframes bigPFloat {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translate3d(0, 0, 0) rotate(-3.4deg);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translate3d(0, -5px, 0) rotate(-2.9deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .bigP {
+    width: min(520px, 78%);
+    left: 78%;
+    top: 57%;
+    opacity: 0.42;
+  }
+}
+
+@media (max-width: 720px) {
+  .bigP {
+    width: 82%;
+    left: 82%;
+    top: 54%;
+    opacity: 0.24;
+  }
+}
+
+.logo-eye-white,
+.logo-blink-lines path {
+  vector-effect: none;
+}
+
+/* === Ajuste P hero: aparece una vez, queda fija y pestañando === */
+.bigP.floaty {
+  animation: promyPeekIn 900ms cubic-bezier(0.18, 1.05, 0.22, 1) both !important;
+}
+
+.bigP {
+  width: min(430px, 68%) !important;
+  top: 41% !important;
+  left: 33% !important;
+  z-index: 2 !important;
+  opacity: 1 !important;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  filter: drop-shadow(0 34px 54px rgba(255, 49, 49, 0.14));
+}
+
+.bigP .logo-eye-layer {
+  opacity: 1;
+}
+
+@keyframes promyPeekIn {
+  0% {
+    opacity: 0;
+    transform: translate(-36%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-5deg) scale(1);
+  }
+}
+
+.promy-eye-mark.is-blinking .logo-pupils {
+  opacity: 0;
+}
+
+.promy-eye-mark.is-blinking .logo-blink-lines {
+  opacity: 1;
+}
+
+.logo-blink-lines {
+  transition: opacity 80ms ease;
+}
+
+.logo-pupils {
+  transition:
+    transform 80ms linear,
+    opacity 80ms ease;
+}
+
+@media (max-width: 980px) {
+  .bigP {
+    width: min(380px, 62%) !important;
+    top: 35% !important;
+    left: 28% !important;
+    opacity: 0.92 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .bigP {
+    width: 58% !important;
+    top: 30% !important;
+    left: 24% !important;
+    opacity: 0.84 !important;
+  }
+}
+
+/* === Fix final: P visible fija + pestañeo real sobre PNG === */
+.promy-eye-mark--square {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.promy-logo-live {
+  --eye-x: 0px;
+  --eye-y: 0px;
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 790 / 971;
+  overflow: visible;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.promy-logo-live-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.live-eye,
+.live-blink {
+  position: absolute;
+  pointer-events: none;
+}
+
+.live-eye {
+  z-index: 2;
+  top: 13.3%;
+  background: #f3e6cb;
+  border: max(3px, 0.9vw) solid #0f0f10;
+  border-radius: 999px;
+  overflow: hidden;
+  transform-origin: center;
+  transition: transform 90ms ease;
+}
+
+.live-eye-left {
+  left: 14.3%;
+  width: 16.4%;
+  height: 14.2%;
+  transform: rotate(-5deg) scaleY(1);
+}
+
+.live-eye-right {
+  left: 32.2%;
+  width: 18%;
+  height: 14.5%;
+  transform: rotate(3deg) scaleY(1);
+}
+
+.live-pupil {
+  position: absolute;
+  left: 20%;
+  top: 22%;
+  width: 49%;
+  height: 58%;
+  border-radius: 999px;
+  background: #0f0f10;
+  transform: translate3d(var(--eye-x), var(--eye-y), 0);
+  transition:
+    transform 80ms linear,
+    opacity 70ms ease;
+}
+
+.live-eye-right .live-pupil {
+  left: 18%;
+}
+
+.live-blink {
+  z-index: 3;
+  opacity: 0;
+  top: 19.9%;
+  height: max(4px, 0.8vw);
+  border-radius: 999px;
+  background: #0f0f10;
+  transition: opacity 70ms ease;
+}
+
+.live-blink-left {
+  left: 16.8%;
+  width: 13%;
+  transform: rotate(-4deg);
+}
+
+.live-blink-right {
+  left: 35%;
+  width: 14%;
+  transform: rotate(3deg);
+}
+
+.promy-logo-live.is-blinking .live-eye {
+  transform: scaleY(0.08);
+}
+
+.promy-logo-live.is-blinking .live-eye-left {
+  transform: rotate(-5deg) scaleY(0.08);
+}
+
+.promy-logo-live.is-blinking .live-eye-right {
+  transform: rotate(3deg) scaleY(0.08);
+}
+
+.promy-logo-live.is-blinking .live-pupil {
+  opacity: 0;
+}
+
+.promy-logo-live.is-blinking .live-blink {
+  opacity: 1;
+}
+
+.hero-visual {
+  overflow: visible;
+}
+
+.bigP.floaty {
+  animation: promyPeekIn 900ms cubic-bezier(0.18, 1.05, 0.22, 1) both !important;
+}
+
+.bigP {
+  position: absolute !important;
+  width: min(285px, 44%) !important;
+  top: 28% !important;
+  left: 47% !important;
+  z-index: 7 !important;
+  opacity: 1 !important;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  filter: drop-shadow(0 24px 38px rgba(255, 49, 49, 0.16));
+}
+
+@keyframes promyPeekIn {
+  0% {
+    opacity: 0;
+    transform: translate(-60%, -52%) rotate(-12deg) scale(0.92);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-7deg) scale(1);
+  }
+}
+
+@media (max-width: 980px) {
+  .bigP {
+    width: min(240px, 42%) !important;
+    top: 24% !important;
+    left: 40% !important;
+  }
+
+  .live-eye {
+    border-width: max(2px, 0.7vw);
+  }
+}
+
+@media (max-width: 720px) {
+  .bigP {
+    width: 42% !important;
+    top: 22% !important;
+    left: 34% !important;
+  }
+}
+
+/* === Ajuste final: P peek detrás del celular + hero compacto === */
+.hero {
+  padding: 104px 0 44px !important;
+}
+
+.hero-visual {
+  min-height: 540px !important;
+  overflow: visible;
+}
+
+.promy-eye-mark--plain,
+.promy-eye-mark--square {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.hero-visual > .phone {
+  width: min(360px, 78%) !important;
+  top: 2px !important;
+  right: 56px !important;
+  z-index: 3 !important;
+}
+
+.bigP.floaty {
+  animation: promyPeekBehindPhone 5.4s 0.45s cubic-bezier(0.18, 0.86, 0.22, 1) forwards !important;
+}
+
+.bigP {
+  position: absolute !important;
+  width: min(375px, 62%) !important;
+  top: 43% !important;
+  left: 58% !important;
+  z-index: 2 !important;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 30px 45px rgba(255, 49, 49, 0.16));
+}
+
+@keyframes promyPeekBehindPhone {
+  0% {
+    opacity: 0;
+    transform: translate(4%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  16% {
+    opacity: 1;
+    transform: translate(-54%, -50%) rotate(-6deg) scale(1);
+  }
+
+  68% {
+    opacity: 1;
+    transform: translate(-54%, -50%) rotate(-6deg) scale(1);
+  }
+
+  90% {
+    opacity: 1;
+    transform: translate(2%, -50%) rotate(-8deg) scale(0.97);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(4%, -50%) rotate(-8deg) scale(0.96);
+  }
+}
+
+@media (max-width: 1180px) {
+  .hero-visual {
+    min-height: 500px !important;
+  }
+
+  .hero-visual > .phone {
+    width: min(340px, 76%) !important;
+    right: 42px !important;
+  }
+
+  .bigP {
+    width: min(330px, 58%) !important;
+    left: 58% !important;
+    top: 40% !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .hero {
+    padding-bottom: 52px !important;
+  }
+
+  .hero-visual {
+    min-height: 440px !important;
+    padding-top: 12px !important;
+  }
+
+  .hero-visual > .phone {
+    width: min(330px, 72%) !important;
+    right: 20px !important;
+  }
+
+  .bigP {
+    width: min(300px, 54%) !important;
+    left: 56% !important;
+    top: 38% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero {
+    padding: 112px 0 42px !important;
+  }
+
+  .hero-visual {
+    min-height: 420px !important;
+  }
+
+  .hero-visual > .phone {
+    width: 76% !important;
+    right: 0 !important;
+  }
+
+  .bigP {
+    width: 56% !important;
+    left: 52% !important;
+    top: 36% !important;
+  }
+}
+
+/* === Fix limpio: P sin pestañeo, peek controlado y celular compacto === */
+.promy-eye-mark--plain,
+.promy-eye-mark--square {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Por si quedaron reglas anteriores del intento de pestañeo */
+.logo-eye-layer,
+.logo-eye-white,
+.logo-pupils,
+.logo-pupil,
+.logo-blink-lines,
+.live-eye,
+.live-pupil,
+.live-blink {
+  display: none !important;
+}
+
+.hero {
+  padding: 100px 0 36px !important;
+}
+
+.hero-visual {
+  min-height: 500px !important;
+  overflow: visible !important;
+}
+
+.hero-visual > .phone {
+  width: min(338px, 72%) !important;
+  top: 4px !important;
+  right: 72px !important;
+  z-index: 4 !important;
+}
+
+/* La P ahora queda detrás del teléfono, sale un rato y vuelve a esconderse bien */
+.bigP.floaty {
+  animation: promyPeekClean 4.8s 0.25s cubic-bezier(0.18, 0.86, 0.22, 1) forwards !important;
+}
+
+.bigP {
+  position: absolute !important;
+  width: min(310px, 50%) !important;
+  top: 36% !important;
+  left: 62% !important;
+  z-index: 2 !important;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 26px 42px rgba(255, 49, 49, 0.14));
+  transform: translate(-36%, -50%) rotate(-8deg) scale(0.98);
+}
+
+@keyframes promyPeekClean {
+  0% {
+    opacity: 0;
+    transform: translate(-34%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  8% {
+    opacity: 1;
+    transform: translate(-34%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translate(-76%, -50%) rotate(-6deg) scale(1);
+  }
+
+  66% {
+    opacity: 1;
+    transform: translate(-76%, -50%) rotate(-6deg) scale(1);
+  }
+
+  84% {
+    opacity: 1;
+    transform: translate(-34%, -50%) rotate(-8deg) scale(0.97);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-34%, -50%) rotate(-8deg) scale(0.96);
+  }
+}
+
+@media (max-width: 1180px) {
+  .hero-visual {
+    min-height: 470px !important;
+  }
+
+  .hero-visual > .phone {
+    width: min(320px, 70%) !important;
+    right: 54px !important;
+  }
+
+  .bigP {
+    width: min(285px, 48%) !important;
+    left: 61% !important;
+    top: 34% !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .hero {
+    padding-bottom: 44px !important;
+  }
+
+  .hero-visual {
+    min-height: 410px !important;
+    padding-top: 10px !important;
+  }
+
+  .hero-visual > .phone {
+    width: min(310px, 68%) !important;
+    right: 26px !important;
+  }
+
+  .bigP {
+    width: min(260px, 46%) !important;
+    left: 60% !important;
+    top: 32% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero {
+    padding: 112px 0 38px !important;
+  }
+
+  .hero-visual {
+    min-height: 390px !important;
+  }
+
+  .hero-visual > .phone {
+    width: 70% !important;
+    right: 4px !important;
+  }
+
+  .bigP {
+    width: 45% !important;
+    left: 58% !important;
+    top: 31% !important;
+  }
+}
+
+/* === Fix definitivo: P bien escondida/asomada, sin tocar contenido del celular === */
+/* Vuelvo el celular del hero a sus medidas base para no seguir deformándolo. */
+.hero-visual > .phone {
+  width: min(420px, 90%) !important;
+  top: 10px !important;
+  right: 20px !important;
+  z-index: 4 !important;
+}
+
+/* Mantengo el hero apenas más controlado, pero sin cambiar el celular. */
+.hero-visual {
+  min-height: 590px !important;
+  overflow: visible !important;
+}
+
+/*
+  La P:
+  - queda detrás del celular;
+  - sale bastante, no apenas;
+  - permanece visible unos segundos;
+  - vuelve a esconderse con opacity + visibility para que no quede fantasma.
+*/
+.bigP.floaty {
+  animation: promyPeekProperly 5.8s 0.35s cubic-bezier(0.18, 0.86, 0.22, 1) forwards !important;
+}
+
+.bigP {
+  position: absolute !important;
+  width: min(345px, 56%) !important;
+  top: 35% !important;
+  left: 68% !important;
+  z-index: 2 !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  filter: drop-shadow(0 28px 44px rgba(255, 49, 49, 0.14));
+  transform: translate(-28%, -50%) rotate(-7deg) scale(0.96);
+}
+
+@keyframes promyPeekProperly {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-28%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  8% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-28%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  24% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-118%, -50%) rotate(-6deg) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-118%, -50%) rotate(-6deg) scale(1);
+  }
+
+  88% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-28%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-28%, -50%) rotate(-8deg) scale(0.96);
+  }
+}
+
+/* Si todavía se ve poco, este bloque es el punto fino: más negativo = asoma más. */
+@media (max-width: 1180px) {
+  .hero-visual {
+    min-height: 560px !important;
+  }
+
+  .bigP {
+    width: min(330px, 54%) !important;
+    top: 34% !important;
+    left: 67% !important;
+  }
+
+  @keyframes promyPeekProperly {
+    0% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-26%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    8% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-26%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    24% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-124%, -50%) rotate(-6deg) scale(1);
+    }
+
+    70% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-124%, -50%) rotate(-6deg) scale(1);
+    }
+
+    88% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-26%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    100% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-26%, -50%) rotate(-8deg) scale(0.96);
+    }
+  }
+}
+
+@media (max-width: 980px) {
+  .hero-visual {
+    min-height: 520px !important;
+  }
+
+  .hero-visual > .phone {
+    width: min(420px, 100%) !important;
+    top: 10px !important;
+    right: 0 !important;
+  }
+
+  .bigP {
+    width: min(310px, 58%) !important;
+    top: 32% !important;
+    left: 63% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-visual {
+    min-height: 460px !important;
+  }
+
+  .bigP {
+    width: 58% !important;
+    top: 31% !important;
+    left: 61% !important;
+  }
+}
+
+/* === Ajuste final fino: P asoma más, se oculta completa y stickers arriba === */
+/* No toco medidas/contenido del celular: solo capas, P y z-index de stickers. */
+.hero-visual {
+  overflow: visible !important;
+}
+
+/* El teléfono queda por encima de la P */
+.hero-visual > .phone {
+  z-index: 4 !important;
+}
+
+/* Los carteles vuelven a quedar por encima del celular */
+.hero-visual .sticker,
+.hero-visual .s1,
+.hero-visual .s2,
+.hero-visual .s3,
+.hero-visual .s5 {
+  z-index: 8 !important;
+}
+
+.hero-visual .sticker.dragging {
+  z-index: 10 !important;
+}
+
+/* La P: detrás del celular, asoma más y desaparece sin dejar resto del lado derecho */
+.bigP.floaty {
+  animation: promyPeekFinal 5.7s 0.35s cubic-bezier(0.18, 0.86, 0.22, 1) forwards !important;
+}
+
+.bigP {
+  position: absolute !important;
+  width: min(355px, 58%) !important;
+  top: 34% !important;
+  left: 68% !important;
+  z-index: 2 !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  filter: drop-shadow(0 28px 44px rgba(255, 49, 49, 0.14));
+  transform: translate(-22%, -50%) rotate(-8deg) scale(0.96);
+}
+
+@keyframes promyPeekFinal {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-22%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  8% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-22%, -50%) rotate(-8deg) scale(0.96);
+  }
+
+  18% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-148%, -50%) rotate(-6deg) scale(1);
+  }
+
+  72% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-148%, -50%) rotate(-6deg) scale(1);
+  }
+
+  /* Fade rápido antes de volver atrás para que no se vea escapando por la derecha */
+  82% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-148%, -50%) rotate(-6deg) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-22%, -50%) rotate(-8deg) scale(0.96);
+  }
+}
+
+@media (max-width: 1180px) {
+  .bigP {
+    width: min(340px, 56%) !important;
+    top: 34% !important;
+    left: 67% !important;
+  }
+
+  @keyframes promyPeekFinal {
+    0% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-20%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    8% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-20%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    18% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-156%, -50%) rotate(-6deg) scale(1);
+    }
+
+    72% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-156%, -50%) rotate(-6deg) scale(1);
+    }
+
+    82% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-156%, -50%) rotate(-6deg) scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-20%, -50%) rotate(-8deg) scale(0.96);
+    }
+  }
+}
+
+@media (max-width: 980px) {
+  .bigP {
+    width: min(320px, 60%) !important;
+    top: 32% !important;
+    left: 63% !important;
+  }
+
+  @keyframes promyPeekFinal {
+    0%,
+    8% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-18%, -50%) rotate(-8deg) scale(0.96);
+    }
+
+    18%,
+    72% {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-150%, -50%) rotate(-6deg) scale(1);
+    }
+
+    82%,
+    100% {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-18%, -50%) rotate(-8deg) scale(0.96);
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .bigP {
+    width: 60% !important;
+    top: 31% !important;
+    left: 61% !important;
+  }
+}
