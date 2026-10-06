@@ -49,6 +49,8 @@ jobs:
         run: npx prisma validate
       - name: Verify operational gates
         run: node ../tools/verify-operational-gates.mjs ..
+      - name: Verify staging operation preparation
+        run: node ../tools/operations/test-operations.mjs
 
   api-integration:
     name: API Integration
