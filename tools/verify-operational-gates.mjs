@@ -58,4 +58,25 @@ for (const gate of [
   if (!workflow.includes(gate)) throw new Error(`CI gate missing: ${gate}`);
 }
 
+for (const operationalAsset of [
+  "docs/operations/STAGING_DEPLOY.md",
+  "docs/operations/ROLLBACK.md",
+  "docs/operations/INCIDENT_RESPONSE.md",
+  "docs/operations/BACKUP_RESTORE.md",
+  "docs/operations/STAGING_SMOKE.md",
+  "docs/operations/templates/api-staging.env.example",
+  "tools/operations/staging-preflight.mjs",
+  "tools/operations/staging-smoke.mjs",
+  "tools/operations/staging-backup.mjs",
+  "tools/operations/staging-restore.mjs",
+]) {
+  if (!fs.existsSync(path.join(root, operationalAsset))) {
+    throw new Error(`Staging operational asset missing: ${operationalAsset}`);
+  }
+}
+
+if (!workflow.includes("Verify staging operation preparation")) {
+  throw new Error("CI gate missing: Verify staging operation preparation");
+}
+
 console.log("[operational-gates] PASS");
