@@ -1,4 +1,125 @@
-export type UserRole = "ADMIN" | "CLIENT" | "COMMERCE";
+export type UserRole = "ADMIN" | "SUPER_ADMIN" | "CLIENT" | "COMMERCE";
+
+export type BillingMode = "OFF" | "SCHEDULED" | "ON";
+
+export type AdminBillingSettings = {
+  id: number;
+  mode: BillingMode;
+  billingStartsAt: string | null;
+  monthlyPrice: string | null;
+  currency: string;
+  mercadoPagoPlanId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminBillingSettingsResponse = {
+  ok: boolean;
+  settings: AdminBillingSettings;
+};
+
+export type AdminBillingSubscriptionFilter =
+  | "ALL"
+  | "BETA"
+  | "ACTIVE"
+  | "PENDING_PAYMENT"
+  | "PAST_DUE"
+  | "SUSPENDED"
+  | "COMPLIMENTARY"
+  | "CANCELLED";
+
+export type AdminBillingCommerceSubscription = {
+  commerce: { id: number; name: string };
+  status: "BETA_FREE" | "PENDING_PAYMENT" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED" | "NO_COVERAGE" | string;
+  hasCoverage: boolean;
+  coverageSource: "BETA_FREE" | "MERCADO_PAGO" | "COMPLIMENTARY" | "MANUAL" | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  graceEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  provider: string | null;
+  providerStatus: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminBillingSubscriptionsResponse = {
+  ok: boolean;
+  subscriptions: AdminBillingCommerceSubscription[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
+export type AdminBillingSubscriptionDetailResponse = {
+  ok: boolean;
+  subscription: {
+    commerce: { id: number; name: string };
+    summary: AdminBillingCommerceSubscription;
+    support: {
+      activeComplimentary: {
+        id: number;
+        startsAt: string;
+        endsAt: string | null;
+        reason: string;
+      } | null;
+    };
+    reconciliation: Array<{
+      id: number;
+      result: "MATCH" | "MISMATCH" | "UNAVAILABLE" | string;
+      mismatchFields: string[];
+      localStatus: string;
+      localProviderStatus: string | null;
+      observedStatus: string | null;
+      observedProviderPlanId: string | null;
+      providerErrorCode: string | null;
+      checkedAt: string;
+    }>;
+    subscription: {
+      status: string;
+      provider: string | null;
+      providerStatus: string | null;
+      providerSubscriptionId: string | null;
+      providerExternalReference: string | null;
+      currentPeriodStart: string | null;
+      currentPeriodEnd: string | null;
+      graceEndsAt: string | null;
+      cancelAtPeriodEnd: boolean;
+      cancelRequestedAt: string | null;
+      cancelledAt: string | null;
+      updatedAt: string;
+    } | null;
+  };
+};
+
+export type AdminBillingReconciliationResponse = {
+  ok: boolean;
+  reconciliation: {
+    id: number;
+    result: "MATCH" | "MISMATCH" | "UNAVAILABLE" | string;
+    mismatchFields: string | null;
+    providerErrorCode: string | null;
+    checkedAt: string;
+  };
+};
+
+export type AdminBillingSupportActionResponse = {
+  ok: boolean;
+  duplicate?: boolean;
+  grant?: {
+    id: number;
+    source: "COMPLIMENTARY" | string;
+    startsAt: string;
+    endsAt: string | null;
+  };
+  payment?: {
+    id: number;
+    source: "MANUAL" | string;
+    amount: string;
+    currency: string;
+    periodStart: string;
+    periodEnd: string;
+  };
+};
 export type UserStatus = "ACTIVE" | "BLOCKED" | "PENDING" | string;
 
 export type AuthUser = {
@@ -416,6 +537,38 @@ export type CommerceStatistics = {
 };
 
 export type CommerceStatisticsResponse = { ok: boolean; statistics: CommerceStatistics };
+
+export type CommerceSubscription = {
+  billingMode: string;
+  billingStartsAt: string | null;
+  monthlyPrice: string | null;
+  currency: string | null;
+  status: string;
+  hasCoverage: boolean;
+  coverageSource: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  graceEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  canCreatePromotion: boolean;
+  canPublishPromotion: boolean;
+  canValidateExistingRedemption: boolean;
+  needsPayment: boolean;
+};
+
+export type CommerceSubscriptionResponse = {
+  ok: boolean;
+  subscription: CommerceSubscription;
+};
+
+export type CommerceSubscriptionEnrollmentResponse = {
+  ok: boolean;
+  enrollment: {
+    duplicate: boolean;
+    status: string;
+    initPoint: string | null;
+  };
+};
 
 export type CommerceValidateRedemptionResponse = {
   ok: boolean;

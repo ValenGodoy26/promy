@@ -10,6 +10,7 @@ import {
   IconShield,
   IconStore,
   IconTag,
+  IconSettings,
 } from "../../components/Icons";
 import { useRealtimeVersion } from "../../lib/realtime";
 import {
@@ -19,7 +20,7 @@ import {
   AdminDashboardPage,
   AdminPromotionsPage,
   AdminBetaRequestsPage,
-  type AdminTab,
+  AdminBillingPage,
 } from "./AdminSections";
 
 export default function AdminPanel() {
@@ -27,19 +28,20 @@ export default function AdminPanel() {
   const realtimeVersion = useRealtimeVersion({
     session,
     withSession,
-    enabled: session?.user.role === "ADMIN",
+    enabled: session?.user.role === "ADMIN" || session?.user.role === "SUPER_ADMIN",
   });
 
-  const navLinks: Array<AdminTab & { icon: ReactNode }> = [
+  const isSuperAdmin = session?.user.role === "SUPER_ADMIN";
+
+  const navLinks: Array<{ to: string; label: string; end?: boolean; icon: ReactNode }> = [
     { to: "/admin", label: "Dashboard", icon: <IconDashboard size={16} />, end: true },
     { to: "/admin/commerces", label: "Comercios", icon: <IconStore size={16} /> },
     { to: "/admin/categories", label: "Categorías", icon: <IconMapPin size={16} /> },
     { to: "/admin/promotions", label: "Promociones", icon: <IconTag size={16} /> },
     { to: "/admin/beta", label: "Solicitudes", icon: <IconReceipt size={16} /> },
+    ...(isSuperAdmin ? [{ to: "/admin/billing", label: "Billing", icon: <IconSettings size={16} /> }] : []),
     { to: "/admin/audit", label: "Auditoría", icon: <IconShield size={16} /> },
   ];
-  const headerTabs: AdminTab[] = navLinks.map(({ to, label, end }) => ({ to, label, end }));
-
   const userInitial = session?.user.fullName?.[0]?.toUpperCase() ?? "A";
 
   return (
@@ -96,27 +98,31 @@ export default function AdminPanel() {
         <Routes>
           <Route
             index
-            element={<AdminDashboardPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminDashboardPage realtimeVersion={realtimeVersion} />}
           />
           <Route
             path="commerces"
-            element={<AdminCommercesPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminCommercesPage realtimeVersion={realtimeVersion} />}
           />
           <Route
             path="categories"
-            element={<AdminCategoriesPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminCategoriesPage realtimeVersion={realtimeVersion} />}
           />
           <Route
             path="promotions"
-            element={<AdminPromotionsPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminPromotionsPage realtimeVersion={realtimeVersion} />}
           />
           <Route
             path="beta"
-            element={<AdminBetaRequestsPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminBetaRequestsPage realtimeVersion={realtimeVersion} />}
+          />
+          <Route
+            path="billing"
+            element={isSuperAdmin ? <AdminBillingPage /> : <Navigate to="/admin" replace />}
           />
           <Route
             path="audit"
-            element={<AdminAuditPage tabs={headerTabs} realtimeVersion={realtimeVersion} />}
+            element={<AdminAuditPage realtimeVersion={realtimeVersion} />}
           />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>

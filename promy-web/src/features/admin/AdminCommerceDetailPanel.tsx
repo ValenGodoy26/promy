@@ -3,6 +3,8 @@ import type { AdminAuditLogItem, AdminCommerceItem } from "../../types/api";
 import { IconCheck, IconPause, IconX } from "../../components/Icons";
 import {
   Alert,
+  AdminDefinitionList,
+  AdminInspector,
   AuditTimelineCard,
   DetailRow,
   MiniBadge,
@@ -32,14 +34,11 @@ export function AdminCommerceDetailPanel({
   const approvalBlockingFields = getApprovalBlockingFields(selected);
 
   return (
-    <aside className="detail-card">
-      <div className="page-kicker">Detalle del comercio</div>
-      <h2 className="detail-title">{selected.name}</h2>
-      <p className="detail-desc">
-        {selected.shortDescription || selected.description || "Sin descripcion cargada."}
-      </p>
-
-      <div className="stacked-badges" style={{ marginBottom: 14 }}>
+    <AdminInspector
+      kicker="Detalle del comercio"
+      title={selected.name}
+      description={selected.shortDescription || selected.description || "Sin descripcion cargada."}
+      meta={<div className="stacked-badges admin-inspector-badges">
         <MiniBadge
           tone={readiness.tone}
           label={readiness.label}
@@ -52,9 +51,9 @@ export function AdminCommerceDetailPanel({
               : `${selected.readiness.missingFields.length} faltantes`
           }
         />
-      </div>
-
-      <div className="detail-actions">
+      </div>}
+      actions={
+        <>
         <button className="btn btn-primary btn-sm" type="button" onClick={() => onModerate("APPROVED")}>
           <IconCheck size={13} /> Aprobar
         </button>
@@ -64,9 +63,11 @@ export function AdminCommerceDetailPanel({
         <button className="btn btn-ghost btn-sm" type="button" onClick={() => onModerate("INACTIVE")}>
           <IconPause size={13} /> Inactivar
         </button>
-      </div>
+        </>
+      }
+    >
 
-      <div className="detail-list">
+      <AdminDefinitionList>
         <DetailRow label="Estado" value={getStatusLabel(selected.status)} />
         <DetailRow label="Owner" value={`${selected.owner.fullName} · ${selected.owner.email}`} />
         <DetailRow
@@ -82,9 +83,9 @@ export function AdminCommerceDetailPanel({
           label="Observacion"
           value={selected.moderationNote || "Sin observaciones de moderacion."}
         />
-      </div>
+      </AdminDefinitionList>
 
-      <div className="detail-list" style={{ marginTop: 12 }}>
+      <AdminDefinitionList className="admin-definition-list-spaced">
         <DetailRow
           label="Mapa"
           value={
@@ -113,7 +114,7 @@ export function AdminCommerceDetailPanel({
                 : getStatusLabel(selected.status)
           }
         />
-      </div>
+      </AdminDefinitionList>
 
       {controlPanel}
 
@@ -124,7 +125,7 @@ export function AdminCommerceDetailPanel({
         emptyMessage="Sin acciones administrativas registradas."
         inline
       />
-      {auditError ? <Alert tone="danger" message={auditError} style={{ marginTop: 12 }} /> : null}
-    </aside>
+      {auditError ? <div className="admin-alert-spaced"><Alert tone="danger" message={auditError} /></div> : null}
+    </AdminInspector>
   );
 }

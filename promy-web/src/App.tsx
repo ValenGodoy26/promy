@@ -64,7 +64,7 @@ function App() {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute roles={["ADMIN"]}>
+            <ProtectedRoute roles={["ADMIN", "SUPER_ADMIN"]}>
               <Suspense fallback={<CenteredState title="Cargando panel" text="Preparando backoffice..." />}>
                 <AdminPanel />
               </Suspense>
@@ -114,7 +114,7 @@ function RoleRedirectPage() {
     return <CenteredState title="Cargando sesión" text="Preparando tu panel..." />;
   }
   if (!session) return <Navigate to="/login" replace />;
-  if (session.user.role === "ADMIN") return <Navigate to="/admin" replace />;
+  if (session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN") return <Navigate to="/admin" replace />;
   if (session.user.role === "COMMERCE") return <Navigate to="/commerce" replace />;
   return <Navigate to="/client-app" replace />;
 }

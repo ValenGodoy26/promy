@@ -30,6 +30,7 @@ const SMOKES = [
   "scripts/qa-pagination-smoke.js",
   "scripts/qa-promotion-analytics-smoke.js",
   "scripts/qa-billing-domain-smoke.js",
+  "scripts/qa-billing-reconciliation-smoke.js",
   "scripts/qa-mercado-pago-smoke.js",
 ];
 

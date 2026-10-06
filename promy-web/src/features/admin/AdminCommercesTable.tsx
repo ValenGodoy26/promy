@@ -1,6 +1,6 @@
 import React from "react";
 import type { AdminCommerceItem } from "../../types/api";
-import { MiniBadge, StatusBadge } from "./AdminShared";
+import { AdminDataTable, AdminPagination, MiniBadge, StatusBadge } from "./AdminShared";
 import { getReadinessSummary } from "./commerceReadiness";
 
 type AdminCommercesTableProps = {
@@ -21,8 +21,17 @@ export function AdminCommercesTable({
   onLoadMore,
 }: AdminCommercesTableProps) {
   return (
-    <div className="table-wrap">
-      <table className="data-table">
+    <AdminDataTable
+      label="Comercios adheridos"
+      footer={canLoadMore ? (
+        <AdminPagination
+          shown={commerces.length}
+          total={totalCount}
+          label="comercios"
+          onLoadMore={onLoadMore}
+        />
+      ) : null}
+    >
         <thead>
           <tr>
             <th>Comercio</th>
@@ -55,7 +64,7 @@ export function AdminCommercesTable({
                 </span>
               </td>
               <td>
-                <span className="font-mono" style={{ fontSize: 12 }}>
+                <span className="admin-cell-mono">
                   {commerce._count.promotions} promos · {commerce._count.redemptions} canjes
                 </span>
               </td>
@@ -84,14 +93,6 @@ export function AdminCommercesTable({
             </tr>
           ) : null}
         </tbody>
-      </table>
-      {canLoadMore ? (
-        <div style={{ padding: 16, display: "flex", justifyContent: "center" }}>
-          <button className="btn btn-ghost" type="button" onClick={onLoadMore}>
-            Ver mas comercios ({commerces.length} de {totalCount})
-          </button>
-        </div>
-      ) : null}
-    </div>
+    </AdminDataTable>
   );
 }

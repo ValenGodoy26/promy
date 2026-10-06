@@ -10,6 +10,9 @@ import type { AdminAuditLogItem, AdminPromotionItem } from "../../types/api";
 import { IconCheck, IconPause, IconX } from "../../components/Icons";
 import {
   Alert,
+  AdminDataTable,
+  AdminPagination,
+  AdminPageFrame,
   AuditTimelineCard,
   ConfirmDialog,
   DetailRow,
@@ -23,7 +26,6 @@ import {
   LoadingBlock,
   MiniBadge,
   ModerationModal,
-  PageHeader,
   StatusBadge,
   Toolbar,
 } from "./AdminShared";
@@ -110,10 +112,8 @@ function getPromotionModerationDescription(modalState: ModerationModalState) {
 }
 
 export function AdminPromotionsPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -362,26 +362,14 @@ export function AdminPromotionsPage({
 
   return (
     <>
-      <PageHeader
+      <AdminPageFrame
         kicker="/ Admin · Moderacion"
         title="Promociones"
         titleAccent="moderables"
-        tabs={tabs}
+        description="Revisá promociones, detectá inactividad y conservá trazabilidad en cada cambio."
       />
 
       <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Moderacion de contenido</h2>
-              <p>
-                Revisa promos, detecta inactividad y deja trazabilidad interna sobre cada cambio de
-                estado.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {feedback ? <Alert tone="success" message={feedback} /> : null}
         {error && !auditError ? <Alert tone="danger" message={error} /> : null}
 
@@ -409,8 +397,17 @@ export function AdminPromotionsPage({
           <LoadingBlock title="Cargando promociones" text="Trayendo contenido moderable." />
         ) : (
           <div className="detail-layout">
-            <div className="table-wrap">
-              <table className="data-table">
+            <AdminDataTable
+              label="Promociones moderables"
+              footer={hasMore ? (
+                <AdminPagination
+                  shown={promotions.length}
+                  total={total}
+                  label="promociones"
+                  onLoadMore={() => setPage((current) => current + 1)}
+                />
+              ) : null}
+            >
                 <thead>
                   <tr>
                     <th>Promocion</th>
@@ -429,16 +426,7 @@ export function AdminPromotionsPage({
                     >
                       <td>
                         <div className="cell-primary">{promotion.title}</div>
-                        <span
-                          className="cell-sub"
-                          style={{
-                            maxWidth: 280,
-                            display: "block",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
+                        <span className="cell-sub admin-cell-clamp">
                           {promotion.description}
                         </span>
                       </td>
@@ -448,7 +436,7 @@ export function AdminPromotionsPage({
                       </td>
                       <td>{getPromotionTypeLabel(promotion.promotionType)}</td>
                       <td>
-                        <span className="font-mono" style={{ fontSize: 13 }}>
+                        <span className="admin-cell-mono">
                           {promotion._count.redemptions}
                         </span>
                       </td>
@@ -465,32 +453,21 @@ export function AdminPromotionsPage({
                     </tr>
                   ) : null}
                 </tbody>
-              </table>
-              {hasMore ? (
-                <div style={{ padding: 16, display: "flex", justifyContent: "center" }}>
-                  <button
-                    className="btn btn-ghost"
-                    type="button"
-                    onClick={() => setPage((current) => current + 1)}
-                  >
-                    Ver mas promociones
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            </AdminDataTable>
 
             {selected ? (
-              <aside className="detail-card">
+              <aside className="detail-card admin-inspector">
                 {(() => {
                   const availableTransitions = getAvailablePromotionTransitions(selected.status);
 
                   return (
                     <>
-                      <div className="page-kicker">Detalle</div>
-                      <h2 className="detail-title">{selected.title}</h2>
-                      <p className="detail-desc">{selected.description}</p>
+                      <header className="admin-inspector-header">
+                        <div className="page-kicker">Detalle</div>
+                        <h2 className="detail-title">{selected.title}</h2>
+                        <p className="detail-desc">{selected.description}</p>
 
-                      <div className="detail-actions">
+                      <div className="detail-actions admin-action-group">
                         {availableTransitions.includes("APPROVED_VISIBLE") ? (
                           <button
                             className="btn btn-primary btn-sm"
@@ -552,6 +529,9 @@ export function AdminPromotionsPage({
                           </button>
                         ) : null}
                       </div>
+                      </header>
+
+                      <div className="admin-inspector-content">
 
                       {selected.imageUrl ? (
                         <div className="detail-media">
@@ -559,7 +539,7 @@ export function AdminPromotionsPage({
                         </div>
                       ) : null}
 
-                      <div className="detail-list">
+                      <div className="detail-list admin-definition-list">
                         <DetailRow label="Estado" value={getStatusLabel(selected.status)} />
                         <DetailRow
                           label="Comercio"
@@ -597,7 +577,7 @@ export function AdminPromotionsPage({
                             que vuelva a cargar la publicacion.
                           </p>
 
-                          <div className="stacked-badges" style={{ marginBottom: 12 }}>
+                          <div className="stacked-badges admin-editor-badges">
                             <MiniBadge
                               tone={promotionDraft.isFeatured ? "success" : "neutral"}
                               label={promotionDraft.isFeatured ? "Destacada" : "Orden normal"}
@@ -772,8 +752,9 @@ export function AdminPromotionsPage({
                         inline
                       />
                       {auditError ? (
-                        <Alert tone="danger" message={auditError} style={{ marginTop: 12 }} />
+                        <div className="admin-alert-spaced"><Alert tone="danger" message={auditError} /></div>
                       ) : null}
+                      </div>
                     </>
                   );
                 })()}

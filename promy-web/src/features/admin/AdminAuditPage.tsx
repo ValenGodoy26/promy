@@ -3,11 +3,12 @@ import { useAuth } from "../../auth";
 import { fetchAdminAuditLogs } from "../../lib/api";
 import type { AdminAuditLogItem } from "../../types/api";
 import {
-  Alert,
+  AdminPageFrame,
+  AdminPagination,
   AuditTimelineCard,
   LoadingBlock,
-  PageHeader,
   Toolbar,
+  Alert,
 } from "./AdminShared";
 
 type AuditTargetFilter = "all" | "COMMERCE" | "PROMOTION";
@@ -21,10 +22,8 @@ type AuditActionFilter =
 const ADMIN_AUDIT_PAGE_SIZE = 20;
 
 export function AdminAuditPage({
-  tabs,
   realtimeVersion,
 }: {
-  tabs: Array<{ to: string; label: string; end?: boolean }>;
   realtimeVersion: number;
 }) {
   const { withSession } = useAuth();
@@ -67,7 +66,7 @@ export function AdminAuditPage({
       })
       .catch((loadError) => {
         if (cancelled) return;
-        setError(loadError instanceof Error ? loadError.message : "No pudimos cargar auditoria.");
+        setError(loadError instanceof Error ? loadError.message : "No pudimos cargar auditoría.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -84,95 +83,85 @@ export function AdminAuditPage({
 
   return (
     <>
-      <PageHeader
-        kicker="/ Admin · Operacion"
-        title="Auditoria"
+      <AdminPageFrame
+        kicker="Admin / Operación"
+        title="Auditoría"
         titleAccent="visible"
-        tabs={tabs}
+        description="Filtrá acciones, recursos y eventos críticos para revisar decisiones administrativas."
       />
 
-      <div className="main-content">
-        <div className="panel panel-compact" style={{ marginBottom: 18 }}>
-          <div className="panel-heading">
-            <div className="panel-heading-stack">
-              <h2>Bitacora operativa</h2>
-              <p>
-                Filtra por accion, recurso y eventos criticos para revisar incidentes o decisiones
-                administrativas.
-              </p>
-            </div>
-          </div>
-        </div>
-
+      <div className="main-content admin-audit-page">
         {error ? <Alert tone="danger" message={error} /> : null}
 
-        <Toolbar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Buscar por admin, comercio, promoción o nota..."
-          countLabel={`${logs.length} de ${total} registros`}
-        />
+        <div className="admin-audit-controls">
+          <Toolbar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Buscar por admin, comercio, promoción o nota..."
+            countLabel={`${logs.length} de ${total} registros`}
+          />
 
-        <div className="chip-row" style={{ marginBottom: 16 }}>
-          {[
-            { id: "all", label: "Todo" },
-            { id: "COMMERCE", label: "Comercios" },
-            { id: "PROMOTION", label: "Promociones" },
-          ].map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className={targetFilter === option.id ? "chip is-active" : "chip"}
-              onClick={() => setTargetFilter(option.id as AuditTargetFilter)}
-            >
-              {option.label}
-            </button>
-          ))}
-          {[
-            { id: "all", label: "Todas las acciones" },
-            { id: "UPDATE_COMMERCE_STATUS", label: "Estados de comercio" },
-            { id: "UPDATE_PROMOTION_STATUS", label: "Estados de promo" },
-            { id: "UPDATE_COMMERCE_CONTENT", label: "Edicion comercio" },
-            { id: "UPDATE_PROMOTION_CONTENT", label: "Edicion promo" },
-          ].map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className={actionFilter === option.id ? "chip is-active" : "chip"}
-              onClick={() => setActionFilter(option.id as AuditActionFilter)}
-            >
-              {option.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={incidentOnly ? "chip is-active" : "chip"}
-            onClick={() => setIncidentOnly((current) => !current)}
-          >
-            Solo incidentes
-          </button>
+          <div className="admin-audit-filter-grid" aria-label="Filtros de auditoría">
+            <label className="admin-audit-filter-field">
+              <span className="field-label">Recurso</span>
+              <select
+                className="field-select"
+                value={targetFilter}
+                onChange={(event) => setTargetFilter(event.target.value as AuditTargetFilter)}
+              >
+                <option value="all">Todos los recursos</option>
+                <option value="COMMERCE">Comercios</option>
+                <option value="PROMOTION">Promociones</option>
+              </select>
+            </label>
+            <label className="admin-audit-filter-field">
+              <span className="field-label">Acción</span>
+              <select
+                className="field-select"
+                value={actionFilter}
+                onChange={(event) => setActionFilter(event.target.value as AuditActionFilter)}
+              >
+                <option value="all">Todas las acciones</option>
+                <option value="UPDATE_COMMERCE_STATUS">Estados de comercio</option>
+                <option value="UPDATE_PROMOTION_STATUS">Estados de promoción</option>
+                <option value="UPDATE_COMMERCE_CONTENT">Edición de comercio</option>
+                <option value="UPDATE_PROMOTION_CONTENT">Edición de promoción</option>
+              </select>
+            </label>
+            <label className="admin-audit-incident-toggle">
+              <input
+                type="checkbox"
+                checked={incidentOnly}
+                onChange={(event) => setIncidentOnly(event.target.checked)}
+              />
+              <span>
+                <strong>Solo incidentes</strong>
+                <small>Oculta actividad rutinaria</small>
+              </span>
+            </label>
+          </div>
         </div>
 
-        {loading ? (
-          <LoadingBlock title="Cargando auditoria" text="Trayendo historial administrativo." />
+        {loading && page === 1 ? (
+          <LoadingBlock title="Cargando auditoría" text="Trayendo historial administrativo." />
         ) : (
           <AuditTimelineCard
-            title="Bitacora operativa"
-            subtitle="Busqueda por usuario, comercio, promo y eventos criticos"
+            title="Bitácora operativa"
+            subtitle="Actividad administrativa ordenada por fecha y contexto"
             logs={logs}
             emptyMessage="No encontramos eventos con esos filtros."
+            compact
           />
         )}
+
         {hasMore ? (
-          <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
-            <button
-              className="btn btn-ghost"
-              type="button"
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Ver mas registros
-            </button>
-          </div>
+          <AdminPagination
+            shown={logs.length}
+            total={total}
+            label="registros"
+            loading={loading}
+            onLoadMore={() => setPage((current) => current + 1)}
+          />
         ) : null}
       </div>
     </>

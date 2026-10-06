@@ -10,5 +10,6 @@ export { CommercePromotionEditorPage } from "./CommercePromotionEditorPage";
 export { CommercePromotionPreviewPage } from "./CommercePromotionPreviewPage";
 export { CommerceRedemptionsPage } from "./CommerceRedemptionsPage";
 export { CommerceStatisticsPage } from "./CommerceStatisticsPage";
+export { CommerceSubscriptionPage } from "./CommerceSubscriptionPage";
 
 export type CommerceTab = { to: string; label: string; end?: boolean };

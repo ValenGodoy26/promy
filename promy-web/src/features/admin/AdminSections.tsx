@@ -8,5 +8,6 @@ export { AdminPromotionsPage } from "./AdminPromotionsPage";
 export { AdminCategoriesPage } from "./AdminCategoriesPage";
 export { AdminAuditPage } from "./AdminAuditPage";
 export { AdminBetaRequestsPage } from "./AdminBetaRequestsPage";
+export { AdminBillingPage } from "./AdminBillingPage";
 
 export type AdminTab = { to: string; label: string; end?: boolean };

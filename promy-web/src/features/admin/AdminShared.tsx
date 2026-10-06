@@ -1,54 +1,45 @@
 import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 import type { AdminAuditLogItem } from "../../types/api";
 import { IconAlert, IconCheck, IconSearch } from "../../components/Icons";
 import { getAvailablePromotionTransitions } from "./promotionLifecycle";
 
-export function PageHeader({
+export function AdminPageFrame({
   kicker,
   title,
   titleAccent,
+  description,
   meta,
-  tabs,
+  actions,
 }: {
   kicker: string;
   title: string;
   titleAccent?: string;
+  description?: string;
   meta?: React.ReactNode;
-  tabs?: Array<{ to: string; label: string; end?: boolean }>;
+  actions?: React.ReactNode;
 }) {
   return (
-    <header className="main-header">
-      <div className="page-title-row">
+    <header className="admin-page-frame">
+      <div className="admin-page-frame-row">
         <div>
           <div className="page-kicker">{kicker}</div>
           <h1 className="page-title">
             {title} {titleAccent && <i>{titleAccent}</i>}
           </h1>
+          {description ? <p className="admin-page-description">{description}</p> : null}
         </div>
-        {meta ? <div className="page-meta">{meta}</div> : null}
+        {meta || actions ? (
+          <div className="admin-page-frame-aside">
+            {meta ? <div className="page-meta">{meta}</div> : null}
+            {actions ? <div className="admin-page-actions">{actions}</div> : null}
+          </div>
+        ) : null}
       </div>
-      {tabs ? (
-        <nav className="subnav">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.end}
-              className={({ isActive }) =>
-                isActive ? "subnav-link is-active" : "subnav-link"
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
-      ) : null}
     </header>
   );
 }
 
-export function Toolbar({
+export function AdminFilterBar({
   search,
   onSearchChange,
   placeholder,
@@ -60,8 +51,8 @@ export function Toolbar({
   countLabel: string;
 }) {
   return (
-    <div className="toolbar">
-      <div className="toolbar-start">
+    <section className="admin-filter-bar" aria-label="Filtros del listado">
+      <div className="admin-filter-bar-search">
         <div className="search-input-wrap">
           <IconSearch size={14} className="search-input-icon" />
           <input
@@ -74,11 +65,20 @@ export function Toolbar({
           />
         </div>
       </div>
-      <div className="toolbar-end">
+      <div className="admin-filter-bar-summary">
         <div className="summary-count">{countLabel}</div>
       </div>
-    </div>
+    </section>
   );
+}
+
+export function Toolbar(props: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  placeholder: string;
+  countLabel: string;
+}) {
+  return <AdminFilterBar {...props} />;
 }
 
 export function FilterChips({
@@ -91,7 +91,7 @@ export function FilterChips({
   options: Array<{ id: string; label: string }>;
 }) {
   return (
-    <div className="chip-row" style={{ marginBottom: 16 }}>
+    <div className="admin-filter-chips">
       {options.map((option) => (
         <button
           key={option.id}
@@ -216,15 +216,21 @@ export function AuditTimelineCard({
   logs,
   emptyMessage,
   inline = false,
+  compact = false,
 }: {
   title: string;
   subtitle: string;
   logs: AdminAuditLogItem[];
   emptyMessage: string;
   inline?: boolean;
+  compact?: boolean;
 }) {
+  const className = [inline ? "audit-card" : "panel", compact ? "audit-card-compact" : ""]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <article className={inline ? "audit-card" : "panel"}>
+    <article className={className}>
       <div className="page-kicker">Auditoría</div>
       <h2 style={{ fontSize: inline ? 16 : 18, fontWeight: 500, marginTop: 6 }}>{title}</h2>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
@@ -239,11 +245,7 @@ export function AuditTimelineCard({
                 <span className="audit-action">{getAuditActionLabel(log.action)}</span>
                 <span className="audit-date">{formatDate(log.createdAt)}</span>
               </div>
-              <p className="audit-target">
-                {log.targetType === "COMMERCE"
-                  ? log.commerce?.name || `Comercio #${log.targetId}`
-                  : log.promotion?.title || `Promoción #${log.targetId}`}
-              </p>
+              <p className="audit-target">{getAuditTargetLabel(log)}</p>
               <p className="audit-user">
                 {log.adminUser.fullName} · {log.adminUser.email}
               </p>
@@ -262,21 +264,14 @@ export function AuditTimelineCard({
           ))}
         </div>
       ) : (
-        <div className="data-empty">{emptyMessage}</div>
+        <AdminEmptyState title="Sin eventos para mostrar" text={emptyMessage} />
       )}
     </article>
   );
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "APPROVED" || status === "APPROVED_VISIBLE" || status === "SUCCESS"
-      ? "success"
-      : status === "PENDING" || status === "PENDING_REVIEW"
-      ? "warning"
-      : status === "REJECTED" || status === "FAILED"
-      ? "danger"
-      : "neutral";
+  const tone = getStatusTone(status);
 
   return (
     <span className={`badge badge-${tone}`}>
@@ -290,7 +285,7 @@ export function MiniBadge({
   tone,
   label,
 }: {
-  tone: "success" | "warning" | "neutral";
+  tone: "success" | "warning" | "danger" | "neutral" | "info";
   label: string;
 }) {
   return <span className={`badge badge-${tone}`}>{label}</span>;
@@ -468,9 +463,9 @@ export function formatMissingFields(fields: string[]) {
   return fields.map(getMissingFieldLabel).join(" · ");
 }
 
-export function LoadingBlock({ title, text }: { title: string; text: string }) {
+export function AdminLoadingState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="loading-state">
+    <div className="admin-state loading-state" role="status" aria-live="polite">
       <h3>
         {title}
         <span className="loading-dots">
@@ -480,6 +475,117 @@ export function LoadingBlock({ title, text }: { title: string; text: string }) {
         </span>
       </h3>
       <p>{text}</p>
+    </div>
+  );
+}
+
+export function AdminDataTable({
+  children,
+  footer,
+  label,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  label?: string;
+}) {
+  return (
+    <div className="table-wrap admin-data-table">
+      <table className="data-table admin-data-table-table" aria-label={label}>
+        {children}
+      </table>
+      {footer ? <div className="admin-data-table-footer">{footer}</div> : null}
+    </div>
+  );
+}
+
+export function AdminPagination({
+  shown,
+  total,
+  label,
+  loading = false,
+  onLoadMore,
+}: {
+  shown: number;
+  total: number;
+  label: string;
+  loading?: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <div className="admin-pagination">
+      <span>{shown} de {total} {label}</span>
+      <button className="btn btn-ghost btn-sm" type="button" disabled={loading} onClick={onLoadMore}>
+        {loading ? "Cargando..." : `Ver más ${label}`}
+      </button>
+    </div>
+  );
+}
+
+export function AdminInspector({
+  kicker,
+  title,
+  description,
+  meta,
+  actions,
+  children,
+}: {
+  kicker: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <aside className="detail-card admin-inspector">
+      <header className="admin-inspector-header">
+        <div className="page-kicker">{kicker}</div>
+        <h2 className="detail-title">{title}</h2>
+        {description ? <div className="detail-desc">{description}</div> : null}
+        {meta ? <div className="admin-inspector-meta">{meta}</div> : null}
+        {actions ? <AdminActionGroup>{actions}</AdminActionGroup> : null}
+      </header>
+      <div className="admin-inspector-content">{children}</div>
+    </aside>
+  );
+}
+
+export function AdminDefinitionList({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`detail-list admin-definition-list ${className}`.trim()}>{children}</div>;
+}
+
+export function AdminActionGroup({ children }: { children: React.ReactNode }) {
+  return <div className="detail-actions admin-action-group">{children}</div>;
+}
+
+export function LoadingBlock(props: { title: string; text: string }) {
+  return <AdminLoadingState {...props} />;
+}
+
+export function AdminEmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="admin-state admin-empty-state">
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+export function AdminErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="admin-error-state">
+      <Alert tone="danger" message={message} />
+      {onRetry ? (
+        <button className="btn btn-secondary btn-sm" type="button" onClick={onRetry}>
+          Reintentar
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -533,6 +639,19 @@ export function getStatusLabel(status: string) {
     : status;
 }
 
+function getStatusTone(status: string) {
+  const normalized = status.toUpperCase();
+  if (["APPROVED", "APPROVED_VISIBLE", "SUCCESS", "ACTIVE", "MATCH", "COVERED"].includes(normalized)) {
+    return "success";
+  }
+  if (["PENDING", "PENDING_REVIEW", "SCHEDULED", "MISMATCH"].includes(normalized)) {
+    return "warning";
+  }
+  if (["REJECTED", "FAILED"].includes(normalized)) return "danger";
+  if (["BETA", "PROVIDER"].includes(normalized)) return "info";
+  return "neutral";
+}
+
 export function getPromotionTypeLabel(type: string) {
   return type === "PERCENTAGE"
     ? "Porcentaje"
@@ -576,11 +695,48 @@ export function getMissingFieldLabel(field: string) {
 }
 
 export function getAuditActionLabel(action: string) {
-  return action === "UPDATE_COMMERCE_STATUS"
-    ? "Cambio de estado · Comercio"
-    : action === "UPDATE_PROMOTION_STATUS"
-    ? "Cambio de estado · Promoción"
-    : action;
+  const labels: Record<string, string> = {
+    UPDATE_COMMERCE_STATUS: "Cambio de estado · Comercio",
+    UPDATE_PROMOTION_STATUS: "Cambio de estado · Promoción",
+    UPDATE_COMMERCE_CONTENT: "Edición · Comercio",
+    UPDATE_PROMOTION_CONTENT: "Edición · Promoción",
+    GRANT_COMPLIMENTARY_COVERAGE: "Cobertura bonificada otorgada",
+    REVOKE_COMPLIMENTARY_COVERAGE: "Cobertura bonificada finalizada",
+    REGISTER_MANUAL_PAYMENT: "Pago manual registrado",
+    RECONCILE_BILLING_SUBSCRIPTION: "Consulta de conciliación",
+    COMPLIMENTARY_GRANTED: "Cobertura bonificada otorgada",
+    COMPLIMENTARY_REVOKED: "Cobertura bonificada finalizada",
+    MANUAL_PAYMENT_REGISTERED: "Pago manual registrado",
+    MERCADO_PAGO_RECONCILIATION_OBSERVED: "Observación de conciliación",
+    BILLING_RECONCILIATION_OBSERVED: "Observación de conciliación",
+    BILLING_RECONCILIATION_MISMATCH: "Diferencia detectada en conciliación",
+    BILLING_PROVIDER_UNAVAILABLE: "Proveedor no disponible",
+  };
+
+  if (labels[action]) return labels[action];
+
+  const humanized = action
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .join(" ");
+
+  return humanized ? humanized.charAt(0).toUpperCase() + humanized.slice(1) : "Acción administrativa";
+}
+
+function getAuditTargetLabel(log: AdminAuditLogItem) {
+  if (log.commerce?.name) return log.commerce.name;
+  if (log.promotion?.title) return log.promotion.title;
+  if (log.targetType === "COMMERCE") return `Comercio #${log.targetId}`;
+  if (log.targetType === "PROMOTION") return `Promoción #${log.targetId}`;
+
+  const targetType = log.targetType
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .join(" ");
+  const label = targetType ? targetType.charAt(0).toUpperCase() + targetType.slice(1) : "Recurso";
+  return `${label} #${log.targetId}`;
 }
 
 export function getCommerceModalTitle(next?: string) {
@@ -660,6 +816,7 @@ export function ConfirmDialog({
   open,
   title,
   description,
+  children,
   confirmLabel = "Confirmar",
   tone = "danger",
   onClose,
@@ -668,6 +825,7 @@ export function ConfirmDialog({
   open: boolean;
   title: string;
   description: string;
+  children?: React.ReactNode;
   confirmLabel?: string;
   tone?: "danger" | "primary";
   onClose: () => void;
@@ -689,6 +847,7 @@ export function ConfirmDialog({
         <p className="muted" style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.55 }}>
           {description}
         </p>
+        {children}
 
         <div className="modal-footer" style={{ marginTop: 24 }}>
           <button className="btn btn-ghost" type="button" onClick={onClose}>

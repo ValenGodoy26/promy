@@ -1,6 +1,12 @@
 import type {
   AdminBetaAccessRequestsResponse,
   AdminAuditLogsResponse,
+  AdminBillingSubscriptionDetailResponse,
+  AdminBillingSubscriptionFilter,
+  AdminBillingReconciliationResponse,
+  AdminBillingSupportActionResponse,
+  AdminBillingSubscriptionsResponse,
+  AdminBillingSettingsResponse,
   AdminCategoriesResponse,
   AdminCategoryResponse,
   AdminCommercesResponse,
@@ -14,6 +20,8 @@ import type {
   CommerceManagedPromotionResponse,
   CommerceManagedPromotionsResponse,
   CommerceManagedRedemptionsResponse,
+  CommerceSubscriptionEnrollmentResponse,
+  CommerceSubscriptionResponse,
   CommerceStatisticsResponse,
   CommerceValidateRedemptionResponse,
   CreateCommercePromotionInput,
@@ -322,6 +330,35 @@ export async function fetchCommerceStatistics(
   });
 }
 
+export async function fetchCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription", {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function enrollCommerceSubscription(session: AuthSession, cardToken: string) {
+  return request<CommerceSubscriptionEnrollmentResponse>("/commerce/subscription/enroll", {
+    method: "POST",
+    accessToken: session.accessToken,
+    body: { cardToken },
+  });
+}
+
+export async function refreshCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription/refresh", {
+    method: "POST",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function cancelCommerceSubscription(session: AuthSession) {
+  return request<CommerceSubscriptionResponse>("/commerce/subscription/cancel", {
+    method: "POST",
+    accessToken: session.accessToken,
+  });
+}
+
 export async function validateCommerceRedemption(
   session: AuthSession,
   validationCode: string,
@@ -338,6 +375,101 @@ export async function validateCommerceRedemption(
 export async function fetchAdminDashboard(session: AuthSession) {
   return request<AdminDashboardResponse>("/admin/dashboard", {
     method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSettings(session: AuthSession) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/settings", {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSubscriptions(
+  session: AuthSession,
+  filters?: { page?: number; limit?: number; filter?: AdminBillingSubscriptionFilter; search?: string },
+) {
+  const search = new URLSearchParams();
+  if (filters?.page) search.set("page", String(filters.page));
+  if (filters?.limit) search.set("limit", String(filters.limit));
+  if (filters?.filter && filters.filter !== "ALL") search.set("filter", filters.filter);
+  if (filters?.search?.trim()) search.set("search", filters.search.trim());
+  const suffix = search.size ? `?${search.toString()}` : "";
+  return request<AdminBillingSubscriptionsResponse>(`/admin/subscriptions${suffix}`, {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function fetchAdminBillingSubscription(session: AuthSession, commerceId: number) {
+  return request<AdminBillingSubscriptionDetailResponse>(`/admin/subscriptions/${commerceId}`, {
+    method: "GET",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function reconcileAdminBillingSubscription(session: AuthSession, commerceId: number) {
+  return request<AdminBillingReconciliationResponse>(`/admin/billing/${commerceId}/reconcile`, {
+    method: "POST",
+    accessToken: session.accessToken,
+  });
+}
+
+export async function grantAdminComplimentaryCoverage(
+  session: AuthSession,
+  commerceId: number,
+  body: { reason: string; endsAt?: string | null },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/complimentary`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function revokeAdminComplimentaryCoverage(
+  session: AuthSession,
+  commerceId: number,
+  body: { grantId: number; reason: string },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/revoke-complimentary`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function registerAdminManualPayment(
+  session: AuthSession,
+  commerceId: number,
+  body: { amount: number; currency: "ARS"; paidAt: string; periodStart: string; periodEnd: string; reference: string; note?: string; idempotencyKey: string },
+) {
+  return request<AdminBillingSupportActionResponse>(`/admin/billing/${commerceId}/manual-payment`, {
+    method: "POST",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function updateAdminBillingSettings(
+  session: AuthSession,
+  body: {
+    mode: "OFF" | "SCHEDULED" | "ON";
+    monthlyPrice?: number | null;
+    billingStartsAt?: string | null;
+  },
+) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/settings", {
+    method: "PATCH",
+    accessToken: session.accessToken,
+    body,
+  });
+}
+
+export async function ensureAdminMercadoPagoPlan(session: AuthSession) {
+  return request<AdminBillingSettingsResponse>("/admin/billing/mercado-pago/plan", {
+    method: "POST",
     accessToken: session.accessToken,
   });
 }

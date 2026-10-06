@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { BrandLockup } from "../../components/Logo";
-import { IconDashboard, IconLogout, IconReceipt, IconStore, IconTag, IconTrending } from "../../components/Icons";
+import { IconClock, IconDashboard, IconLogout, IconReceipt, IconStore, IconTag, IconTrending } from "../../components/Icons";
 import { fetchMyCommerce } from "../../lib/api";
 import { useLiveRefresh } from "../../lib/live";
 import { useRealtimeVersion } from "../../lib/realtime";
@@ -17,6 +17,7 @@ import {
   CommercePromotionsPage,
   CommerceRedemptionsPage,
   CommerceStatisticsPage,
+  CommerceSubscriptionPage,
   type CommerceTab,
 } from "./CommerceSections";
 
@@ -35,6 +36,7 @@ export default function CommercePanel() {
     { to: "/commerce/redemptions", label: "Canjes", icon: <IconReceipt size={16} /> },
     { to: "/commerce/promotions", label: "Promociones", icon: <IconTag size={16} /> },
     { to: "/commerce/statistics", label: "Estadísticas", icon: <IconTrending size={16} /> },
+    { to: "/commerce/subscription", label: "Suscripción", icon: <IconClock size={16} /> },
     { to: "/commerce/profile", label: "Mi negocio", icon: <IconStore size={16} /> },
   ];
 
@@ -137,6 +139,7 @@ export default function CommercePanel() {
           />
           <Route path="redemptions" element={<CommerceRedemptionsPage realtimeVersion={realtimeVersion} />} />
           <Route path="statistics" element={<CommerceStatisticsPage realtimeVersion={realtimeVersion} />} />
+          <Route path="subscription" element={<CommerceSubscriptionPage realtimeVersion={realtimeVersion} />} />
           <Route path="*" element={<Navigate to="/commerce" replace />} />
         </Routes>
       </div>
